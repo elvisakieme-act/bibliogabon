@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "accounts",
     "catalog",
     "document_ingestion",
+    "document_processing",
 ]
 
 MIDDLEWARE = [
