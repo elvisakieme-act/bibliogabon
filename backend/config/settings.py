@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "document_ingestion",
     "document_processing",
     "document_reader",
+    "search_discovery",
 ]
 
 MIDDLEWARE = [
