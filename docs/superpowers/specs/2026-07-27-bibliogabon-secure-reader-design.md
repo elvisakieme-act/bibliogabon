@@ -18,6 +18,8 @@ Reading is separate from publication and processing. A document can be read only
 
 `free` published documents do not require an entitlement, but still require an authenticated user in this backend slice. `subscription`, `institution_only`, `sponsored`, and `restricted` documents require `accounts.user_has_entitlement(user, read, document, document_id)` for both session start and every page read. This prevents expired or revoked entitlements from continuing to unlock restricted pages.
 
+Page reads also re-check that the document is still `published` and non-private. A valid session key must not authorize another user.
+
 ## Architecture
 
 Create a dedicated Django app named `document_reader`. It depends on `accounts`, `catalog`, `document_ingestion`, and `document_processing`. None of those apps should import `document_reader`.
@@ -57,6 +59,8 @@ Use pytest and pytest-django. Tests must prove:
 - published free documents can start sessions for authenticated users;
 - restricted documents require active read entitlement at session start;
 - expired entitlements stop restricted page reads even if the session was already open;
+- withdrawn, suspended, or privatized documents stop page reads even if the session was already open;
+- a session key used by another authenticated user is refused;
 - inactive or expired sessions cannot read pages;
 - missing, unprocessed, or textless pages are unavailable;
 - successful page reads create `PageAccessLog`;

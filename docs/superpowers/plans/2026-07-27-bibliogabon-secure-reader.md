@@ -16,6 +16,8 @@
 - `free` published documents require an authenticated user but no entitlement in this slice.
 - `subscription`, `institution_only`, `sponsored`, and `restricted` documents require an active `read` entitlement.
 - Restricted page reads must re-check entitlement on every request, not only at session start.
+- Page reads must re-check publication status and document privacy on every request.
+- A reader API request user must match the session user.
 - Do not implement anonymous free reading, real signed URLs, DRM, offline packages, streaming, downloads, search APIs, analytics, billing, or audit logs in this slice.
 
 ---
@@ -133,7 +135,7 @@ backend/
 - Produces `ReaderPageUnavailable`.
 - Produces `get_reader_page(*, session, page_number, at=None) -> dict`.
 
-- [ ] Write failing tests showing expired sessions, ended sessions, expired entitlements, missing pages, unprocessed pages, and textless pages are rejected.
+- [ ] Write failing tests showing expired sessions, ended sessions, expired entitlements, withdrawn documents, private documents, missing pages, unprocessed pages, and textless pages are rejected.
 - [ ] Write a failing test showing successful page reads return a safe JSON-ready payload and create `PageAccessLog`.
 - [ ] Implement page read validation and entitlement re-check for restricted documents.
 - [ ] Ensure payload keys are exactly `session_key`, `document_id`, `version_id`, `page_number`, `page_count`, `language_code`, and `text`.
@@ -154,7 +156,7 @@ backend/
 - Consumes `start_reader_session()`, `end_reader_session()`, and `get_reader_page()`.
 - Produces Django endpoints under `/reader/`.
 
-- [ ] Write failing API tests for unauthenticated start denial, session start, page read, denied restricted page read after entitlement expiry, and session end.
+- [ ] Write failing API tests for unauthenticated start denial, session start, page read, session key reuse by another user, denied restricted page read after entitlement expiry, and session end.
 - [ ] Implement JSON views with status codes: `401` unauthenticated, `403` access/session denied, `404` unavailable page or document, `200` successful page read/session end, `201` session start.
 - [ ] Add `document_reader.urls`.
 - [ ] Include reader URLs in `config.urls`.
@@ -185,6 +187,8 @@ backend/
 - [ ] Sessions cannot start for unpublished or private documents.
 - [ ] Restricted documents require active read entitlement at session start and page read.
 - [ ] Expired or ended sessions cannot read pages.
+- [ ] Page reads stop when a document is withdrawn, suspended, or changed to private.
+- [ ] API page reads require the request user to match the session user.
 - [ ] Page reads require processed page records and extracted text.
 - [ ] Reader payloads contain no storage key or URL fields.
 - [ ] Successful page reads create access logs.
