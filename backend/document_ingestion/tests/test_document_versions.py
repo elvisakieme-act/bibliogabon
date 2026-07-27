@@ -40,7 +40,6 @@ def test_source_asset_stores_private_object_metadata():
     )
 
     assert asset.visibility == DocumentAsset.Visibility.PRIVATE
-    assert asset.public_url == ""
     assert str(asset) == "source_pdf: documents/1/versions/v1/abcd1234/source.pdf"
 
 
@@ -67,3 +66,20 @@ def test_asset_rejects_public_storage_reference(storage_key):
 
     with pytest.raises(ValidationError):
         asset.full_clean()
+
+
+@pytest.mark.django_db
+def test_asset_save_rejects_public_storage_reference():
+    version = DocumentVersion.objects.create(document=create_document(), version_label="v1")
+    asset = DocumentAsset(
+        version=version,
+        asset_type=DocumentAsset.AssetType.SOURCE_PDF,
+        storage_bucket="bibliogabon-private-documents",
+        storage_key=" https://example.com/source.pdf",
+        mime_type="application/pdf",
+        byte_size=2048,
+        checksum_sha256="d" * 64,
+    )
+
+    with pytest.raises(ValidationError):
+        asset.save()

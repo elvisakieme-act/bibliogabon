@@ -88,7 +88,6 @@ class DocumentAsset(models.Model):
         choices=Visibility.choices,
         default=Visibility.PRIVATE,
     )
-    public_url = models.URLField(blank=True)
     created_by_job = models.ForeignKey(
         "ProcessingJob",
         null=True,
@@ -103,15 +102,19 @@ class DocumentAsset(models.Model):
             models.UniqueConstraint(
                 fields=["version", "asset_type", "checksum_sha256"],
                 name="uniq_asset_checksum_per_version_type",
-            )
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(storage_key__contains="://")
+                & ~models.Q(storage_key__startswith="//")
+                & ~models.Q(storage_key__contains=".."),
+                name="document_asset_storage_key_not_public_scheme",
+            ),
         ]
         ordering = ["version", "asset_type", "created_at"]
 
     def clean(self):
         if storage_key_is_public_reference(self.storage_key):
             raise ValidationError("Storage key must be a private object key, not a public reference")
-        if self.public_url:
-            raise ValidationError("Document assets must not store public URLs")
         source_types = {
             self.AssetType.SOURCE_RAW,
             self.AssetType.SOURCE_PDF,
@@ -122,6 +125,10 @@ class DocumentAsset(models.Model):
 
     def __str__(self) -> str:
         return f"{self.asset_type}: {self.storage_key}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 
 class ProcessingJob(models.Model):
@@ -170,6 +177,10 @@ class ProcessingJob(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
+    def clean(self):
+        if self.source_asset_id and self.source_asset.version_id != self.version_id:
+            raise ValidationError("Source asset must belong to the same document version")
+
     def mark_started(self):
         self.status = self.Status.RUNNING
         self.started_at = timezone.now()
@@ -200,3 +211,7 @@ class ProcessingJob(models.Model):
 
     def __str__(self) -> str:
         return f"{self.job_type} for {self.version}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)

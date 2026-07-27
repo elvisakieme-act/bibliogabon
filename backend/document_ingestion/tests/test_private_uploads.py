@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 
 from catalog.models import AcademicDomain, Document
 from document_ingestion.models import DocumentAsset, DocumentVersion, ProcessingJob
@@ -75,6 +76,56 @@ def test_register_private_upload_is_idempotent_for_same_version_and_checksum(set
     assert DocumentVersion.objects.count() == 1
     assert DocumentAsset.objects.count() == 1
     assert ProcessingJob.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_register_private_upload_rejects_conflicting_asset_metadata(settings):
+    settings.DOCUMENT_STORAGE_BUCKET = "bibliogabon-private-documents"
+    document = create_document()
+    register_private_upload(
+        document=document,
+        storage_key="documents/1/versions/v1/abcdef12/source.pdf",
+        original_filename="source.pdf",
+        mime_type="application/pdf",
+        byte_size=8192,
+        checksum_sha256="b" * 64,
+        version_label="v1",
+    )
+
+    with pytest.raises(ValueError):
+        register_private_upload(
+            document=document,
+            storage_key="documents/1/versions/v1/abcdef12/source.pdf",
+            original_filename="source.pdf",
+            mime_type="application/pdf",
+            byte_size=4096,
+            checksum_sha256="b" * 64,
+            version_label="v1",
+        )
+
+
+@pytest.mark.django_db
+def test_register_private_upload_is_atomic_when_job_creation_fails(settings, monkeypatch):
+    settings.DOCUMENT_STORAGE_BUCKET = "bibliogabon-private-documents"
+
+    def fail_to_enqueue(*args, **kwargs):
+        raise IntegrityError("job failed")
+
+    monkeypatch.setattr("document_ingestion.services.enqueue_processing_job", fail_to_enqueue)
+
+    with pytest.raises(IntegrityError):
+        register_private_upload(
+            document=create_document(),
+            storage_key="documents/1/versions/v1/abcdef12/source.pdf",
+            original_filename="source.pdf",
+            mime_type="application/pdf",
+            byte_size=8192,
+            checksum_sha256="c" * 64,
+            version_label="v1",
+        )
+
+    assert DocumentVersion.objects.count() == 0
+    assert DocumentAsset.objects.count() == 0
 
 
 @pytest.mark.parametrize(

@@ -1,7 +1,11 @@
 import pytest
 
 from catalog.models import AcademicDomain, Document
-from document_ingestion.storage import build_private_storage_key, storage_key_is_public_reference
+from document_ingestion.storage import (
+    build_private_storage_key,
+    normalize_key_segment,
+    storage_key_is_public_reference,
+)
 
 
 @pytest.mark.django_db
@@ -36,3 +40,20 @@ def test_private_storage_key_is_deterministic_and_not_public_url():
 )
 def test_public_references_are_rejected(value):
     assert storage_key_is_public_reference(value) is True
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        " https://example.com/file.pdf",
+        "//example.com/file.pdf",
+        "s3://public-bucket/file.pdf",
+        "../private/file.pdf",
+    ],
+)
+def test_url_like_or_path_traversal_references_are_rejected(value):
+    assert storage_key_is_public_reference(value) is True
+
+
+def test_version_label_is_normalized_for_storage_key_segments():
+    assert normalize_key_segment("Draft / Final .. 2026") == "draft-final-2026"

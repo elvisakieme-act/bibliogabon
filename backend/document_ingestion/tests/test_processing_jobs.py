@@ -1,4 +1,5 @@
 import pytest
+from django.core.exceptions import ValidationError
 
 from catalog.models import AcademicDomain, Document
 from document_ingestion.models import DocumentAsset, DocumentVersion, ProcessingJob
@@ -47,6 +48,40 @@ def test_enqueue_processing_job_is_idempotent_by_key():
     assert first.pk == second.pk
     assert ProcessingJob.objects.count() == 1
     assert first.status == ProcessingJob.Status.QUEUED
+
+
+@pytest.mark.django_db
+def test_enqueue_processing_job_rejects_idempotency_conflict():
+    version, asset = create_version_and_asset()
+    enqueue_processing_job(
+        version=version,
+        job_type=ProcessingJob.JobType.INGEST_SOURCE,
+        idempotency_key="document-1-v1-conflict",
+        source_asset=asset,
+    )
+
+    with pytest.raises(ValueError):
+        enqueue_processing_job(
+            version=version,
+            job_type=ProcessingJob.JobType.EXTRACT_METADATA,
+            idempotency_key="document-1-v1-conflict",
+            source_asset=asset,
+        )
+
+
+@pytest.mark.django_db
+def test_processing_job_save_rejects_source_asset_from_other_version():
+    version, asset = create_version_and_asset()
+    other_version = DocumentVersion.objects.create(document=version.document, version_label="v2")
+    job = ProcessingJob(
+        version=other_version,
+        source_asset=asset,
+        job_type=ProcessingJob.JobType.INGEST_SOURCE,
+        idempotency_key="document-1-v2-mismatch",
+    )
+
+    with pytest.raises(ValidationError):
+        job.save()
 
 
 @pytest.mark.django_db
