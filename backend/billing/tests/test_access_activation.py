@@ -4,8 +4,12 @@ from django.utils import timezone
 
 from accounts.models import Entitlement, Organization, OrganizationMembership
 from accounts.services import user_has_entitlement
-from billing.models import CommercialOffer, OrganizationQuota, Subscription
-from billing.services import activate_organization_quota, activate_subscription
+from billing.models import CommercialOffer, OrganizationQuota, SponsoredCampaign, Subscription
+from billing.services import (
+    activate_organization_quota,
+    activate_subscription,
+    enroll_user_in_sponsored_campaign,
+)
 
 
 def create_user(email="access-user@example.ga"):
@@ -174,5 +178,71 @@ def test_activate_organization_quota_rejects_closed_or_suspended_quota(status):
 
     with pytest.raises(ValueError):
         activate_organization_quota(quota=quota)
+
+    assert Entitlement.objects.count() == 0
+
+
+def create_campaign(slug="sponsored-access", status=SponsoredCampaign.Status.ACTIVE, funded_seat_count=2):
+    sponsor = create_organization(slug=f"sponsor-{slug}")
+    starts_at = timezone.now() - timezone.timedelta(minutes=5)
+    return SponsoredCampaign.objects.create(
+        sponsor=sponsor,
+        name=f"Campaign {slug}",
+        slug=slug,
+        status=status,
+        funded_seat_count=funded_seat_count,
+        access_right=Entitlement.AccessRight.READ,
+        scope_type=Entitlement.ScopeType.GLOBAL,
+        starts_at=starts_at,
+        ends_at=starts_at + timezone.timedelta(days=30),
+    )
+
+
+@pytest.mark.django_db
+def test_enroll_user_in_sponsored_campaign_creates_user_entitlement_once():
+    campaign = create_campaign()
+    user = create_user(email="sponsored-user@example.ga")
+
+    entitlement = enroll_user_in_sponsored_campaign(campaign=campaign, user=user)
+    repeated = enroll_user_in_sponsored_campaign(campaign=campaign, user=user)
+
+    assert repeated.pk == entitlement.pk
+    assert Entitlement.objects.count() == 1
+    assert entitlement.user == user
+    assert entitlement.organization is None
+    assert entitlement.source == Entitlement.Source.SPONSORED_CAMPAIGN
+    assert entitlement.starts_at == campaign.starts_at
+    assert entitlement.ends_at == campaign.ends_at
+    assert user_has_entitlement(user, Entitlement.AccessRight.READ) is True
+
+
+@pytest.mark.django_db
+def test_enroll_user_in_sponsored_campaign_rejects_when_capacity_is_exhausted():
+    campaign = create_campaign(slug="limited-campaign", funded_seat_count=1)
+    first_user = create_user(email="first-sponsored@example.ga")
+    second_user = create_user(email="second-sponsored@example.ga")
+    enroll_user_in_sponsored_campaign(campaign=campaign, user=first_user)
+
+    with pytest.raises(ValueError):
+        enroll_user_in_sponsored_campaign(campaign=campaign, user=second_user)
+
+    assert Entitlement.objects.count() == 1
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        SponsoredCampaign.Status.DRAFT,
+        SponsoredCampaign.Status.ENDED,
+        SponsoredCampaign.Status.CANCELLED,
+    ],
+)
+@pytest.mark.django_db
+def test_enroll_user_in_sponsored_campaign_rejects_inactive_campaign_status(status):
+    campaign = create_campaign(slug=f"inactive-campaign-{status}", status=status)
+    user = create_user(email=f"{status}@example.ga")
+
+    with pytest.raises(ValueError):
+        enroll_user_in_sponsored_campaign(campaign=campaign, user=user)
 
     assert Entitlement.objects.count() == 0

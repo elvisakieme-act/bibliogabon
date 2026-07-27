@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from django.db import transaction
+from django.utils import timezone
 
 from accounts.models import Entitlement
 from billing.models import CommercialOffer, PaymentTransaction, Subscription
-from billing.models import OrganizationQuota
+from billing.models import OrganizationQuota, SponsoredCampaign
 
 
 def _pk(value):
@@ -160,3 +161,54 @@ def activate_organization_quota(*, quota: OrganizationQuota, at=None) -> Entitle
         quota.entitlement = entitlement
         quota.save(update_fields=["status", "entitlement", "updated_at"])
         return entitlement
+
+
+def _campaign_note(campaign: SponsoredCampaign) -> str:
+    return f"sponsored_campaign:{campaign.pk}"
+
+
+def enroll_user_in_sponsored_campaign(*, campaign: SponsoredCampaign, user, at=None) -> Entitlement:
+    at = at or timezone.now()
+    with transaction.atomic():
+        campaign = (
+            SponsoredCampaign.objects.select_for_update()
+            .select_related("sponsor")
+            .get(pk=campaign.pk)
+        )
+        if campaign.status != SponsoredCampaign.Status.ACTIVE:
+            raise ValueError("sponsored campaign is not active")
+        if campaign.starts_at > at or campaign.ends_at <= at:
+            raise ValueError("sponsored campaign is outside its active window")
+
+        note = _campaign_note(campaign)
+        existing = Entitlement.objects.filter(
+            user=user,
+            organization=None,
+            source=Entitlement.Source.SPONSORED_CAMPAIGN,
+            access_right=campaign.access_right,
+            scope_type=campaign.scope_type,
+            scope_id=campaign.scope_id,
+            note=note,
+        ).first()
+        if existing:
+            return existing
+
+        enrolled_count = Entitlement.objects.filter(
+            source=Entitlement.Source.SPONSORED_CAMPAIGN,
+            note=note,
+            revoked_at__isnull=True,
+        ).count()
+        if enrolled_count >= campaign.funded_seat_count:
+            raise ValueError("sponsored campaign capacity is exhausted")
+
+        return Entitlement.objects.create(
+            user=user,
+            organization=None,
+            source=Entitlement.Source.SPONSORED_CAMPAIGN,
+            access_right=campaign.access_right,
+            scope_type=campaign.scope_type,
+            scope_id=campaign.scope_id,
+            starts_at=campaign.starts_at,
+            ends_at=campaign.ends_at,
+            note=note,
+        )
