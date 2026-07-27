@@ -149,3 +149,88 @@ class OrganizationMembership(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user.email} @ {self.organization.name}"
+
+
+class Entitlement(models.Model):
+    class Source(models.TextChoices):
+        INDIVIDUAL_SUBSCRIPTION = "individual_subscription", "Individual subscription"
+        ORGANIZATION_QUOTA = "organization_quota", "Organization quota"
+        SPONSORED_CAMPAIGN = "sponsored_campaign", "Sponsored campaign"
+        ADMIN_GRANT = "admin_grant", "Admin grant"
+
+    class AccessRight(models.TextChoices):
+        READ = "read", "Read"
+        DOWNLOAD = "download", "Download"
+        OFFLINE = "offline", "Offline"
+
+    class ScopeType(models.TextChoices):
+        GLOBAL = "global", "Global"
+        DOMAIN = "domain", "Domain"
+        COLLECTION = "collection", "Collection"
+        DOCUMENT = "document", "Document"
+
+    user = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="entitlements",
+    )
+    organization = models.ForeignKey(
+        Organization,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="entitlements",
+    )
+    source = models.CharField(max_length=32, choices=Source.choices)
+    access_right = models.CharField(max_length=16, choices=AccessRight.choices)
+    scope_type = models.CharField(
+        max_length=16,
+        choices=ScopeType.choices,
+        default=ScopeType.GLOBAL,
+    )
+    scope_id = models.CharField(max_length=128, blank=True)
+    starts_at = models.DateTimeField(default=timezone.now)
+    ends_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "access_right", "scope_type"]),
+            models.Index(fields=["organization", "access_right", "scope_type"]),
+            models.Index(fields=["starts_at", "ends_at"]),
+        ]
+        ordering = ["-starts_at", "-created_at"]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.user_id and self.organization_id:
+            raise ValidationError("Entitlement cannot target both user and organization")
+        if not self.user_id and not self.organization_id:
+            raise ValidationError("Entitlement must target a user or organization")
+        if self.scope_type != self.ScopeType.GLOBAL and not self.scope_id:
+            raise ValidationError("Non-global entitlement requires scope_id")
+
+    def is_active_at(self, at=None) -> bool:
+        at = at or timezone.now()
+        if self.revoked_at is not None:
+            return False
+        if self.starts_at > at:
+            return False
+        if self.ends_at is not None and self.ends_at <= at:
+            return False
+        return True
+
+    def matches_scope(self, scope_type: str, scope_id: str = "") -> bool:
+        if self.scope_type == self.ScopeType.GLOBAL:
+            return True
+        return self.scope_type == scope_type and self.scope_id == scope_id
+
+    def __str__(self) -> str:
+        target = self.user.email if self.user_id else self.organization.name
+        return f"{target}: {self.access_right} ({self.scope_type})"
