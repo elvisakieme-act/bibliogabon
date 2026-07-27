@@ -8,8 +8,9 @@ from accounts.models import Entitlement
 from accounts.services import user_has_entitlement
 from catalog.models import Document
 from document_ingestion.models import DocumentVersion
-from document_reader.exceptions import ReaderAccessDenied
-from document_reader.models import ReaderSession
+from document_processing.models import DocumentPage, ExtractedText
+from document_reader.exceptions import ReaderAccessDenied, ReaderPageUnavailable, ReaderSessionInactive
+from document_reader.models import PageAccessLog, ReaderSession
 
 
 RESTRICTED_ACCESS_MODELS = {
@@ -109,3 +110,65 @@ def start_reader_session(
 
 def end_reader_session(*, session: ReaderSession, at=None) -> ReaderSession:
     return session.end(at=at)
+
+
+def _ensure_reader_session_can_read(session: ReaderSession, at=None):
+    if not session.is_active_at(at=at):
+        raise ReaderSessionInactive("Reader session is not active")
+    if not user_can_read_document(session.user, session.document, at=at):
+        raise ReaderAccessDenied("User can no longer read this document")
+    if (
+        not session.version.is_current
+        or session.version.status != DocumentVersion.Status.PROCESSED
+        or not session.version.page_count
+    ):
+        raise ReaderAccessDenied("Reader session version is no longer readable")
+
+
+def get_reader_page(*, session: ReaderSession, page_number: int, at=None) -> dict:
+    at = at or timezone.now()
+    if page_number < 1:
+        raise ReaderPageUnavailable("page_number must be positive")
+
+    session.refresh_from_db()
+    _ensure_reader_session_can_read(session, at=at)
+
+    if page_number > session.version.page_count:
+        raise ReaderPageUnavailable("Page is outside the readable document range")
+
+    try:
+        page = DocumentPage.objects.get(
+            version=session.version,
+            page_number=page_number,
+            status=DocumentPage.Status.PROCESSED,
+        )
+    except DocumentPage.DoesNotExist as exc:
+        raise ReaderPageUnavailable("Page is not available for reading") from exc
+
+    try:
+        extracted_text = ExtractedText.objects.get(page=page)
+    except ExtractedText.DoesNotExist as exc:
+        raise ReaderPageUnavailable("Page has no extracted text") from exc
+
+    with transaction.atomic():
+        PageAccessLog.objects.create(
+            session=session,
+            page=page,
+            user=session.user,
+            document=session.document,
+            page_number=page.page_number,
+            client_ip=session.client_ip,
+            user_agent=session.user_agent,
+        )
+        session.last_seen_at = at
+        session.save(update_fields=["last_seen_at", "updated_at"])
+
+    return {
+        "session_key": str(session.session_key),
+        "document_id": session.document_id,
+        "version_id": session.version_id,
+        "page_number": page.page_number,
+        "page_count": session.version.page_count,
+        "language_code": extracted_text.language_code,
+        "text": extracted_text.text,
+    }
