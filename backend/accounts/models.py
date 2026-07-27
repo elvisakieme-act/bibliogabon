@@ -61,3 +61,91 @@ class User(AbstractUser):
 
     def __str__(self) -> str:
         return self.display_name or self.email
+
+
+class Organization(models.Model):
+    class OrganizationType(models.TextChoices):
+        UNIVERSITY = "university", "University"
+        SCHOOL = "school", "School"
+        ENTERPRISE = "enterprise", "Enterprise"
+        SPONSOR = "sponsor", "Sponsor"
+        PUBLIC_INSTITUTION = "public_institution", "Public institution"
+        FOUNDATION = "foundation", "Foundation"
+        OTHER = "other", "Other"
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        SUSPENDED = "suspended", "Suspended"
+        ARCHIVED = "archived", "Archived"
+
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(unique=True)
+    organization_type = models.CharField(
+        max_length=32,
+        choices=OrganizationType.choices,
+        default=OrganizationType.UNIVERSITY,
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+    contact_email = models.EmailField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class OrganizationMembership(models.Model):
+    class Role(models.TextChoices):
+        MEMBER = "member", "Member"
+        ADMIN = "admin", "Admin"
+
+    class Status(models.TextChoices):
+        INVITED = "invited", "Invited"
+        ACTIVE = "active", "Active"
+        SUSPENDED = "suspended", "Suspended"
+        ENDED = "ended", "Ended"
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="memberships",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="organization_memberships",
+    )
+    role = models.CharField(max_length=16, choices=Role.choices, default=Role.MEMBER)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.ACTIVE)
+    starts_at = models.DateTimeField(default=timezone.now)
+    ends_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "user"],
+                name="uniq_membership_per_org_user",
+            )
+        ]
+        ordering = ["organization__name", "user__email"]
+
+    @property
+    def is_active(self) -> bool:
+        now = timezone.now()
+        if self.status != self.Status.ACTIVE:
+            return False
+        if self.ends_at and self.ends_at <= now:
+            return False
+        return self.organization.status == Organization.Status.ACTIVE
+
+    def __str__(self) -> str:
+        return f"{self.user.email} @ {self.organization.name}"
