@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from django.db import transaction
 
+from accounts.models import Entitlement
 from billing.models import CommercialOffer, PaymentTransaction, Subscription
+from billing.models import OrganizationQuota
 
 
 def _pk(value):
@@ -62,3 +64,99 @@ def create_payment_transaction(
         if _payment_terms(payment) != desired_terms:
             raise ValueError("idempotency_key already used for different payment terms")
         return payment
+
+
+def _ensure_active_offer(offer: CommercialOffer):
+    if not offer.is_active:
+        raise ValueError("commercial offer is not active")
+
+
+def _entitlement_defaults(*, offer: CommercialOffer, starts_at, ends_at) -> dict:
+    return {
+        "source": Entitlement.Source.INDIVIDUAL_SUBSCRIPTION,
+        "access_right": offer.access_right,
+        "scope_type": offer.scope_type,
+        "scope_id": offer.scope_id,
+        "starts_at": starts_at,
+        "ends_at": ends_at,
+    }
+
+
+def activate_subscription(*, subscription: Subscription, at=None) -> Entitlement:
+    with transaction.atomic():
+        subscription = (
+            Subscription.objects.select_for_update()
+            .select_related("offer", "user", "organization", "entitlement")
+            .get(pk=subscription.pk)
+        )
+        if subscription.status in {Subscription.Status.CANCELLED, Subscription.Status.EXPIRED}:
+            raise ValueError("subscription cannot be activated")
+        _ensure_active_offer(subscription.offer)
+        if subscription.entitlement_id:
+            return subscription.entitlement
+
+        defaults = _entitlement_defaults(
+            offer=subscription.offer,
+            starts_at=subscription.starts_at,
+            ends_at=subscription.ends_at,
+        )
+        if subscription.user_id:
+            entitlement, _ = Entitlement.objects.get_or_create(
+                user=subscription.user,
+                organization=None,
+                source=Entitlement.Source.INDIVIDUAL_SUBSCRIPTION,
+                access_right=defaults["access_right"],
+                scope_type=defaults["scope_type"],
+                scope_id=defaults["scope_id"],
+                starts_at=defaults["starts_at"],
+                ends_at=defaults["ends_at"],
+            )
+        else:
+            entitlement, _ = Entitlement.objects.get_or_create(
+                user=None,
+                organization=subscription.organization,
+                source=Entitlement.Source.ORGANIZATION_QUOTA,
+                access_right=defaults["access_right"],
+                scope_type=defaults["scope_type"],
+                scope_id=defaults["scope_id"],
+                starts_at=defaults["starts_at"],
+                ends_at=defaults["ends_at"],
+            )
+
+        subscription.status = Subscription.Status.ACTIVE
+        subscription.entitlement = entitlement
+        subscription.save(update_fields=["status", "entitlement", "updated_at"])
+        return entitlement
+
+
+def activate_organization_quota(*, quota: OrganizationQuota, at=None) -> Entitlement:
+    with transaction.atomic():
+        quota = (
+            OrganizationQuota.objects.select_for_update()
+            .select_related("organization", "offer", "entitlement")
+            .get(pk=quota.pk)
+        )
+        if quota.status in {
+            OrganizationQuota.Status.CANCELLED,
+            OrganizationQuota.Status.SUSPENDED,
+            OrganizationQuota.Status.EXPIRED,
+        }:
+            raise ValueError("organization quota cannot be activated")
+        _ensure_active_offer(quota.offer)
+        if quota.entitlement_id:
+            return quota.entitlement
+
+        entitlement, _ = Entitlement.objects.get_or_create(
+            user=None,
+            organization=quota.organization,
+            source=Entitlement.Source.ORGANIZATION_QUOTA,
+            access_right=quota.offer.access_right,
+            scope_type=quota.offer.scope_type,
+            scope_id=quota.offer.scope_id,
+            starts_at=quota.starts_at,
+            ends_at=quota.ends_at,
+        )
+        quota.status = OrganizationQuota.Status.ACTIVE
+        quota.entitlement = entitlement
+        quota.save(update_fields=["status", "entitlement", "updated_at"])
+        return entitlement
