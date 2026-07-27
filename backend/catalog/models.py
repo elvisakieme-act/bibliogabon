@@ -186,3 +186,74 @@ class DocumentAuthor(models.Model):
 
     def __str__(self) -> str:
         return f"{self.author.display_name} - {self.document.title}"
+
+
+class RightsAgreement(models.Model):
+    class AgreementType(models.TextChoices):
+        TEACHER_VOLUNTARY = "teacher_voluntary", "Teacher voluntary publication"
+        INSTITUTIONAL_ARCHIVE = "institutional_archive", "Institutional archive/fund"
+        STUDENT_CONSENT = "student_consent", "Student work consent"
+        OPEN_LICENSE = "open_license", "Open license"
+        COMMERCIAL_DISTRIBUTION = "commercial_distribution", "Commercial distribution"
+
+    class AuthorizationStatus(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PENDING_REVIEW = "pending_review", "Pending review"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        REVOKED = "revoked", "Revoked"
+
+    class WithdrawalRule(models.TextChoices):
+        AUTHOR_REQUEST = "author_request", "Author request"
+        CONTRACT_TERMS = "contract_terms", "Contract terms"
+        CONFIDENTIALITY_OVERRIDE = "confidentiality_override", "Confidentiality override"
+        LICENSE_INVALID = "license_invalid", "License invalid"
+        COMMERCIAL_TERMS = "commercial_terms", "Commercial terms"
+
+    document = models.OneToOneField(
+        Document,
+        on_delete=models.CASCADE,
+        related_name="rights_agreement",
+    )
+    rights_holder_name = models.CharField(max_length=240)
+    agreement_type = models.CharField(max_length=40, choices=AgreementType.choices)
+    authorization_status = models.CharField(
+        max_length=24,
+        choices=AuthorizationStatus.choices,
+        default=AuthorizationStatus.DRAFT,
+    )
+    authorization_date = models.DateField(null=True, blank=True)
+    access_model = models.CharField(max_length=24, choices=Document.AccessModel.choices)
+    withdrawal_rule = models.CharField(max_length=40, choices=WithdrawalRule.choices)
+    revenue_sharing_rule = models.TextField(blank=True)
+    confidentiality_terms = models.TextField(blank=True)
+    consent_reference = models.CharField(max_length=160, blank=True)
+    reviewer_decision = models.TextField(blank=True)
+    rejection_reason = models.TextField(blank=True)
+    audit_reference = models.CharField(max_length=160, blank=True)
+    valid_from = models.DateField(null=True, blank=True)
+    valid_until = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["document__title"]
+
+    def is_valid_for_publication(self, at=None) -> bool:
+        at = at or timezone.now().date()
+        if self.authorization_status != self.AuthorizationStatus.APPROVED:
+            return False
+        if not self.rights_holder_name or not self.authorization_date:
+            return False
+        if not self.withdrawal_rule or not self.reviewer_decision or not self.audit_reference:
+            return False
+        if self.access_model != self.document.access_model:
+            return False
+        if self.valid_from and self.valid_from > at:
+            return False
+        if self.valid_until and self.valid_until < at:
+            return False
+        return True
+
+    def __str__(self) -> str:
+        return f"{self.document.title} rights - {self.authorization_status}"
