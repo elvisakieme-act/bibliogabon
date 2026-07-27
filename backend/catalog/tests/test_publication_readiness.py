@@ -5,6 +5,39 @@ from catalog.models import AcademicDomain, Author, Document, DocumentAuthor, Rig
 from catalog.services import document_is_publishable
 
 
+def create_document_with_author_and_rights(
+    *,
+    category=Document.Category.OPEN_RESOURCE,
+    access_model=Document.AccessModel.FREE,
+    author_role=DocumentAuthor.Role.AUTHOR,
+    rights_overrides=None,
+):
+    domain = AcademicDomain.objects.create(name="Science politique", slug="science-politique")
+    document = Document.objects.create(
+        title="Politiques publiques gabonaises",
+        slug="politiques-publiques-gabonaises",
+        academic_domain=domain,
+        category=category,
+        access_model=access_model,
+    )
+    author = Author.objects.create(display_name="Maeva MVE", normalized_name="mve maeva")
+    DocumentAuthor.objects.create(document=document, author=author, role=author_role)
+    rights_data = {
+        "document": document,
+        "rights_holder_name": "Maeva MVE",
+        "agreement_type": RightsAgreement.AgreementType.OPEN_LICENSE,
+        "authorization_status": RightsAgreement.AuthorizationStatus.APPROVED,
+        "authorization_date": timezone.now().date(),
+        "access_model": access_model,
+        "withdrawal_rule": RightsAgreement.WithdrawalRule.LICENSE_INVALID,
+        "reviewer_decision": "Rights verified.",
+        "audit_reference": "BG-AUDIT-2026-0100",
+    }
+    rights_data.update(rights_overrides or {})
+    RightsAgreement.objects.create(**rights_data)
+    return document
+
+
 @pytest.mark.django_db
 def test_document_without_rights_agreement_is_not_publishable():
     domain = AcademicDomain.objects.create(name="Droit", slug="droit")
@@ -17,6 +50,48 @@ def test_document_without_rights_agreement_is_not_publishable():
     )
     author = Author.objects.create(display_name="Aline NZE", normalized_name="nze aline")
     DocumentAuthor.objects.create(document=document, author=author)
+
+    assert document_is_publishable(document) is False
+
+
+@pytest.mark.django_db
+def test_document_with_invalid_category_is_not_publishable():
+    document = create_document_with_author_and_rights(category="")
+
+    assert document_is_publishable(document) is False
+
+
+@pytest.mark.django_db
+def test_document_with_invalid_access_model_is_not_publishable():
+    document = create_document_with_author_and_rights(access_model="unsupported")
+
+    assert document_is_publishable(document) is False
+
+
+@pytest.mark.django_db
+def test_supervisor_only_does_not_satisfy_author_requirement():
+    document = create_document_with_author_and_rights(
+        author_role=DocumentAuthor.Role.SUPERVISOR,
+    )
+
+    assert document_is_publishable(document) is False
+
+
+@pytest.mark.parametrize(
+    ("field_name", "empty_value"),
+    [
+        ("rights_holder_name", ""),
+        ("authorization_date", None),
+        ("withdrawal_rule", ""),
+        ("reviewer_decision", ""),
+        ("audit_reference", ""),
+    ],
+)
+@pytest.mark.django_db
+def test_missing_required_rights_field_blocks_publication(field_name, empty_value):
+    document = create_document_with_author_and_rights(
+        rights_overrides={field_name: empty_value},
+    )
 
     assert document_is_publishable(document) is False
 

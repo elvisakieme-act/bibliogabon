@@ -243,6 +243,8 @@ class RightsAgreement(models.Model):
         at = at or timezone.now().date()
         if self.authorization_status != self.AuthorizationStatus.APPROVED:
             return False
+        if self.access_model not in Document.AccessModel.values:
+            return False
         if not self.rights_holder_name or not self.authorization_date:
             return False
         if not self.withdrawal_rule or not self.reviewer_decision or not self.audit_reference:
