@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "accounts",
     "catalog",
+    "document_ingestion",
 ]
 
 MIDDLEWARE = [
@@ -69,4 +70,6 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+DOCUMENT_STORAGE_BUCKET = os.getenv("DOCUMENT_STORAGE_BUCKET", "bibliogabon-private-documents")
+DOCUMENT_STORAGE_KEY_PREFIX = os.getenv("DOCUMENT_STORAGE_KEY_PREFIX", "documents")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
