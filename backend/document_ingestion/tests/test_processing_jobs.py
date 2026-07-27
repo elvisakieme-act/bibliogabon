@@ -70,6 +70,27 @@ def test_enqueue_processing_job_rejects_idempotency_conflict():
 
 
 @pytest.mark.django_db
+def test_enqueue_processing_job_rejects_input_payload_conflict():
+    version, asset = create_version_and_asset()
+    enqueue_processing_job(
+        version=version,
+        job_type=ProcessingJob.JobType.INGEST_SOURCE,
+        idempotency_key="document-1-v1-payload-conflict",
+        source_asset=asset,
+        input_payload={"original_filename": "source.pdf"},
+    )
+
+    with pytest.raises(ValueError):
+        enqueue_processing_job(
+            version=version,
+            job_type=ProcessingJob.JobType.INGEST_SOURCE,
+            idempotency_key="document-1-v1-payload-conflict",
+            source_asset=asset,
+            input_payload={"original_filename": "other.pdf"},
+        )
+
+
+@pytest.mark.django_db
 def test_processing_job_save_rejects_source_asset_from_other_version():
     version, asset = create_version_and_asset()
     other_version = DocumentVersion.objects.create(document=version.document, version_label="v2")

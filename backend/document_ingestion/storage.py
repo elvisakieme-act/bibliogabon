@@ -28,7 +28,9 @@ def slugify_filename(filename: str) -> str:
     stem = Path(path_name).stem.lower()
     suffix = Path(path_name).suffix.lower()
     safe_stem = normalize_key_segment(stem)
-    return f"{safe_stem or 'document'}{suffix}"
+    if safe_stem == "default":
+        safe_stem = "document"
+    return f"{safe_stem}{suffix}"
 
 
 def build_private_storage_key(

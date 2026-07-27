@@ -26,10 +26,12 @@ def enqueue_processing_job(
     )
     if not created:
         expected_source_asset_id = source_asset.pk if source_asset else None
+        expected_input_payload = input_payload or {}
         if (
             job.version_id != version.pk
             or job.job_type != job_type
             or job.source_asset_id != expected_source_asset_id
+            or job.input_payload != expected_input_payload
         ):
             raise ValueError("Idempotency key conflicts with an existing processing job")
     return job
