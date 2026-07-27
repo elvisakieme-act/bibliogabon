@@ -4,7 +4,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from accounts.models import Entitlement
+from accounts.models import Entitlement, Organization, OrganizationMembership
 from catalog.models import AcademicDomain, Document
 from document_ingestion.models import DocumentVersion
 from document_processing.models import DocumentPage
@@ -234,20 +234,38 @@ def test_start_reader_session_rejects_private_document_even_with_entitlement():
         start_reader_session(user=user, document=document)
 
 
+@pytest.mark.parametrize(
+    "access_model",
+    [
+        Document.AccessModel.SUBSCRIPTION,
+        Document.AccessModel.INSTITUTION_ONLY,
+        Document.AccessModel.SPONSORED,
+        Document.AccessModel.RESTRICTED,
+    ],
+)
 @pytest.mark.django_db
-def test_start_reader_session_rejects_restricted_document_without_read_entitlement():
+def test_start_reader_session_rejects_restricted_document_without_read_entitlement(access_model):
     user = create_user()
-    document = create_document(access_model=Document.AccessModel.SUBSCRIPTION)
+    document = create_document(access_model=access_model)
     create_processed_version(document)
 
     with pytest.raises(ReaderAccessDenied):
         start_reader_session(user=user, document=document)
 
 
+@pytest.mark.parametrize(
+    "access_model",
+    [
+        Document.AccessModel.SUBSCRIPTION,
+        Document.AccessModel.INSTITUTION_ONLY,
+        Document.AccessModel.SPONSORED,
+        Document.AccessModel.RESTRICTED,
+    ],
+)
 @pytest.mark.django_db
-def test_start_reader_session_allows_restricted_document_with_document_entitlement():
+def test_start_reader_session_allows_restricted_document_with_document_entitlement(access_model):
     user = create_user()
-    document = create_document(access_model=Document.AccessModel.SUBSCRIPTION)
+    document = create_document(access_model=access_model)
     create_processed_version(document)
     Entitlement.objects.create(
         user=user,
@@ -260,6 +278,26 @@ def test_start_reader_session_allows_restricted_document_with_document_entitleme
     session = start_reader_session(user=user, document=document)
 
     assert session.status == ReaderSession.Status.ACTIVE
+
+
+@pytest.mark.django_db
+def test_start_reader_session_allows_restricted_document_with_global_organization_entitlement():
+    user = create_user()
+    organization = Organization.objects.create(name="Ecole nationale", slug="ecole-nationale")
+    OrganizationMembership.objects.create(organization=organization, user=user)
+    document = create_document(access_model=Document.AccessModel.SPONSORED)
+    create_processed_version(document)
+    Entitlement.objects.create(
+        organization=organization,
+        source=Entitlement.Source.ORGANIZATION_QUOTA,
+        access_right=Entitlement.AccessRight.READ,
+        scope_type=Entitlement.ScopeType.GLOBAL,
+    )
+
+    session = start_reader_session(user=user, document=document)
+
+    assert session.user == user
+    assert session.document == document
 
 
 @pytest.mark.django_db
