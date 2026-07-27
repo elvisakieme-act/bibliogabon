@@ -217,6 +217,51 @@ class PaymentTransaction(models.Model):
         self.full_clean()
         return super().save(*args, **kwargs)
 
+    def mark_pending(self, *, provider_reference: str = ""):
+        self.status = self.Status.PENDING
+        if provider_reference:
+            self.provider_reference = provider_reference
+        self.pending_at = timezone.now()
+        self.save(update_fields=["status", "provider_reference", "pending_at", "updated_at"])
+        return self
+
+    def mark_succeeded(self, *, provider_reference: str = ""):
+        self.status = self.Status.SUCCEEDED
+        if provider_reference:
+            self.provider_reference = provider_reference
+        self.succeeded_at = timezone.now()
+        self.failure_code = ""
+        self.failure_message = ""
+        self.save(
+            update_fields=[
+                "status",
+                "provider_reference",
+                "succeeded_at",
+                "failure_code",
+                "failure_message",
+                "updated_at",
+            ]
+        )
+        return self
+
+    def mark_failed(self, *, error_code: str, message: str):
+        self.status = self.Status.FAILED
+        self.retry_count += 1
+        self.failure_code = error_code
+        self.failure_message = message
+        self.failed_at = timezone.now()
+        self.save(
+            update_fields=[
+                "status",
+                "retry_count",
+                "failure_code",
+                "failure_message",
+                "failed_at",
+                "updated_at",
+            ]
+        )
+        return self
+
     def __str__(self) -> str:
         return f"{self.provider} {self.amount_xaf} {self.status}"
 
