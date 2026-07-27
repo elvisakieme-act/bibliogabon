@@ -51,6 +51,8 @@ enroll_user_in_sponsored_campaign(campaign, user, at=None) -> Entitlement
 
 Individual subscriptions create user entitlements with source `individual_subscription`. Organization subscriptions and quotas create organization entitlements with source `organization_quota`. Sponsored campaign enrollments create user entitlements with source `sponsored_campaign`.
 
+`OrganizationQuota.seat_limit` is contractual capacity metadata in this slice. It records the licensed seat count for sales, support, and future reporting, but it does not yet enforce named-seat assignment. Seat assignment and per-member quota enforcement require a later organization access-management slice.
+
 ## State Rules
 
 Payments use states: `initiated`, `pending`, `succeeded`, `failed`, `cancelled`, and `refunded`.
@@ -86,3 +88,4 @@ Use pytest and pytest-django. Tests must prove:
 - Invoice PDF generation.
 - Tax, payout, and revenue-share calculations.
 - Usage analytics and institutional reports.
+- Named-seat assignment and per-member quota enforcement.

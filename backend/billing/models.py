@@ -217,7 +217,17 @@ class PaymentTransaction(models.Model):
         self.full_clean()
         return super().save(*args, **kwargs)
 
+    def _reject_terminal_transition(self, target_status: str):
+        terminal_statuses = {
+            self.Status.SUCCEEDED,
+            self.Status.CANCELLED,
+            self.Status.REFUNDED,
+        }
+        if self.status in terminal_statuses and self.status != target_status:
+            raise ValueError("Payment transaction is in a terminal state")
+
     def mark_pending(self, *, provider_reference: str = ""):
+        self._reject_terminal_transition(self.Status.PENDING)
         self.status = self.Status.PENDING
         if provider_reference:
             self.provider_reference = provider_reference
@@ -226,6 +236,9 @@ class PaymentTransaction(models.Model):
         return self
 
     def mark_succeeded(self, *, provider_reference: str = ""):
+        self._reject_terminal_transition(self.Status.SUCCEEDED)
+        if self.status == self.Status.FAILED:
+            raise ValueError("Failed payment transaction cannot be marked succeeded")
         self.status = self.Status.SUCCEEDED
         if provider_reference:
             self.provider_reference = provider_reference
@@ -245,6 +258,7 @@ class PaymentTransaction(models.Model):
         return self
 
     def mark_failed(self, *, error_code: str, message: str):
+        self._reject_terminal_transition(self.Status.FAILED)
         self.status = self.Status.FAILED
         self.retry_count += 1
         self.failure_code = error_code

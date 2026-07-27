@@ -96,6 +96,51 @@ def test_payment_transaction_mark_pending_and_succeeded_record_provider_referenc
 
 
 @pytest.mark.django_db
+def test_succeeded_payment_transaction_cannot_regress_to_failed_or_pending():
+    user = create_user(email="terminal-payment@example.ga")
+    offer = create_offer(slug="terminal-payment")
+    payment = create_payment_transaction(
+        idempotency_key="terminal-success",
+        user=user,
+        offer=offer,
+        provider=PaymentTransaction.Provider.MOBILE_MONEY,
+        amount_xaf=2500,
+    )
+    payment.mark_succeeded(provider_reference="provider-terminal")
+
+    with pytest.raises(ValueError):
+        payment.mark_failed(error_code="late_failure", message="Late failure callback")
+    with pytest.raises(ValueError):
+        payment.mark_pending(provider_reference="late-pending")
+
+    payment.refresh_from_db()
+    assert payment.status == PaymentTransaction.Status.SUCCEEDED
+    assert payment.provider_reference == "provider-terminal"
+
+
+@pytest.mark.django_db
+def test_cancelled_payment_transaction_cannot_be_marked_succeeded():
+    user = create_user(email="cancelled-payment@example.ga")
+    offer = create_offer(slug="cancelled-payment")
+    payment = create_payment_transaction(
+        idempotency_key="cancelled-to-success",
+        user=user,
+        offer=offer,
+        provider=PaymentTransaction.Provider.MOBILE_MONEY,
+        amount_xaf=2500,
+    )
+    payment.status = PaymentTransaction.Status.CANCELLED
+    payment.save(update_fields=["status", "updated_at"])
+
+    with pytest.raises(ValueError):
+        payment.mark_succeeded(provider_reference="provider-cancelled")
+
+    payment.refresh_from_db()
+    assert payment.status == PaymentTransaction.Status.CANCELLED
+    assert payment.succeeded_at is None
+
+
+@pytest.mark.django_db
 def test_payment_transaction_mark_failed_records_retry_and_reason():
     organization = Organization.objects.create(name="Institution payeuse", slug="institution-payeuse")
     offer = CommercialOffer.objects.create(

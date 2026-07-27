@@ -8,7 +8,11 @@ from billing.models import CommercialOffer, OrganizationQuota, SponsoredCampaign
 from billing.services import (
     activate_organization_quota,
     activate_subscription,
+    cancel_subscription,
+    end_sponsored_campaign,
     enroll_user_in_sponsored_campaign,
+    expire_subscription,
+    suspend_organization_quota,
 )
 
 
@@ -63,6 +67,48 @@ def test_activate_individual_subscription_creates_user_entitlement_once():
     assert entitlement.organization is None
     assert entitlement.source == Entitlement.Source.INDIVIDUAL_SUBSCRIPTION
     assert user_has_entitlement(user, Entitlement.AccessRight.READ) is True
+
+
+@pytest.mark.django_db
+def test_cancel_subscription_revokes_existing_user_entitlement():
+    user = create_user(email="cancelled-user@example.ga")
+    offer = create_offer(slug="cancelled-subscription")
+    starts_at, ends_at = subscription_window()
+    subscription = Subscription.objects.create(
+        offer=offer,
+        user=user,
+        starts_at=starts_at,
+        ends_at=ends_at,
+    )
+    entitlement = activate_subscription(subscription=subscription)
+
+    cancelled = cancel_subscription(subscription=subscription)
+
+    entitlement.refresh_from_db()
+    assert cancelled.status == Subscription.Status.CANCELLED
+    assert entitlement.revoked_at is not None
+    assert user_has_entitlement(user, Entitlement.AccessRight.READ) is False
+
+
+@pytest.mark.django_db
+def test_expire_subscription_revokes_existing_user_entitlement():
+    user = create_user(email="expired-user@example.ga")
+    offer = create_offer(slug="expired-subscription")
+    starts_at, ends_at = subscription_window()
+    subscription = Subscription.objects.create(
+        offer=offer,
+        user=user,
+        starts_at=starts_at,
+        ends_at=ends_at,
+    )
+    entitlement = activate_subscription(subscription=subscription)
+
+    expired = expire_subscription(subscription=subscription)
+
+    entitlement.refresh_from_db()
+    assert expired.status == Subscription.Status.EXPIRED
+    assert entitlement.revoked_at is not None
+    assert user_has_entitlement(user, Entitlement.AccessRight.READ) is False
 
 
 @pytest.mark.django_db
@@ -126,6 +172,24 @@ def test_activate_subscription_rejects_inactive_offer():
 
 
 @pytest.mark.django_db
+def test_activate_subscription_rejects_entitlement_window_that_exceeds_offer_duration():
+    user = create_user(email="long-window@example.ga")
+    offer = create_offer(slug="thirty-day-offer")
+    starts_at = timezone.now()
+    subscription = Subscription.objects.create(
+        offer=offer,
+        user=user,
+        starts_at=starts_at,
+        ends_at=starts_at + timezone.timedelta(days=365),
+    )
+
+    with pytest.raises(ValueError):
+        activate_subscription(subscription=subscription)
+
+    assert Entitlement.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_activate_organization_quota_creates_organization_entitlement_once():
     organization = create_organization(slug="quota-activation")
     user = create_user(email="quota-member@example.ga")
@@ -152,6 +216,30 @@ def test_activate_organization_quota_creates_organization_entitlement_once():
     assert entitlement.organization == organization
     assert entitlement.source == Entitlement.Source.ORGANIZATION_QUOTA
     assert user_has_entitlement(user, Entitlement.AccessRight.READ) is True
+
+
+@pytest.mark.django_db
+def test_suspend_organization_quota_revokes_existing_organization_entitlement():
+    organization = create_organization(slug="suspended-quota")
+    user = create_user(email="suspended-member@example.ga")
+    OrganizationMembership.objects.create(organization=organization, user=user)
+    offer = create_offer(slug="suspended-quota-offer", offer_type=CommercialOffer.OfferType.ORGANIZATION)
+    starts_at, ends_at = subscription_window()
+    quota = OrganizationQuota.objects.create(
+        organization=organization,
+        offer=offer,
+        seat_limit=25,
+        starts_at=starts_at,
+        ends_at=ends_at,
+    )
+    entitlement = activate_organization_quota(quota=quota)
+
+    suspended = suspend_organization_quota(quota=quota)
+
+    entitlement.refresh_from_db()
+    assert suspended.status == OrganizationQuota.Status.SUSPENDED
+    assert entitlement.revoked_at is not None
+    assert user_has_entitlement(user, Entitlement.AccessRight.READ) is False
 
 
 @pytest.mark.parametrize(
@@ -246,3 +334,22 @@ def test_enroll_user_in_sponsored_campaign_rejects_inactive_campaign_status(stat
         enroll_user_in_sponsored_campaign(campaign=campaign, user=user)
 
     assert Entitlement.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_end_sponsored_campaign_revokes_enrolled_user_entitlements():
+    campaign = create_campaign(slug="ending-campaign", funded_seat_count=2)
+    first_user = create_user(email="ending-first@example.ga")
+    second_user = create_user(email="ending-second@example.ga")
+    first_entitlement = enroll_user_in_sponsored_campaign(campaign=campaign, user=first_user)
+    second_entitlement = enroll_user_in_sponsored_campaign(campaign=campaign, user=second_user)
+
+    ended = end_sponsored_campaign(campaign=campaign)
+
+    first_entitlement.refresh_from_db()
+    second_entitlement.refresh_from_db()
+    assert ended.status == SponsoredCampaign.Status.ENDED
+    assert first_entitlement.revoked_at is not None
+    assert second_entitlement.revoked_at is not None
+    assert user_has_entitlement(first_user, Entitlement.AccessRight.READ) is False
+    assert user_has_entitlement(second_user, Entitlement.AccessRight.READ) is False

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from accounts.models import Entitlement
@@ -44,22 +44,25 @@ def create_payment_transaction(
         "amount_xaf": amount_xaf,
     }
 
+    defaults = {
+        "user": user,
+        "organization": organization,
+        "offer": offer,
+        "subscription": subscription,
+        "provider": provider,
+        "amount_xaf": amount_xaf,
+        "provider_reference": provider_reference,
+        "metadata": metadata or {},
+    }
     with transaction.atomic():
         try:
+            payment, _ = PaymentTransaction.objects.select_for_update().get_or_create(
+                idempotency_key=idempotency_key,
+                defaults=defaults,
+            )
+        except IntegrityError:
             payment = PaymentTransaction.objects.select_for_update().get(
                 idempotency_key=idempotency_key
-            )
-        except PaymentTransaction.DoesNotExist:
-            return PaymentTransaction.objects.create(
-                user=user,
-                organization=organization,
-                offer=offer,
-                subscription=subscription,
-                provider=provider,
-                amount_xaf=amount_xaf,
-                idempotency_key=idempotency_key,
-                provider_reference=provider_reference,
-                metadata=metadata or {},
             )
 
         if _payment_terms(payment) != desired_terms:
@@ -70,6 +73,21 @@ def create_payment_transaction(
 def _ensure_active_offer(offer: CommercialOffer):
     if not offer.is_active:
         raise ValueError("commercial offer is not active")
+
+
+def _ensure_subscription_matches_offer_duration(subscription: Subscription):
+    expected_ends_at = subscription.starts_at + timezone.timedelta(
+        days=subscription.offer.duration_days
+    )
+    if subscription.ends_at != expected_ends_at:
+        raise ValueError("subscription window must match offer duration")
+
+
+def _revoke_entitlement(entitlement: Entitlement | None, *, at):
+    if entitlement is None or entitlement.revoked_at is not None:
+        return
+    entitlement.revoked_at = at
+    entitlement.save(update_fields=["revoked_at", "updated_at"])
 
 
 def _entitlement_defaults(*, offer: CommercialOffer, starts_at, ends_at) -> dict:
@@ -93,6 +111,7 @@ def activate_subscription(*, subscription: Subscription, at=None) -> Entitlement
         if subscription.status in {Subscription.Status.CANCELLED, Subscription.Status.EXPIRED}:
             raise ValueError("subscription cannot be activated")
         _ensure_active_offer(subscription.offer)
+        _ensure_subscription_matches_offer_duration(subscription)
         if subscription.entitlement_id:
             return subscription.entitlement
 
@@ -130,6 +149,36 @@ def activate_subscription(*, subscription: Subscription, at=None) -> Entitlement
         return entitlement
 
 
+def _close_subscription(*, subscription: Subscription, status: str, at=None) -> Subscription:
+    at = at or timezone.now()
+    with transaction.atomic():
+        subscription = (
+            Subscription.objects.select_for_update()
+            .select_related("entitlement")
+            .get(pk=subscription.pk)
+        )
+        subscription.status = status
+        _revoke_entitlement(subscription.entitlement, at=at)
+        subscription.save(update_fields=["status", "updated_at"])
+        return subscription
+
+
+def cancel_subscription(*, subscription: Subscription, at=None) -> Subscription:
+    return _close_subscription(
+        subscription=subscription,
+        status=Subscription.Status.CANCELLED,
+        at=at,
+    )
+
+
+def expire_subscription(*, subscription: Subscription, at=None) -> Subscription:
+    return _close_subscription(
+        subscription=subscription,
+        status=Subscription.Status.EXPIRED,
+        at=at,
+    )
+
+
 def activate_organization_quota(*, quota: OrganizationQuota, at=None) -> Entitlement:
     with transaction.atomic():
         quota = (
@@ -161,6 +210,44 @@ def activate_organization_quota(*, quota: OrganizationQuota, at=None) -> Entitle
         quota.entitlement = entitlement
         quota.save(update_fields=["status", "entitlement", "updated_at"])
         return entitlement
+
+
+def _close_organization_quota(*, quota: OrganizationQuota, status: str, at=None) -> OrganizationQuota:
+    at = at or timezone.now()
+    with transaction.atomic():
+        quota = (
+            OrganizationQuota.objects.select_for_update()
+            .select_related("entitlement")
+            .get(pk=quota.pk)
+        )
+        quota.status = status
+        _revoke_entitlement(quota.entitlement, at=at)
+        quota.save(update_fields=["status", "updated_at"])
+        return quota
+
+
+def suspend_organization_quota(*, quota: OrganizationQuota, at=None) -> OrganizationQuota:
+    return _close_organization_quota(
+        quota=quota,
+        status=OrganizationQuota.Status.SUSPENDED,
+        at=at,
+    )
+
+
+def cancel_organization_quota(*, quota: OrganizationQuota, at=None) -> OrganizationQuota:
+    return _close_organization_quota(
+        quota=quota,
+        status=OrganizationQuota.Status.CANCELLED,
+        at=at,
+    )
+
+
+def expire_organization_quota(*, quota: OrganizationQuota, at=None) -> OrganizationQuota:
+    return _close_organization_quota(
+        quota=quota,
+        status=OrganizationQuota.Status.EXPIRED,
+        at=at,
+    )
 
 
 def _campaign_note(campaign: SponsoredCampaign) -> str:
@@ -212,3 +299,33 @@ def enroll_user_in_sponsored_campaign(*, campaign: SponsoredCampaign, user, at=N
             ends_at=campaign.ends_at,
             note=note,
         )
+
+
+def _close_sponsored_campaign(*, campaign: SponsoredCampaign, status: str, at=None) -> SponsoredCampaign:
+    at = at or timezone.now()
+    with transaction.atomic():
+        campaign = SponsoredCampaign.objects.select_for_update().get(pk=campaign.pk)
+        campaign.status = status
+        Entitlement.objects.filter(
+            source=Entitlement.Source.SPONSORED_CAMPAIGN,
+            note=_campaign_note(campaign),
+            revoked_at__isnull=True,
+        ).update(revoked_at=at, updated_at=at)
+        campaign.save(update_fields=["status", "updated_at"])
+        return campaign
+
+
+def end_sponsored_campaign(*, campaign: SponsoredCampaign, at=None) -> SponsoredCampaign:
+    return _close_sponsored_campaign(
+        campaign=campaign,
+        status=SponsoredCampaign.Status.ENDED,
+        at=at,
+    )
+
+
+def cancel_sponsored_campaign(*, campaign: SponsoredCampaign, at=None) -> SponsoredCampaign:
+    return _close_sponsored_campaign(
+        campaign=campaign,
+        status=SponsoredCampaign.Status.CANCELLED,
+        at=at,
+    )

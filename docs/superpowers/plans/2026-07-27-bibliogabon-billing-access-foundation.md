@@ -14,6 +14,7 @@
 - Payment attempts must be idempotent by explicit idempotency key.
 - Reading, download, and offline access are separate `Entitlement.AccessRight` values.
 - Non-global commercial scopes require `scope_id`.
+- `OrganizationQuota.seat_limit` is contractual capacity metadata only; named-seat assignment and per-member quota enforcement are out of scope.
 - Do not implement real Mobile Money provider integration, webhook verification, recurring renewals, public checkout endpoints, invoice PDFs, tax, payout, revenue-share, usage analytics, or institutional reports in this slice.
 
 ---
