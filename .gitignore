@@ -1,0 +1,15 @@
+.agents/
+.codex/
+
+maquette-bibliogabon/
+
+backend/.venv/
+backend/db.sqlite3
+backend/.pytest_cache/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+.env
+*.log

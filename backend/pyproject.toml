@@ -1,0 +1,21 @@
+[project]
+name = "bibliogabon-backend"
+version = "0.1.0"
+description = "BiblioGABON backend"
+requires-python = ">=3.12"
+dependencies = [
+  "Django>=5.2,<6.0",
+  "dj-database-url>=2.2,<3.0",
+  "psycopg[binary]>=3.2,<4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9.0",
+  "pytest-django>=4.9,<5.0",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py", "*_test.py"]
+testpaths = ["accounts/tests"]
