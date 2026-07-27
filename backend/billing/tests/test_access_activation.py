@@ -91,6 +91,37 @@ def test_cancel_subscription_revokes_existing_user_entitlement():
 
 
 @pytest.mark.django_db
+def test_cancel_subscription_does_not_revoke_another_matching_subscription_entitlement():
+    user = create_user(email="parallel-subscriptions@example.ga")
+    offer = create_offer(slug="parallel-subscriptions")
+    starts_at, ends_at = subscription_window()
+    first_subscription = Subscription.objects.create(
+        offer=offer,
+        user=user,
+        starts_at=starts_at,
+        ends_at=ends_at,
+    )
+    second_subscription = Subscription.objects.create(
+        offer=offer,
+        user=user,
+        starts_at=starts_at,
+        ends_at=ends_at,
+        external_reference="second",
+    )
+    first_entitlement = activate_subscription(subscription=first_subscription)
+    second_entitlement = activate_subscription(subscription=second_subscription)
+
+    cancel_subscription(subscription=first_subscription)
+
+    first_entitlement.refresh_from_db()
+    second_entitlement.refresh_from_db()
+    assert first_entitlement.pk != second_entitlement.pk
+    assert first_entitlement.revoked_at is not None
+    assert second_entitlement.revoked_at is None
+    assert user_has_entitlement(user, Entitlement.AccessRight.READ) is True
+
+
+@pytest.mark.django_db
 def test_expire_subscription_revokes_existing_user_entitlement():
     user = create_user(email="expired-user@example.ga")
     offer = create_offer(slug="expired-subscription")
@@ -240,6 +271,42 @@ def test_suspend_organization_quota_revokes_existing_organization_entitlement():
     assert suspended.status == OrganizationQuota.Status.SUSPENDED
     assert entitlement.revoked_at is not None
     assert user_has_entitlement(user, Entitlement.AccessRight.READ) is False
+
+
+@pytest.mark.django_db
+def test_suspend_organization_quota_does_not_revoke_another_matching_quota_entitlement():
+    organization = create_organization(slug="parallel-quotas")
+    user = create_user(email="parallel-quota-member@example.ga")
+    OrganizationMembership.objects.create(organization=organization, user=user)
+    offer = create_offer(slug="parallel-quota-offer", offer_type=CommercialOffer.OfferType.ORGANIZATION)
+    starts_at, ends_at = subscription_window()
+    first_quota = OrganizationQuota.objects.create(
+        organization=organization,
+        offer=offer,
+        seat_limit=25,
+        starts_at=starts_at,
+        ends_at=ends_at,
+        contract_reference="first",
+    )
+    second_quota = OrganizationQuota.objects.create(
+        organization=organization,
+        offer=offer,
+        seat_limit=25,
+        starts_at=starts_at,
+        ends_at=ends_at,
+        contract_reference="second",
+    )
+    first_entitlement = activate_organization_quota(quota=first_quota)
+    second_entitlement = activate_organization_quota(quota=second_quota)
+
+    suspend_organization_quota(quota=first_quota)
+
+    first_entitlement.refresh_from_db()
+    second_entitlement.refresh_from_db()
+    assert first_entitlement.pk != second_entitlement.pk
+    assert first_entitlement.revoked_at is not None
+    assert second_entitlement.revoked_at is None
+    assert user_has_entitlement(user, Entitlement.AccessRight.READ) is True
 
 
 @pytest.mark.parametrize(

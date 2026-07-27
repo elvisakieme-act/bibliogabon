@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from accounts.models import Entitlement, Organization
@@ -220,61 +220,90 @@ class PaymentTransaction(models.Model):
     def _reject_terminal_transition(self, target_status: str):
         terminal_statuses = {
             self.Status.SUCCEEDED,
+            self.Status.FAILED,
             self.Status.CANCELLED,
             self.Status.REFUNDED,
         }
         if self.status in terminal_statuses and self.status != target_status:
             raise ValueError("Payment transaction is in a terminal state")
 
-    def mark_pending(self, *, provider_reference: str = ""):
-        self._reject_terminal_transition(self.Status.PENDING)
-        self.status = self.Status.PENDING
-        if provider_reference:
-            self.provider_reference = provider_reference
-        self.pending_at = timezone.now()
-        self.save(update_fields=["status", "provider_reference", "pending_at", "updated_at"])
+    def _sync_transition_fields_from(self, current):
+        for field_name in [
+            "status",
+            "provider_reference",
+            "retry_count",
+            "failure_code",
+            "failure_message",
+            "pending_at",
+            "succeeded_at",
+            "failed_at",
+            "updated_at",
+        ]:
+            setattr(self, field_name, getattr(current, field_name))
         return self
+
+    def _locked_current(self):
+        if not self.pk:
+            return self
+        return type(self).objects.select_for_update().get(pk=self.pk)
+
+    def mark_pending(self, *, provider_reference: str = ""):
+        with transaction.atomic():
+            current = self._locked_current()
+            current._reject_terminal_transition(current.Status.PENDING)
+            current.status = current.Status.PENDING
+            if provider_reference:
+                current.provider_reference = provider_reference
+            current.pending_at = timezone.now()
+            current.save(update_fields=["status", "provider_reference", "pending_at", "updated_at"])
+            return self._sync_transition_fields_from(current)
 
     def mark_succeeded(self, *, provider_reference: str = ""):
-        self._reject_terminal_transition(self.Status.SUCCEEDED)
-        if self.status == self.Status.FAILED:
-            raise ValueError("Failed payment transaction cannot be marked succeeded")
-        self.status = self.Status.SUCCEEDED
-        if provider_reference:
-            self.provider_reference = provider_reference
-        self.succeeded_at = timezone.now()
-        self.failure_code = ""
-        self.failure_message = ""
-        self.save(
-            update_fields=[
-                "status",
-                "provider_reference",
-                "succeeded_at",
-                "failure_code",
-                "failure_message",
-                "updated_at",
-            ]
-        )
-        return self
+        with transaction.atomic():
+            current = self._locked_current()
+            current._reject_terminal_transition(current.Status.SUCCEEDED)
+            if current.status == current.Status.SUCCEEDED:
+                return self._sync_transition_fields_from(current)
+            current.status = current.Status.SUCCEEDED
+            if provider_reference:
+                current.provider_reference = provider_reference
+            current.succeeded_at = timezone.now()
+            current.failure_code = ""
+            current.failure_message = ""
+            current.save(
+                update_fields=[
+                    "status",
+                    "provider_reference",
+                    "succeeded_at",
+                    "failure_code",
+                    "failure_message",
+                    "updated_at",
+                ]
+            )
+            return self._sync_transition_fields_from(current)
 
     def mark_failed(self, *, error_code: str, message: str):
-        self._reject_terminal_transition(self.Status.FAILED)
-        self.status = self.Status.FAILED
-        self.retry_count += 1
-        self.failure_code = error_code
-        self.failure_message = message
-        self.failed_at = timezone.now()
-        self.save(
-            update_fields=[
-                "status",
-                "retry_count",
-                "failure_code",
-                "failure_message",
-                "failed_at",
-                "updated_at",
-            ]
-        )
-        return self
+        with transaction.atomic():
+            current = self._locked_current()
+            current._reject_terminal_transition(current.Status.FAILED)
+            if current.status == current.Status.FAILED:
+                return self._sync_transition_fields_from(current)
+            current.status = current.Status.FAILED
+            current.retry_count += 1
+            current.failure_code = error_code
+            current.failure_message = message
+            current.failed_at = timezone.now()
+            current.save(
+                update_fields=[
+                    "status",
+                    "retry_count",
+                    "failure_code",
+                    "failure_message",
+                    "failed_at",
+                    "updated_at",
+                ]
+            )
+            return self._sync_transition_fields_from(current)
 
     def __str__(self) -> str:
         return f"{self.provider} {self.amount_xaf} {self.status}"

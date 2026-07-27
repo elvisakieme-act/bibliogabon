@@ -1,5 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.db.models.query import QuerySet
 
 from accounts.models import Entitlement, Organization
 from billing.models import CommercialOffer, PaymentTransaction
@@ -73,6 +75,40 @@ def test_create_payment_transaction_rejects_conflicting_idempotency_reuse():
 
 
 @pytest.mark.django_db
+def test_create_payment_transaction_reuses_existing_row_after_unique_validation_race(monkeypatch):
+    user = create_user(email="race-user@example.ga")
+    offer = create_offer(slug="race-offer")
+    existing = create_payment_transaction(
+        idempotency_key="race-key",
+        user=user,
+        offer=offer,
+        provider=PaymentTransaction.Provider.MOBILE_MONEY,
+        amount_xaf=2500,
+    )
+    original_get_or_create = QuerySet.get_or_create
+    calls = {"count": 0}
+
+    def raise_unique_validation_once(queryset, *args, **kwargs):
+        if queryset.model is PaymentTransaction and kwargs.get("idempotency_key") == "race-key":
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise ValidationError({"idempotency_key": ["Payment transaction with this key already exists."]})
+        return original_get_or_create(queryset, *args, **kwargs)
+
+    monkeypatch.setattr(QuerySet, "get_or_create", raise_unique_validation_once)
+
+    repeated = create_payment_transaction(
+        idempotency_key="race-key",
+        user=user,
+        offer=offer,
+        provider=PaymentTransaction.Provider.MOBILE_MONEY,
+        amount_xaf=2500,
+    )
+
+    assert repeated.pk == existing.pk
+
+
+@pytest.mark.django_db
 def test_payment_transaction_mark_pending_and_succeeded_record_provider_reference():
     user = create_user()
     offer = create_offer()
@@ -116,6 +152,48 @@ def test_succeeded_payment_transaction_cannot_regress_to_failed_or_pending():
     payment.refresh_from_db()
     assert payment.status == PaymentTransaction.Status.SUCCEEDED
     assert payment.provider_reference == "provider-terminal"
+
+
+@pytest.mark.django_db
+def test_stale_payment_instance_cannot_overwrite_succeeded_payment():
+    user = create_user(email="stale-payment@example.ga")
+    offer = create_offer(slug="stale-payment")
+    payment = create_payment_transaction(
+        idempotency_key="stale-payment",
+        user=user,
+        offer=offer,
+        provider=PaymentTransaction.Provider.MOBILE_MONEY,
+        amount_xaf=2500,
+    )
+    stale = PaymentTransaction.objects.get(pk=payment.pk)
+    payment.mark_succeeded(provider_reference="provider-stale")
+
+    with pytest.raises(ValueError):
+        stale.mark_failed(error_code="late_failure", message="Late failure callback")
+
+    payment.refresh_from_db()
+    assert payment.status == PaymentTransaction.Status.SUCCEEDED
+    assert payment.failure_code == ""
+
+
+@pytest.mark.django_db
+def test_failed_payment_transaction_cannot_return_to_pending():
+    user = create_user(email="failed-terminal@example.ga")
+    offer = create_offer(slug="failed-terminal")
+    payment = create_payment_transaction(
+        idempotency_key="failed-terminal",
+        user=user,
+        offer=offer,
+        provider=PaymentTransaction.Provider.MOBILE_MONEY,
+        amount_xaf=2500,
+    )
+    payment.mark_failed(error_code="provider_error", message="Provider failed")
+
+    with pytest.raises(ValueError):
+        payment.mark_pending(provider_reference="late-pending")
+
+    payment.refresh_from_db()
+    assert payment.status == PaymentTransaction.Status.FAILED
 
 
 @pytest.mark.django_db

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -60,10 +61,13 @@ def create_payment_transaction(
                 idempotency_key=idempotency_key,
                 defaults=defaults,
             )
-        except IntegrityError:
-            payment = PaymentTransaction.objects.select_for_update().get(
-                idempotency_key=idempotency_key
-            )
+        except (IntegrityError, ValidationError) as exc:
+            try:
+                payment = PaymentTransaction.objects.select_for_update().get(
+                    idempotency_key=idempotency_key
+                )
+            except PaymentTransaction.DoesNotExist:
+                raise exc
 
         if _payment_terms(payment) != desired_terms:
             raise ValueError("idempotency_key already used for different payment terms")
@@ -81,6 +85,14 @@ def _ensure_subscription_matches_offer_duration(subscription: Subscription):
     )
     if subscription.ends_at != expected_ends_at:
         raise ValueError("subscription window must match offer duration")
+
+
+def _subscription_note(subscription: Subscription) -> str:
+    return f"subscription:{subscription.pk}"
+
+
+def _organization_quota_note(quota: OrganizationQuota) -> str:
+    return f"organization_quota:{quota.pk}"
 
 
 def _revoke_entitlement(entitlement: Entitlement | None, *, at):
@@ -130,6 +142,7 @@ def activate_subscription(*, subscription: Subscription, at=None) -> Entitlement
                 scope_id=defaults["scope_id"],
                 starts_at=defaults["starts_at"],
                 ends_at=defaults["ends_at"],
+                note=_subscription_note(subscription),
             )
         else:
             entitlement, _ = Entitlement.objects.get_or_create(
@@ -141,6 +154,7 @@ def activate_subscription(*, subscription: Subscription, at=None) -> Entitlement
                 scope_id=defaults["scope_id"],
                 starts_at=defaults["starts_at"],
                 ends_at=defaults["ends_at"],
+                note=_subscription_note(subscription),
             )
 
         subscription.status = Subscription.Status.ACTIVE
@@ -205,6 +219,7 @@ def activate_organization_quota(*, quota: OrganizationQuota, at=None) -> Entitle
             scope_id=quota.offer.scope_id,
             starts_at=quota.starts_at,
             ends_at=quota.ends_at,
+            note=_organization_quota_note(quota),
         )
         quota.status = OrganizationQuota.Status.ACTIVE
         quota.entitlement = entitlement
