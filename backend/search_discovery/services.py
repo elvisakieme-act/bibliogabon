@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from catalog.models import Document
@@ -103,3 +104,106 @@ def rebuild_all_document_search_indexes() -> int:
         if rebuild_document_search_index(document) is not None:
             indexed_count += 1
     return indexed_count
+
+
+def _normalize_query(query: str) -> str:
+    return " ".join(str(query or "").split()).lower()
+
+
+def _contains(value: str, normalized_query: str) -> bool:
+    return normalized_query in (value or "").lower()
+
+
+def _bounded_limit(limit: int) -> int:
+    limit = int(limit)
+    if limit < 1:
+        return 1
+    return min(limit, 50)
+
+
+def _score_index(index: DocumentSearchIndex, normalized_query: str) -> tuple[int, bool]:
+    if not normalized_query:
+        return 0, False
+
+    score = 0
+    if _contains(index.title, normalized_query):
+        score += 100
+    if _contains(index.author_names, normalized_query):
+        score += 60
+    if _contains(index.domain_name, normalized_query) or _contains(index.domain_slug, normalized_query):
+        score += 40
+    if _contains(index.abstract, normalized_query):
+        score += 25
+
+    text_match = _contains(index.page_text, normalized_query)
+    if text_match:
+        score += 10
+    return score, text_match
+
+
+def _result_payload(index: DocumentSearchIndex, *, score: int, text_match: bool) -> dict:
+    academic_domain = None
+    if index.domain_name or index.domain_slug:
+        academic_domain = {
+            "name": index.domain_name,
+            "slug": index.domain_slug,
+        }
+
+    return {
+        "document_id": index.document_id,
+        "title": index.title,
+        "slug": index.slug,
+        "abstract": index.abstract,
+        "language_code": index.language_code,
+        "publication_year": index.publication_year,
+        "academic_domain": academic_domain,
+        "authors": index.author_names.splitlines() if index.author_names else [],
+        "access_model": index.access_model,
+        "indexed_page_count": index.indexed_page_count,
+        "score": score,
+        "text_match": text_match,
+    }
+
+
+def search_documents(
+    *,
+    query: str = "",
+    domain_slug: str = "",
+    language_code: str = "",
+    access_model: str = "",
+    publication_year: int | None = None,
+    limit: int = 20,
+) -> list[dict]:
+    normalized_query = _normalize_query(query)
+    result_limit = _bounded_limit(limit)
+    indexes = DocumentSearchIndex.objects.select_related("document").filter(
+        document__publication_status=Document.PublicationStatus.PUBLISHED
+    )
+    indexes = indexes.exclude(document__access_model=Document.AccessModel.PRIVATE)
+
+    if domain_slug:
+        indexes = indexes.filter(domain_slug=domain_slug)
+    if language_code:
+        indexes = indexes.filter(language_code=language_code)
+    if access_model:
+        indexes = indexes.filter(document__access_model=access_model)
+    if publication_year is not None:
+        indexes = indexes.filter(publication_year=publication_year)
+    if normalized_query:
+        indexes = indexes.filter(
+            Q(title__icontains=normalized_query)
+            | Q(abstract__icontains=normalized_query)
+            | Q(author_names__icontains=normalized_query)
+            | Q(domain_name__icontains=normalized_query)
+            | Q(domain_slug__icontains=normalized_query)
+            | Q(metadata_text__icontains=normalized_query)
+            | Q(page_text__icontains=normalized_query)
+        )
+
+    results = []
+    for index in indexes:
+        score, text_match = _score_index(index, normalized_query)
+        results.append(_result_payload(index, score=score, text_match=text_match))
+
+    results.sort(key=lambda result: (-result["score"], result["title"].lower(), result["document_id"]))
+    return results[:result_limit]
