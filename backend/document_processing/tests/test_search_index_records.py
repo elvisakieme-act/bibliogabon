@@ -1,4 +1,6 @@
 import pytest
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from catalog.models import AcademicDomain, Document
 from document_ingestion.models import DocumentVersion
@@ -53,6 +55,23 @@ def test_queue_page_index_record_is_idempotent_for_unchanged_text():
 
 
 @pytest.mark.django_db
+def test_queue_page_index_record_keeps_indexed_state_for_unchanged_text():
+    page = create_page()
+    attach_extracted_text(page=page, text="Texte indexable.", language_code="fr")
+    record = queue_page_index_record(page=page)
+    indexed_at = timezone.now()
+    record.status = SearchIndexRecord.Status.INDEXED
+    record.indexed_at = indexed_at
+    record.save(update_fields=["status", "indexed_at", "updated_at"])
+
+    unchanged = queue_page_index_record(page=page)
+
+    assert unchanged.pk == record.pk
+    assert unchanged.status == SearchIndexRecord.Status.INDEXED
+    assert unchanged.indexed_at == indexed_at
+
+
+@pytest.mark.django_db
 def test_queue_page_index_record_refreshes_hash_when_text_changes():
     page = create_page()
     attach_extracted_text(page=page, text="Texte indexable.", language_code="fr")
@@ -66,3 +85,12 @@ def test_queue_page_index_record_refreshes_hash_when_text_changes():
     assert refreshed.pk == record.pk
     assert refreshed.status == SearchIndexRecord.Status.QUEUED
     assert refreshed.content_hash == "6e1a717bf3eaf63bdb9986805bdafaea43ec0b0d79a4ba6f52206f540d8b5728"
+
+
+@pytest.mark.django_db
+def test_search_index_record_rejects_invalid_content_hash():
+    page = create_page()
+    record = SearchIndexRecord(page=page, content_hash="abc")
+
+    with pytest.raises(ValidationError):
+        record.save()

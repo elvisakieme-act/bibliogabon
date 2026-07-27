@@ -71,15 +71,36 @@ def queue_page_index_record(*, page: DocumentPage) -> SearchIndexRecord:
         raise ValueError("page must have extracted text before indexing") from exc
 
     content_hash = hashlib.sha256(extracted_text.text.encode("utf-8")).hexdigest()
-    record, _ = SearchIndexRecord.objects.update_or_create(
-        page=page,
-        defaults={
-            "status": SearchIndexRecord.Status.QUEUED,
-            "content_hash": content_hash,
-            "language_code": extracted_text.language_code,
-            "indexed_at": None,
-            "error_code": "",
-            "error_message": "",
-        },
-    )
-    return record
+
+    with transaction.atomic():
+        record, created = SearchIndexRecord.objects.select_for_update().get_or_create(
+            page=page,
+            defaults={
+                "status": SearchIndexRecord.Status.QUEUED,
+                "content_hash": content_hash,
+                "language_code": extracted_text.language_code,
+            },
+        )
+        if created:
+            return record
+        if record.content_hash == content_hash and record.language_code == extracted_text.language_code:
+            return record
+
+        record.status = SearchIndexRecord.Status.QUEUED
+        record.content_hash = content_hash
+        record.language_code = extracted_text.language_code
+        record.indexed_at = None
+        record.error_code = ""
+        record.error_message = ""
+        record.save(
+            update_fields=[
+                "status",
+                "content_hash",
+                "language_code",
+                "indexed_at",
+                "error_code",
+                "error_message",
+                "updated_at",
+            ]
+        )
+        return record

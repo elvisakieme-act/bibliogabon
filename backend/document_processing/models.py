@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -118,7 +119,15 @@ class SearchIndexRecord(models.Model):
         related_name="search_index_record",
     )
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.QUEUED)
-    content_hash = models.CharField(max_length=64)
+    content_hash = models.CharField(
+        max_length=64,
+        validators=[
+            RegexValidator(
+                regex=r"^[a-f0-9]{64}$",
+                message="Content hash must be a lowercase SHA-256 hex digest",
+            )
+        ],
+    )
     language_code = models.CharField(max_length=12, default="fr")
     indexed_at = models.DateTimeField(null=True, blank=True)
     error_code = models.CharField(max_length=80, blank=True)
