@@ -18,4 +18,10 @@ dev = [
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py", "*_test.py"]
-testpaths = ["accounts/tests", "catalog/tests", "document_ingestion/tests", "document_processing/tests"]
+testpaths = [
+  "accounts/tests",
+  "catalog/tests",
+  "document_ingestion/tests",
+  "document_processing/tests",
+  "document_reader/tests",
+]
