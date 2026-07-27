@@ -27,9 +27,8 @@ def slugify_filename(filename: str) -> str:
     path_name = Path(filename).name
     stem = Path(path_name).stem.lower()
     suffix = Path(path_name).suffix.lower()
-    safe_stem = normalize_key_segment(stem)
-    if safe_stem == "default":
-        safe_stem = "document"
+    raw_safe_stem = re.sub(r"[^a-z0-9]+", "-", stem).strip("-")
+    safe_stem = raw_safe_stem or "document"
     return f"{safe_stem}{suffix}"
 
 

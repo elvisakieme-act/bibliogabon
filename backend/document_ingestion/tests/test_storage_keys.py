@@ -57,3 +57,10 @@ def test_url_like_or_path_traversal_references_are_rejected(value):
 
 def test_version_label_is_normalized_for_storage_key_segments():
     assert normalize_key_segment("Draft / Final .. 2026") == "draft-final-2026"
+
+
+def test_slugify_filename_preserves_real_default_filename():
+    from document_ingestion.storage import slugify_filename
+
+    assert slugify_filename("default.pdf") == "default.pdf"
+    assert slugify_filename("!!!.pdf") == "document.pdf"
