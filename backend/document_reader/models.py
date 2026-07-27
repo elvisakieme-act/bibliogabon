@@ -53,7 +53,12 @@ class ReaderSession(models.Model):
     def clean(self):
         if self.version_id and self.document_id and self.version.document_id != self.document_id:
             raise ValidationError("Reader session version must belong to the same document")
-        if self.status == self.Status.ACTIVE and self.expires_at <= self.started_at:
+        if (
+            self.status == self.Status.ACTIVE
+            and self.expires_at is not None
+            and self.started_at is not None
+            and self.expires_at <= self.started_at
+        ):
             raise ValidationError("Active reader sessions must expire after they start")
         if self.status == self.Status.ENDED and self.ended_at is None:
             raise ValidationError("Ended reader sessions must record ended_at")

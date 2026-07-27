@@ -94,6 +94,23 @@ def test_reader_session_save_rejects_version_from_other_document():
 
 
 @pytest.mark.django_db
+def test_reader_session_save_rejects_missing_expiry_with_validation_error():
+    user = create_user()
+    document = create_document()
+    version = DocumentVersion.objects.create(document=document, version_label="v1")
+    session = ReaderSession(
+        user=user,
+        document=document,
+        version=version,
+        started_at=timezone.now(),
+        expires_at=None,
+    )
+
+    with pytest.raises(ValidationError):
+        session.save()
+
+
+@pytest.mark.django_db
 def test_reader_session_is_active_only_before_expiry_and_before_end():
     session = create_session()
 

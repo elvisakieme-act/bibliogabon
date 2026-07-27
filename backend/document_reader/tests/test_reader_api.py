@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import Client
 from django.utils import timezone
 
 from accounts.models import Entitlement
@@ -51,6 +52,18 @@ def test_start_reader_session_api_requires_authentication(client):
 
     assert response.status_code == 401
     assert response.json() == {"error": "authentication_required"}
+
+
+@pytest.mark.django_db
+def test_reader_post_without_csrf_returns_json_403():
+    document, _, _ = create_readable_document()
+    csrf_client = Client(enforce_csrf_checks=True)
+
+    response = csrf_client.post(f"/reader/documents/{document.pk}/sessions/")
+
+    assert response.status_code == 403
+    assert response["Content-Type"].startswith("application/json")
+    assert response.json() == {"error": "csrf_failed"}
 
 
 @pytest.mark.django_db

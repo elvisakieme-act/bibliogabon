@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.http import JsonResponse
+from django.views.csrf import csrf_failure as default_csrf_failure
 from django.views.decorators.http import require_GET, require_POST
 
 from catalog.models import Document
@@ -11,6 +12,12 @@ from document_reader.services import end_reader_session, get_reader_page, start_
 
 def _error(code: str, status: int) -> JsonResponse:
     return JsonResponse({"error": code}, status=status)
+
+
+def csrf_failure(request, reason=""):
+    if request.path.startswith("/reader/"):
+        return _error("csrf_failed", 403)
+    return default_csrf_failure(request, reason=reason)
 
 
 def _client_ip(request) -> str:
