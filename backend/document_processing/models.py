@@ -104,3 +104,38 @@ class ExtractedText(models.Model):
 
     def __str__(self) -> str:
         return f"Text for {self.page}"
+
+
+class SearchIndexRecord(models.Model):
+    class Status(models.TextChoices):
+        QUEUED = "queued", "Queued"
+        INDEXED = "indexed", "Indexed"
+        FAILED = "failed", "Failed"
+
+    page = models.OneToOneField(
+        DocumentPage,
+        on_delete=models.CASCADE,
+        related_name="search_index_record",
+    )
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.QUEUED)
+    content_hash = models.CharField(max_length=64)
+    language_code = models.CharField(max_length=12, default="fr")
+    indexed_at = models.DateTimeField(null=True, blank=True)
+    error_code = models.CharField(max_length=80, blank=True)
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["status"], name="search_index_status_idx"),
+            models.Index(fields=["language_code"], name="search_index_language_idx"),
+        ]
+        ordering = ["page"]
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.status}: {self.page}"

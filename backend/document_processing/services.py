@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+
 from django.db import transaction
 
-from document_processing.models import DocumentPage, ExtractedText
+from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
 
 
 def create_page_records(*, version, page_count: int, created_by_job=None) -> list[DocumentPage]:
@@ -60,3 +62,24 @@ def attach_extracted_text(
         },
     )
     return extracted_text
+
+
+def queue_page_index_record(*, page: DocumentPage) -> SearchIndexRecord:
+    try:
+        extracted_text = ExtractedText.objects.get(page=page)
+    except ExtractedText.DoesNotExist as exc:
+        raise ValueError("page must have extracted text before indexing") from exc
+
+    content_hash = hashlib.sha256(extracted_text.text.encode("utf-8")).hexdigest()
+    record, _ = SearchIndexRecord.objects.update_or_create(
+        page=page,
+        defaults={
+            "status": SearchIndexRecord.Status.QUEUED,
+            "content_hash": content_hash,
+            "language_code": extracted_text.language_code,
+            "indexed_at": None,
+            "error_code": "",
+            "error_message": "",
+        },
+    )
+    return record
