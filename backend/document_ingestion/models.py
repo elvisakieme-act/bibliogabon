@@ -89,6 +89,13 @@ class DocumentAsset(models.Model):
         default=Visibility.PRIVATE,
     )
     public_url = models.URLField(blank=True)
+    created_by_job = models.ForeignKey(
+        "ProcessingJob",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_assets",
+    )
     created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
@@ -115,3 +122,81 @@ class DocumentAsset(models.Model):
 
     def __str__(self) -> str:
         return f"{self.asset_type}: {self.storage_key}"
+
+
+class ProcessingJob(models.Model):
+    class JobType(models.TextChoices):
+        INGEST_SOURCE = "ingest_source", "Ingest source"
+        EXTRACT_METADATA = "extract_metadata", "Extract metadata"
+        GENERATE_DERIVATIVES = "generate_derivatives", "Generate derivatives"
+        OCR = "ocr", "OCR"
+        INDEX = "index", "Index"
+
+    class Status(models.TextChoices):
+        QUEUED = "queued", "Queued"
+        RUNNING = "running", "Running"
+        SUCCEEDED = "succeeded", "Succeeded"
+        FAILED = "failed", "Failed"
+        RETRYING = "retrying", "Retrying"
+        CANCELLED = "cancelled", "Cancelled"
+
+    version = models.ForeignKey(
+        DocumentVersion,
+        on_delete=models.CASCADE,
+        related_name="processing_jobs",
+    )
+    source_asset = models.ForeignKey(
+        DocumentAsset,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="processing_jobs",
+    )
+    job_type = models.CharField(max_length=32, choices=JobType.choices)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.QUEUED)
+    idempotency_key = models.CharField(max_length=180, unique=True)
+    celery_task_id = models.CharField(max_length=180, blank=True)
+    retry_count = models.PositiveIntegerField(default=0)
+    error_code = models.CharField(max_length=80, blank=True)
+    error_message = models.TextField(blank=True)
+    input_payload = models.JSONField(default=dict, blank=True)
+    output_asset_ids = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    failed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def mark_started(self):
+        self.status = self.Status.RUNNING
+        self.started_at = timezone.now()
+        self.save(update_fields=["status", "started_at", "updated_at"])
+
+    def mark_failed(self, *, error_code: str, message: str):
+        self.status = self.Status.FAILED
+        self.retry_count += 1
+        self.error_code = error_code
+        self.error_message = message
+        self.failed_at = timezone.now()
+        self.save(
+            update_fields=[
+                "status",
+                "retry_count",
+                "error_code",
+                "error_message",
+                "failed_at",
+                "updated_at",
+            ]
+        )
+
+    def mark_completed(self, *, output_asset_ids=None):
+        self.status = self.Status.SUCCEEDED
+        self.output_asset_ids = output_asset_ids or []
+        self.completed_at = timezone.now()
+        self.save(update_fields=["status", "output_asset_ids", "completed_at", "updated_at"])
+
+    def __str__(self) -> str:
+        return f"{self.job_type} for {self.version}"
