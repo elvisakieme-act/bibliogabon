@@ -69,6 +69,15 @@ def test_document_with_invalid_access_model_is_not_publishable():
 
 
 @pytest.mark.django_db
+def test_document_with_invalid_rights_access_model_is_not_publishable():
+    document = create_document_with_author_and_rights(
+        rights_overrides={"access_model": "unsupported"},
+    )
+
+    assert document_is_publishable(document) is False
+
+
+@pytest.mark.django_db
 def test_supervisor_only_does_not_satisfy_author_requirement():
     document = create_document_with_author_and_rights(
         author_role=DocumentAuthor.Role.SUPERVISOR,
