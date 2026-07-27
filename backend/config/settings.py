@@ -74,4 +74,5 @@ USE_TZ = True
 STATIC_URL = "static/"
 DOCUMENT_STORAGE_BUCKET = os.getenv("DOCUMENT_STORAGE_BUCKET", "bibliogabon-private-documents")
 DOCUMENT_STORAGE_KEY_PREFIX = os.getenv("DOCUMENT_STORAGE_KEY_PREFIX", "documents")
+READER_SESSION_TTL_MINUTES = int(os.getenv("READER_SESSION_TTL_MINUTES", "120"))
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

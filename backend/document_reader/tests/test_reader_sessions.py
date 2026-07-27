@@ -1,15 +1,23 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
+from accounts.models import Entitlement
 from catalog.models import AcademicDomain, Document
 from document_ingestion.models import DocumentVersion
 from document_processing.models import DocumentPage
+from document_reader.exceptions import ReaderAccessDenied
 from document_reader.models import PageAccessLog, ReaderSession
+from document_reader.services import end_reader_session, start_reader_session
 
 
-def create_document(slug="reader-document", access_model=Document.AccessModel.FREE):
+def create_document(
+    slug="reader-document",
+    access_model=Document.AccessModel.FREE,
+    publication_status=Document.PublicationStatus.PUBLISHED,
+):
     domain = AcademicDomain.objects.create(name=f"Reader {slug}", slug=f"reader-{slug}")
     return Document.objects.create(
         title=f"Reader {slug}",
@@ -17,7 +25,7 @@ def create_document(slug="reader-document", access_model=Document.AccessModel.FR
         academic_domain=domain,
         category=Document.Category.OPEN_RESOURCE,
         access_model=access_model,
-        publication_status=Document.PublicationStatus.PUBLISHED,
+        publication_status=publication_status,
     )
 
 
@@ -42,6 +50,16 @@ def create_session():
         expires_at=started_at + timezone.timedelta(minutes=120),
         client_ip="196.223.12.10",
         user_agent="BiblioGABON test client",
+    )
+
+
+def create_processed_version(document):
+    return DocumentVersion.objects.create(
+        document=document,
+        version_label="v1",
+        status=DocumentVersion.Status.PROCESSED,
+        is_current=True,
+        page_count=1,
     )
 
 
@@ -139,3 +157,134 @@ def test_page_access_log_save_rejects_page_from_other_session_version():
 
     with pytest.raises(ValidationError):
         access_log.save()
+
+
+@pytest.mark.django_db
+def test_start_reader_session_allows_published_free_document_without_entitlement(settings):
+    settings.READER_SESSION_TTL_MINUTES = 30
+    user = create_user()
+    document = create_document()
+    version = create_processed_version(document)
+    started_at = timezone.now()
+
+    session = start_reader_session(
+        user=user,
+        document=document,
+        client_ip="196.223.12.10",
+        user_agent="BiblioGABON test client",
+        at=started_at,
+    )
+
+    assert session.user == user
+    assert session.document == document
+    assert session.version == version
+    assert session.expires_at == started_at + timezone.timedelta(minutes=30)
+
+
+@pytest.mark.django_db
+def test_start_reader_session_rejects_anonymous_user():
+    document = create_document()
+    create_processed_version(document)
+
+    with pytest.raises(ReaderAccessDenied):
+        start_reader_session(user=AnonymousUser(), document=document)
+
+
+@pytest.mark.django_db
+def test_start_reader_session_rejects_unpublished_document():
+    user = create_user()
+    document = create_document(publication_status=Document.PublicationStatus.DRAFT)
+    create_processed_version(document)
+
+    with pytest.raises(ReaderAccessDenied):
+        start_reader_session(user=user, document=document)
+
+
+@pytest.mark.django_db
+def test_start_reader_session_rejects_private_document_even_with_entitlement():
+    user = create_user()
+    document = create_document(access_model=Document.AccessModel.PRIVATE)
+    create_processed_version(document)
+    Entitlement.objects.create(
+        user=user,
+        source=Entitlement.Source.ADMIN_GRANT,
+        access_right=Entitlement.AccessRight.READ,
+        scope_type=Entitlement.ScopeType.DOCUMENT,
+        scope_id=document.entitlement_scope_id,
+    )
+
+    with pytest.raises(ReaderAccessDenied):
+        start_reader_session(user=user, document=document)
+
+
+@pytest.mark.django_db
+def test_start_reader_session_rejects_restricted_document_without_read_entitlement():
+    user = create_user()
+    document = create_document(access_model=Document.AccessModel.SUBSCRIPTION)
+    create_processed_version(document)
+
+    with pytest.raises(ReaderAccessDenied):
+        start_reader_session(user=user, document=document)
+
+
+@pytest.mark.django_db
+def test_start_reader_session_allows_restricted_document_with_document_entitlement():
+    user = create_user()
+    document = create_document(access_model=Document.AccessModel.SUBSCRIPTION)
+    create_processed_version(document)
+    Entitlement.objects.create(
+        user=user,
+        source=Entitlement.Source.INDIVIDUAL_SUBSCRIPTION,
+        access_right=Entitlement.AccessRight.READ,
+        scope_type=Entitlement.ScopeType.DOCUMENT,
+        scope_id=document.entitlement_scope_id,
+    )
+
+    session = start_reader_session(user=user, document=document)
+
+    assert session.status == ReaderSession.Status.ACTIVE
+
+
+@pytest.mark.django_db
+def test_start_reader_session_allows_restricted_document_with_domain_entitlement():
+    user = create_user()
+    document = create_document(access_model=Document.AccessModel.RESTRICTED)
+    create_processed_version(document)
+    Entitlement.objects.create(
+        user=user,
+        source=Entitlement.Source.INDIVIDUAL_SUBSCRIPTION,
+        access_right=Entitlement.AccessRight.READ,
+        scope_type=Entitlement.ScopeType.DOMAIN,
+        scope_id=str(document.academic_domain_id),
+    )
+
+    session = start_reader_session(user=user, document=document)
+
+    assert session.document == document
+
+
+@pytest.mark.django_db
+def test_start_reader_session_rejects_document_without_processed_current_version():
+    user = create_user()
+    document = create_document()
+    DocumentVersion.objects.create(
+        document=document,
+        version_label="v1",
+        status=DocumentVersion.Status.PROCESSING,
+        is_current=True,
+        page_count=1,
+    )
+
+    with pytest.raises(ReaderAccessDenied):
+        start_reader_session(user=user, document=document)
+
+
+@pytest.mark.django_db
+def test_end_reader_session_service_records_session_end():
+    session = create_session()
+    ended_at = session.started_at + timezone.timedelta(minutes=10)
+
+    ended = end_reader_session(session=session, at=ended_at)
+
+    assert ended.status == ReaderSession.Status.ENDED
+    assert ended.ended_at == ended_at
