@@ -5,6 +5,8 @@ from django.views.decorators.http import require_GET
 
 from search_discovery.services import search_documents
 
+MAX_QUERY_LENGTH = 120
+
 
 def _error(code: str, status: int) -> JsonResponse:
     return JsonResponse({"error": code}, status=status)
@@ -20,9 +22,17 @@ def _parse_positive_int(value: str, error_code: str) -> int:
     return parsed
 
 
+def _parse_query(value: str) -> str:
+    query = " ".join(str(value or "").split())
+    if len(query) > MAX_QUERY_LENGTH:
+        raise ValueError("invalid_query")
+    return query
+
+
 @require_GET
 def search_documents_view(request) -> JsonResponse:
     try:
+        query = _parse_query(request.GET.get("q", ""))
         publication_year = None
         if "year" in request.GET:
             publication_year = _parse_positive_int(request.GET.get("year"), "invalid_year")
@@ -31,7 +41,7 @@ def search_documents_view(request) -> JsonResponse:
         return _error(str(exc), 400)
 
     results = search_documents(
-        query=request.GET.get("q", ""),
+        query=query,
         domain_slug=request.GET.get("domain", ""),
         language_code=request.GET.get("language", ""),
         access_model=request.GET.get("access", ""),

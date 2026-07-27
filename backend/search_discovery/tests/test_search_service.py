@@ -79,6 +79,29 @@ def test_search_documents_ranks_title_matches_above_body_only_matches():
 
 
 @pytest.mark.django_db
+def test_search_documents_keeps_title_match_above_combined_lower_priority_matches():
+    from search_discovery.services import search_documents
+
+    title_match = create_document(slug="microfinance-title", title="Microfinance rurale")
+    rebuild_document_search_index(title_match)
+    combined_match = create_document(
+        slug="microfinance-combined",
+        title="Cooperatives agricoles",
+        domain_slug="microfinance-domain",
+        domain_name="Microfinance appliquee",
+        abstract="Guide pratique de microfinance pour les cooperatives.",
+    )
+    add_author(combined_match, "Microfinance Gabon")
+    add_processed_text(combined_match, "Etude de cas microfinance.")
+    rebuild_document_search_index(combined_match)
+
+    results = search_documents(query="microfinance")
+
+    assert [result["document_id"] for result in results] == [title_match.pk, combined_match.pk]
+    assert results[0]["score"] > results[1]["score"]
+
+
+@pytest.mark.django_db
 def test_search_documents_matches_author_domain_abstract_and_internal_body_text():
     from search_discovery.services import search_documents
 
@@ -136,6 +159,42 @@ def test_search_documents_filters_by_domain_language_access_and_publication_year
     )
 
     assert [result["document_id"] for result in results] == [matching.pk]
+
+
+@pytest.mark.django_db
+def test_search_documents_returns_live_access_model_when_index_access_is_stale():
+    from search_discovery.services import search_documents
+
+    document = create_document(slug="stale-access", title="Droit public gabonais")
+    rebuild_document_search_index(document)
+    document.access_model = Document.AccessModel.SUBSCRIPTION
+    document.save(update_fields=["access_model", "updated_at"])
+
+    results = search_documents(access_model=Document.AccessModel.SUBSCRIPTION)
+
+    assert len(results) == 1
+    assert results[0]["document_id"] == document.pk
+    assert results[0]["access_model"] == Document.AccessModel.SUBSCRIPTION
+
+
+@pytest.mark.parametrize(
+    ("publication_status", "access_model"),
+    [
+        (Document.PublicationStatus.WITHDRAWN, Document.AccessModel.FREE),
+        (Document.PublicationStatus.PUBLISHED, Document.AccessModel.PRIVATE),
+    ],
+)
+@pytest.mark.django_db
+def test_search_documents_excludes_stale_indexes_for_now_hidden_documents(publication_status, access_model):
+    from search_discovery.services import search_documents
+
+    document = create_document(slug=f"stale-hidden-{publication_status}-{access_model}", title="Notice cachee")
+    rebuild_document_search_index(document)
+    document.publication_status = publication_status
+    document.access_model = access_model
+    document.save(update_fields=["publication_status", "access_model", "updated_at"])
+
+    assert search_documents(query="Notice") == []
 
 
 @pytest.mark.django_db

@@ -87,6 +87,28 @@ def test_search_documents_api_returns_public_results(client):
 
 
 @pytest.mark.django_db
+def test_search_documents_api_returns_restricted_metadata_without_page_text(client):
+    document = create_document(
+        slug="api-restricted",
+        title="Archives hospitalieres",
+        access_model=Document.AccessModel.SUBSCRIPTION,
+    )
+    add_processed_text(document, "Diagnostic confidentiel dans le texte interne.")
+    rebuild_document_search_index(document)
+
+    response = client.get("/search/documents/?q=Diagnostic")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["count"] == 1
+    result = payload["results"][0]
+    assert result["document_id"] == document.pk
+    assert result["access_model"] == Document.AccessModel.SUBSCRIPTION
+    assert result["text_match"] is True
+    assert "Diagnostic confidentiel dans le texte interne." not in result.values()
+
+
+@pytest.mark.django_db
 def test_search_documents_api_applies_filters_and_limit(client):
     matching = create_document(
         slug="api-filter-match",
@@ -118,6 +140,7 @@ def test_search_documents_api_applies_filters_and_limit(client):
         ("year=0", "invalid_year"),
         ("limit=abc", "invalid_limit"),
         ("limit=0", "invalid_limit"),
+        (f"q={'a' * 121}", "invalid_query"),
     ],
 )
 @pytest.mark.django_db

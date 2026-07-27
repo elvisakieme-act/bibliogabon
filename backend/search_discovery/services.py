@@ -127,17 +127,17 @@ def _score_index(index: DocumentSearchIndex, normalized_query: str) -> tuple[int
 
     score = 0
     if _contains(index.title, normalized_query):
-        score += 100
+        score += 1000
     if _contains(index.author_names, normalized_query):
-        score += 60
+        score += 100
     if _contains(index.domain_name, normalized_query) or _contains(index.domain_slug, normalized_query):
-        score += 40
+        score += 50
     if _contains(index.abstract, normalized_query):
-        score += 25
+        score += 20
 
     text_match = _contains(index.page_text, normalized_query)
     if text_match:
-        score += 10
+        score += 5
     return score, text_match
 
 
@@ -158,7 +158,7 @@ def _result_payload(index: DocumentSearchIndex, *, score: int, text_match: bool)
         "publication_year": index.publication_year,
         "academic_domain": academic_domain,
         "authors": index.author_names.splitlines() if index.author_names else [],
-        "access_model": index.access_model,
+        "access_model": index.document.access_model,
         "indexed_page_count": index.indexed_page_count,
         "score": score,
         "text_match": text_match,

@@ -37,7 +37,7 @@ HTTP endpoint:
 
 Supported query parameters:
 
-- `q`: case-insensitive search over title, abstract, authors, domain, and internal page text.
+- `q`: case-insensitive search over title, abstract, authors, domain, and internal page text; normalized length is capped at 120 characters.
 - `domain`: exact academic domain slug.
 - `language`: exact language code.
 - `access`: exact access model.

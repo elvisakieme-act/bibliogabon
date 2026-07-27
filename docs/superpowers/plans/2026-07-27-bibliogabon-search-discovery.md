@@ -14,6 +14,7 @@
 - Public search may expose metadata for restricted documents, but never page text snippets.
 - Search payloads must not include storage keys, public URLs, signed URLs, download URLs, reader session keys, or raw page text.
 - Extracted page text is internal index material only.
+- Public `q` values are normalized and capped at 120 characters.
 - Use plain Django views and `JsonResponse`; do not add DRF or an external search engine.
 - Keep ranking deterministic and database-portable.
 
