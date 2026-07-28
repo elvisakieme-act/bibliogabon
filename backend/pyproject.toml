@@ -26,4 +26,5 @@ testpaths = [
   "document_reader/tests",
   "search_discovery/tests",
   "billing/tests",
+  "operations/tests",
 ]
