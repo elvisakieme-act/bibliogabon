@@ -6,6 +6,15 @@ from django.db import models
 from django.utils import timezone
 
 
+class AuditLogQuerySet(models.QuerySet):
+    def delete(self, *args, **kwargs):
+        raise ValueError("Audit logs are immutable")
+
+
+class AuditLogManager(models.Manager.from_queryset(AuditLogQuerySet)):
+    pass
+
+
 class AuditLog(models.Model):
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -21,6 +30,8 @@ class AuditLog(models.Model):
     summary = models.CharField(max_length=240)
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
+
+    objects = AuditLogManager()
 
     class Meta:
         indexes = [
@@ -43,6 +54,9 @@ class AuditLog(models.Model):
             raise ValueError("Audit logs are immutable")
         self.full_clean()
         return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Audit logs are immutable")
 
     def __str__(self) -> str:
         return f"{self.event_type}: {self.summary}"
