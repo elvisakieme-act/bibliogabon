@@ -182,17 +182,19 @@ def _usage_by_domain(aggregates):
 def _usage_by_document(aggregates):
     rows = (
         aggregates.filter(document_id__isnull=False)
-        .values("document__title", "academic_domain__name", "access_model")
+        .values("document_id", "document__title", "document__slug", "academic_domain__name", "access_model")
         .annotate(
             reader_session_count=Sum("reader_session_count"),
             page_view_count=Sum("page_view_count"),
             active_day_count=Count("date", distinct=True),
         )
-        .order_by("-reader_session_count", "-page_view_count", "document__title")
+        .order_by("-reader_session_count", "-page_view_count", "document__title", "document_id")
     )
     return [
         {
+            "document_id": row["document_id"],
             "document_title": row["document__title"],
+            "document_slug": row["document__slug"],
             "domain_name": row["academic_domain__name"],
             "access_model": row["access_model"],
             "reader_session_count": row["reader_session_count"] or 0,
@@ -246,6 +248,17 @@ def _build_institution_metrics(organization, period_start, period_end):
         starts_at__lt=end,
         revoked_at__isnull=True,
     ).filter(Q(ends_at__isnull=True) | Q(ends_at__gt=start))
+    expired_entitlements = Entitlement.objects.filter(
+        organization=organization,
+        revoked_at__isnull=True,
+        ends_at__gte=start,
+        ends_at__lt=end,
+    )
+    revoked_entitlements = Entitlement.objects.filter(
+        organization=organization,
+        revoked_at__gte=start,
+        revoked_at__lt=end,
+    )
     active_subscriptions = Subscription.objects.filter(
         organization=organization,
         status=Subscription.Status.ACTIVE,
@@ -267,6 +280,8 @@ def _build_institution_metrics(organization, period_start, period_end):
             "active_member_count": active_memberships.count(),
             "entitlements": {
                 "active": active_entitlements.count(),
+                "expired": expired_entitlements.count(),
+                "revoked": revoked_entitlements.count(),
             },
             "quotas": {
                 "active_count": active_quotas.count(),

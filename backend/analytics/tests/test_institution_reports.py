@@ -109,6 +109,84 @@ def test_generate_institution_report_builds_private_organization_metrics():
 
 
 @pytest.mark.django_db
+def test_generate_institution_report_counts_entitlement_lifecycle_buckets():
+    period_start = timezone.datetime(2026, 1, 1).date()
+    period_end = timezone.datetime(2026, 1, 31).date()
+    starts_at = timezone.make_aware(timezone.datetime(2025, 12, 20, 9, 0, 0))
+    organization = create_organization(slug="entitlement-bucket-org")
+    other_organization = create_organization(slug="other-entitlement-bucket-org")
+    user = create_user(email="individual-entitlement@example.ga")
+
+    Entitlement.objects.create(
+        organization=organization,
+        source=Entitlement.Source.ORGANIZATION_QUOTA,
+        access_right=Entitlement.AccessRight.READ,
+        scope_type=Entitlement.ScopeType.GLOBAL,
+        starts_at=starts_at,
+    )
+    Entitlement.objects.create(
+        organization=organization,
+        source=Entitlement.Source.ORGANIZATION_QUOTA,
+        access_right=Entitlement.AccessRight.READ,
+        scope_type=Entitlement.ScopeType.GLOBAL,
+        starts_at=starts_at,
+        ends_at=timezone.make_aware(timezone.datetime(2026, 1, 12, 10, 0, 0)),
+    )
+    Entitlement.objects.create(
+        organization=organization,
+        source=Entitlement.Source.ADMIN_GRANT,
+        access_right=Entitlement.AccessRight.READ,
+        scope_type=Entitlement.ScopeType.GLOBAL,
+        starts_at=starts_at,
+        revoked_at=timezone.make_aware(timezone.datetime(2026, 1, 16, 11, 0, 0)),
+    )
+    Entitlement.objects.create(
+        organization=other_organization,
+        source=Entitlement.Source.ORGANIZATION_QUOTA,
+        access_right=Entitlement.AccessRight.READ,
+        scope_type=Entitlement.ScopeType.GLOBAL,
+        starts_at=starts_at,
+    )
+    Entitlement.objects.create(
+        user=user,
+        source=Entitlement.Source.INDIVIDUAL_SUBSCRIPTION,
+        access_right=Entitlement.AccessRight.READ,
+        scope_type=Entitlement.ScopeType.GLOBAL,
+        starts_at=starts_at,
+        revoked_at=timezone.make_aware(timezone.datetime(2026, 1, 18, 11, 0, 0)),
+    )
+
+    report = generate_institution_report(organization, period_start, period_end)
+
+    assert report.metrics["access"]["entitlements"] == {
+        "active": 2,
+        "expired": 1,
+        "revoked": 1,
+    }
+
+
+@pytest.mark.django_db
+def test_generate_institution_report_keeps_same_title_documents_separate():
+    at = timezone.make_aware(timezone.datetime(2026, 1, 5, 9, 0, 0))
+    organization = create_organization(slug="same-title-report-org")
+    user = create_user(email="same-title-reader@example.ga")
+    create_active_membership(user, organization, starts_at=at - timezone.timedelta(days=1))
+    first_document = create_document(slug="shared-title-one", access_model="subscription")
+    second_document = create_document(slug="shared-title-two", access_model="subscription")
+    second_document.title = first_document.title
+    second_document.academic_domain = first_document.academic_domain
+    second_document.save(update_fields=["title", "academic_domain", "updated_at"])
+    create_reader_activity(user=user, document=first_document, started_at=at, page_views=1)
+    create_reader_activity(user=user, document=second_document, started_at=at + timezone.timedelta(hours=1), page_views=1)
+
+    report = generate_institution_report(organization, at.date(), at.date())
+
+    by_document = report.metrics["usage"]["by_document"]
+    assert len(by_document) == 2
+    assert {row["document_slug"] for row in by_document} == {first_document.slug, second_document.slug}
+
+
+@pytest.mark.django_db
 def test_generate_institution_report_is_idempotent_for_same_period():
     start = timezone.datetime(2026, 1, 1).date()
     end = timezone.datetime(2026, 1, 31).date()
