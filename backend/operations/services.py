@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from catalog.models import Document
 from catalog.services import document_is_publishable
-from operations.models import AuditLog, PublicationReview
+from operations.models import AuditLog, PublicationReview, SupportTicket
 
 
 def _target_parts(target) -> tuple[str, str, str]:
@@ -114,3 +114,68 @@ def record_publication_decision(*, review, decision: str, actor=None, reason: st
             metadata={"review_id": review.pk, "decision_reason": reason},
         )
         return review
+
+
+def open_support_ticket(
+    *,
+    title: str,
+    description: str,
+    created_by=None,
+    assigned_to=None,
+    priority: str = SupportTicket.Priority.NORMAL,
+    user=None,
+    organization=None,
+    document=None,
+    payment_transaction=None,
+    entitlement=None,
+) -> SupportTicket:
+    with transaction.atomic():
+        ticket = SupportTicket.objects.create(
+            title=title,
+            description=description,
+            created_by=created_by,
+            assigned_to=assigned_to,
+            priority=priority,
+            user=user,
+            organization=organization,
+            document=document,
+            payment_transaction=payment_transaction,
+            entitlement=entitlement,
+        )
+        record_audit_event(
+            actor=created_by,
+            event_type="support_ticket_opened",
+            target=ticket,
+            summary=f"Support ticket opened: {ticket.title}",
+            metadata={
+                "priority": ticket.priority,
+                "user_id": user.pk if user else None,
+                "organization_id": organization.pk if organization else None,
+                "document_id": document.pk if document else None,
+                "payment_transaction_id": payment_transaction.pk if payment_transaction else None,
+                "entitlement_id": entitlement.pk if entitlement else None,
+            },
+        )
+        return ticket
+
+
+def resolve_support_ticket(*, ticket, actor=None, resolution_summary: str, at=None) -> SupportTicket:
+    if not resolution_summary.strip():
+        raise ValueError("resolution_summary is required")
+    at = at or timezone.now()
+    with transaction.atomic():
+        ticket = SupportTicket.objects.select_for_update().get(pk=ticket.pk)
+        if ticket.status in {SupportTicket.Status.RESOLVED, SupportTicket.Status.CANCELLED}:
+            raise ValueError("support ticket is already closed")
+        ticket.status = SupportTicket.Status.RESOLVED
+        ticket.resolution_summary = resolution_summary
+        ticket.resolved_at = at
+        ticket.save(update_fields=["status", "resolution_summary", "resolved_at", "updated_at"])
+        record_audit_event(
+            actor=actor,
+            event_type="support_ticket_resolved",
+            target=ticket,
+            summary=f"Support ticket resolved: {ticket.title}",
+            metadata={"resolution_summary": resolution_summary},
+        )
+        return ticket
