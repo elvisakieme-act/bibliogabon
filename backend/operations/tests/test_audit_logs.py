@@ -2,7 +2,56 @@ import pytest
 from django.core.exceptions import ValidationError
 
 from operations.models import AuditLog
-from operations.tests.factories import create_user
+from operations.services import record_audit_event
+from operations.tests.factories import create_publishable_document, create_user
+
+
+@pytest.mark.django_db
+def test_record_audit_event_stores_actor_target_summary_and_metadata():
+    actor = create_user(email="audit-service-actor@example.ga", is_staff=True)
+    document = create_publishable_document(slug="audit-target")
+
+    log = record_audit_event(
+        actor=actor,
+        event_type="publication_review_opened",
+        target=document,
+        summary="Publication review opened",
+        metadata={"document_status": document.publication_status},
+    )
+
+    assert log.actor == actor
+    assert log.event_type == "publication_review_opened"
+    assert log.target_app == "catalog"
+    assert log.target_model == "document"
+    assert log.target_id == str(document.pk)
+    assert log.summary == "Publication review opened"
+    assert log.metadata == {"document_status": document.publication_status}
+
+
+@pytest.mark.django_db
+def test_record_audit_event_supports_system_event_without_target():
+    log = record_audit_event(
+        event_type="system_event",
+        summary="Nightly maintenance completed",
+        metadata={"job": "maintenance"},
+    )
+
+    assert log.actor is None
+    assert log.target_app == ""
+    assert log.target_model == ""
+    assert log.target_id == ""
+    assert log.metadata == {"job": "maintenance"}
+
+
+@pytest.mark.django_db
+def test_audit_logs_are_immutable_after_creation():
+    log = record_audit_event(event_type="system_event", summary="Created")
+    log.summary = "Changed"
+
+    with pytest.raises(ValueError):
+        log.save()
+
+    assert AuditLog.objects.get(pk=log.pk).summary == "Created"
 
 
 @pytest.mark.django_db
