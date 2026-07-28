@@ -27,4 +27,5 @@ testpaths = [
   "search_discovery/tests",
   "billing/tests",
   "operations/tests",
+  "analytics/tests",
 ]

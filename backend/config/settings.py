@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "search_discovery",
     "billing",
     "operations",
+    "analytics",
 ]
 
 MIDDLEWARE = [
