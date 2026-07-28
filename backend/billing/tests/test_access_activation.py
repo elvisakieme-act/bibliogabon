@@ -372,6 +372,24 @@ def test_enroll_user_in_sponsored_campaign_creates_user_entitlement_once():
 
 
 @pytest.mark.django_db
+def test_enroll_user_in_sponsored_campaign_ignores_revoked_entitlement():
+    campaign = create_campaign(slug="revoked-sponsored-access")
+    user = create_user(email="revoked-sponsored-user@example.ga")
+    revoked_at = timezone.now()
+    first_entitlement = enroll_user_in_sponsored_campaign(campaign=campaign, user=user)
+    first_entitlement.revoked_at = revoked_at
+    first_entitlement.save(update_fields=["revoked_at", "updated_at"])
+
+    second_entitlement = enroll_user_in_sponsored_campaign(campaign=campaign, user=user)
+
+    first_entitlement.refresh_from_db()
+    assert second_entitlement.pk != first_entitlement.pk
+    assert first_entitlement.revoked_at == revoked_at
+    assert second_entitlement.revoked_at is None
+    assert user_has_entitlement(user, Entitlement.AccessRight.READ) is True
+
+
+@pytest.mark.django_db
 def test_enroll_user_in_sponsored_campaign_rejects_when_capacity_is_exhausted():
     campaign = create_campaign(slug="limited-campaign", funded_seat_count=1)
     first_user = create_user(email="first-sponsored@example.ga")

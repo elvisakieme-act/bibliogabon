@@ -291,6 +291,7 @@ def enroll_user_in_sponsored_campaign(*, campaign: SponsoredCampaign, user, at=N
             scope_type=campaign.scope_type,
             scope_id=campaign.scope_id,
             note=note,
+            revoked_at__isnull=True,
         ).first()
         if existing:
             return existing
