@@ -34,6 +34,7 @@ class AuditLog(models.Model):
     objects = AuditLogManager()
 
     class Meta:
+        base_manager_name = "objects"
         indexes = [
             models.Index(fields=["event_type", "created_at"]),
             models.Index(fields=["target_app", "target_model", "target_id"]),

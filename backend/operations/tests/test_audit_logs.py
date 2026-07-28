@@ -32,3 +32,13 @@ def test_audit_log_cannot_be_deleted_through_a_queryset():
         AuditLog.objects.filter(pk=log.pk).delete()
 
     assert AuditLog.objects.filter(pk=log.pk).exists()
+
+
+@pytest.mark.django_db
+def test_audit_log_cannot_be_deleted_through_the_base_manager():
+    log = AuditLog.objects.create(event_type="document.reviewed", summary="Document reviewed")
+
+    with pytest.raises(ValueError, match="Audit logs are immutable"):
+        AuditLog._base_manager.filter(pk=log.pk).delete()
+
+    assert AuditLog.objects.filter(pk=log.pk).exists()
