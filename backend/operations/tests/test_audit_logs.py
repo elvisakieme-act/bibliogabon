@@ -44,6 +44,30 @@ def test_record_audit_event_supports_system_event_without_target():
 
 
 @pytest.mark.django_db
+def test_record_audit_event_rejects_unsaved_target():
+    document = create_publishable_document(slug="unsaved-audit-target")
+    document.pk = None
+
+    with pytest.raises(ValueError, match="target must be saved"):
+        record_audit_event(
+            event_type="publication_review_opened",
+            summary="Publication review opened",
+            target=document,
+        )
+
+
+@pytest.mark.parametrize("metadata", [[], False, 0])
+@pytest.mark.django_db
+def test_record_audit_event_rejects_invalid_metadata(metadata):
+    with pytest.raises(ValidationError):
+        record_audit_event(
+            event_type="system_event",
+            summary="Invalid metadata",
+            metadata=metadata,
+        )
+
+
+@pytest.mark.django_db
 def test_audit_logs_are_immutable_after_creation():
     log = record_audit_event(event_type="system_event", summary="Created")
     log.summary = "Changed"

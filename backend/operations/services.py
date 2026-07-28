@@ -8,6 +8,8 @@ from operations.models import AuditLog
 def _target_parts(target) -> tuple[str, str, str]:
     if target is None:
         return "", "", ""
+    if target._state.adding or target.pk is None:
+        raise ValueError("target must be saved")
     meta = target._meta
     return meta.app_label, meta.model_name, str(target.pk)
 
@@ -29,5 +31,5 @@ def record_audit_event(
             target_model=target_model,
             target_id=target_id,
             summary=summary,
-            metadata=metadata or {},
+            metadata=metadata if metadata is not None else {},
         )
