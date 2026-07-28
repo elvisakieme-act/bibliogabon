@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from operations.models import AuditLog, PublicationReview, SupportTicket
+from operations.services import record_publication_decision, resolve_support_ticket
 
 
 @admin.register(AuditLog)
@@ -32,7 +33,17 @@ class PublicationReviewAdmin(admin.ModelAdmin):
     list_filter = ["status", "opened_at", "decided_at"]
     search_fields = ["document__title", "reviewer__email", "opened_by__email", "decided_by__email", "decision_reason", "internal_notes"]
     autocomplete_fields = ["document", "opened_by", "reviewer", "decided_by"]
-    readonly_fields = ["opened_at", "decided_at", "created_at", "updated_at"]
+    readonly_fields = ["status", "decided_by", "opened_at", "decided_at", "created_at", "updated_at"]
+
+    @admin.action(description="Approve selected publication reviews")
+    def approve_reviews(self, request, queryset):
+        for review in queryset.filter(status=PublicationReview.Status.OPEN):
+            record_publication_decision(
+                review=review,
+                decision=PublicationReview.Status.APPROVED,
+                actor=request.user,
+                reason=review.decision_reason,
+            )
 
 
 @admin.register(SupportTicket)
@@ -58,4 +69,17 @@ class SupportTicketAdmin(admin.ModelAdmin):
         "payment_transaction",
         "entitlement",
     ]
-    readonly_fields = ["opened_at", "resolved_at", "created_at", "updated_at"]
+    readonly_fields = ["status", "resolved_at", "created_at", "updated_at"]
+
+    @admin.action(description="Resolve selected support tickets")
+    def resolve_tickets(self, request, queryset):
+        for ticket in queryset.filter(status__in=[
+            SupportTicket.Status.OPEN,
+            SupportTicket.Status.IN_PROGRESS,
+            SupportTicket.Status.WAITING,
+        ]):
+            resolve_support_ticket(
+                ticket=ticket,
+                actor=request.user,
+                resolution_summary=ticket.resolution_summary,
+            )
