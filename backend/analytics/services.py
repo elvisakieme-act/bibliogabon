@@ -79,6 +79,24 @@ def build_daily_usage_aggregate(day) -> list[DailyUsageAggregate]:
 
         aggregates = []
         with transaction.atomic():
+            current_keys = set(counters.keys())
+            existing_aggregates = DailyUsageAggregate.objects.filter(date=day).only(
+                "pk",
+                "organization_id",
+                "document_id",
+                "academic_domain_id",
+                "access_model",
+            )
+            for existing in existing_aggregates:
+                existing_key = (
+                    existing.organization_id,
+                    existing.document_id,
+                    existing.academic_domain_id,
+                    existing.access_model,
+                )
+                if existing_key not in current_keys:
+                    existing.delete()
+
             for (organization_id, document_id, domain_id, access_model), values in counters.items():
                 aggregate, _ = DailyUsageAggregate.objects.update_or_create(
                     date=day,
