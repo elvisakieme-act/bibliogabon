@@ -54,7 +54,7 @@ class Migration(migrations.Migration):
             options={
                 'ordering': ['-date', 'organization__name', 'document__title'],
                 'indexes': [models.Index(fields=['date', 'organization'], name='daily_usage_date_org_idx'), models.Index(fields=['document', 'date'], name='daily_usage_doc_date_idx')],
-                'constraints': [models.UniqueConstraint(fields=('date', 'organization', 'document', 'academic_domain', 'access_model'), name='uniq_daily_usage_aggregate_dim')],
+                'constraints': [models.UniqueConstraint(fields=('date', 'organization', 'document', 'academic_domain', 'access_model'), name='uniq_daily_usage_aggregate_dim', nulls_distinct=False)],
             },
         ),
         migrations.CreateModel(

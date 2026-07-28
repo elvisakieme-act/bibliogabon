@@ -43,6 +43,7 @@ class DailyUsageAggregate(models.Model):
             models.UniqueConstraint(
                 fields=["date", "organization", "document", "academic_domain", "access_model"],
                 name="uniq_daily_usage_aggregate_dim",
+                nulls_distinct=False,
             )
         ]
         indexes = [
