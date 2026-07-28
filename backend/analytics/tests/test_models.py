@@ -40,9 +40,9 @@ def test_daily_usage_aggregate_stores_aggregate_dimensions():
 
 
 @pytest.mark.django_db
-def test_daily_usage_aggregate_rejects_duplicate_null_dimension_rollup():
+def test_daily_usage_aggregate_requires_current_aggregate_dimensions():
     aggregate_date = timezone.datetime(2026, 1, 15).date()
-    DailyUsageAggregate.objects.create(
+    aggregate = DailyUsageAggregate(
         date=aggregate_date,
         access_model=Document.AccessModel.FREE,
         reader_session_count=2,
@@ -50,18 +50,10 @@ def test_daily_usage_aggregate_rejects_duplicate_null_dimension_rollup():
         distinct_document_count=1,
     )
 
-    duplicate = DailyUsageAggregate(
-        date=aggregate_date,
-        access_model=Document.AccessModel.FREE,
-        reader_session_count=3,
-        page_view_count=12,
-        distinct_document_count=1,
-    )
-
     with pytest.raises(ValidationError):
-        duplicate.save()
+        aggregate.save()
 
-    assert DailyUsageAggregate.objects.count() == 1
+    assert DailyUsageAggregate.objects.count() == 0
 
 
 @pytest.mark.django_db

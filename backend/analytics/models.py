@@ -12,22 +12,16 @@ class DailyUsageAggregate(models.Model):
     date = models.DateField()
     organization = models.ForeignKey(
         "accounts.Organization",
-        null=True,
-        blank=True,
         on_delete=models.CASCADE,
         related_name="daily_usage_aggregates",
     )
     document = models.ForeignKey(
         "catalog.Document",
-        null=True,
-        blank=True,
         on_delete=models.PROTECT,
         related_name="daily_usage_aggregates",
     )
     academic_domain = models.ForeignKey(
         "catalog.AcademicDomain",
-        null=True,
-        blank=True,
         on_delete=models.PROTECT,
         related_name="daily_usage_aggregates",
     )
@@ -43,7 +37,6 @@ class DailyUsageAggregate(models.Model):
             models.UniqueConstraint(
                 fields=["date", "organization", "document", "academic_domain", "access_model"],
                 name="uniq_daily_usage_aggregate_dim",
-                nulls_distinct=False,
             )
         ]
         indexes = [

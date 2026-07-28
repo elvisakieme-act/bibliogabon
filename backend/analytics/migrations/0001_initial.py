@@ -47,14 +47,14 @@ class Migration(migrations.Migration):
                 ('distinct_document_count', models.PositiveIntegerField(default=0)),
                 ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('academic_domain', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='daily_usage_aggregates', to='catalog.academicdomain')),
-                ('document', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='daily_usage_aggregates', to='catalog.document')),
-                ('organization', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='daily_usage_aggregates', to='accounts.organization')),
+                ('academic_domain', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='daily_usage_aggregates', to='catalog.academicdomain')),
+                ('document', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='daily_usage_aggregates', to='catalog.document')),
+                ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='daily_usage_aggregates', to='accounts.organization')),
             ],
             options={
                 'ordering': ['-date', 'organization__name', 'document__title'],
                 'indexes': [models.Index(fields=['date', 'organization'], name='daily_usage_date_org_idx'), models.Index(fields=['document', 'date'], name='daily_usage_doc_date_idx')],
-                'constraints': [models.UniqueConstraint(fields=('date', 'organization', 'document', 'academic_domain', 'access_model'), name='uniq_daily_usage_aggregate_dim', nulls_distinct=False)],
+                'constraints': [models.UniqueConstraint(fields=('date', 'organization', 'document', 'academic_domain', 'access_model'), name='uniq_daily_usage_aggregate_dim')],
             },
         ),
         migrations.CreateModel(

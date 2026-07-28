@@ -61,7 +61,6 @@ class InstitutionReportAdmin(ReadOnlyAnalyticsAdmin):
         "period_end",
         "status",
         "metrics",
-        "generated_by",
         "generated_at",
         "created_at",
         "updated_at",

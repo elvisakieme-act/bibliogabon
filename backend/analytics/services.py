@@ -229,6 +229,7 @@ def _usage_by_access_model(aggregates):
 def _build_institution_metrics(organization, period_start, period_end):
     start, end = _period_bounds(period_start, period_end)
     overlapping = Q(starts_at__lt=end) & (Q(ends_at__isnull=True) | Q(ends_at__gt=start))
+    active_at_period_end = Q(starts_at__lt=end) & (Q(ends_at__isnull=True) | Q(ends_at__gte=end))
     usage_aggregates = DailyUsageAggregate.objects.filter(
         organization=organization,
         date__gte=period_start,
@@ -242,7 +243,7 @@ def _build_institution_metrics(organization, period_start, period_end):
     active_memberships = OrganizationMembership.objects.filter(
         organization=organization,
         status=OrganizationMembership.Status.ACTIVE,
-    ).filter(overlapping)
+    ).filter(active_at_period_end)
     active_entitlements = Entitlement.objects.filter(
         organization=organization,
         starts_at__lt=end,
@@ -273,6 +274,12 @@ def _build_institution_metrics(organization, period_start, period_end):
         succeeded_at__gte=start,
         succeeded_at__lt=end,
     )
+    failed_payments = PaymentTransaction.objects.filter(
+        organization=organization,
+        status=PaymentTransaction.Status.FAILED,
+        failed_at__gte=start,
+        failed_at__lt=end,
+    )
     support_tickets = SupportTicket.objects.filter(organization=organization)
 
     return {
@@ -295,6 +302,8 @@ def _build_institution_metrics(organization, period_start, period_end):
             "payments": {
                 "succeeded_count": succeeded_payments.count(),
                 "succeeded_amount_xaf": _sum_amount(succeeded_payments, "amount_xaf"),
+                "failed_count": failed_payments.count(),
+                "failed_amount_xaf": _sum_amount(failed_payments, "amount_xaf"),
             },
         },
         "support": {
