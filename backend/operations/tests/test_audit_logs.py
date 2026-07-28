@@ -1,5 +1,6 @@
 import pytest
 from django.core.exceptions import ValidationError
+from django.db.models.deletion import ProtectedError
 
 from operations.models import AuditLog
 from operations.services import record_audit_event
@@ -115,3 +116,49 @@ def test_audit_log_cannot_be_deleted_through_the_base_manager():
         AuditLog._base_manager.filter(pk=log.pk).delete()
 
     assert AuditLog.objects.filter(pk=log.pk).exists()
+
+
+@pytest.mark.django_db
+def test_audit_log_cannot_be_updated_through_a_queryset():
+    log = AuditLog.objects.create(event_type="document.reviewed", summary="Document reviewed")
+
+    with pytest.raises(ValueError, match="Audit logs are immutable"):
+        AuditLog.objects.filter(pk=log.pk).update(summary="Changed")
+
+    assert AuditLog.objects.get(pk=log.pk).summary == "Document reviewed"
+
+
+@pytest.mark.django_db
+def test_audit_log_cannot_be_updated_through_the_base_manager():
+    log = AuditLog.objects.create(event_type="document.reviewed", summary="Document reviewed")
+
+    with pytest.raises(ValueError, match="Audit logs are immutable"):
+        AuditLog._base_manager.filter(pk=log.pk).update(summary="Changed")
+
+    assert AuditLog.objects.get(pk=log.pk).summary == "Document reviewed"
+
+
+@pytest.mark.django_db
+def test_audit_log_cannot_be_bulk_updated():
+    log = AuditLog.objects.create(event_type="document.reviewed", summary="Document reviewed")
+    log.summary = "Changed"
+
+    with pytest.raises(ValueError, match="Audit logs are immutable"):
+        AuditLog.objects.bulk_update([log], ["summary"])
+
+    assert AuditLog.objects.get(pk=log.pk).summary == "Document reviewed"
+
+
+@pytest.mark.django_db
+def test_audit_log_actor_is_protected_from_deletion():
+    actor = create_user(email="protected-audit-actor@example.ga")
+    log = AuditLog.objects.create(
+        actor=actor,
+        event_type="document.reviewed",
+        summary="Document reviewed",
+    )
+
+    with pytest.raises(ProtectedError):
+        actor.delete()
+
+    assert AuditLog.objects.get(pk=log.pk).actor == actor

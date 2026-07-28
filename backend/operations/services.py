@@ -8,6 +8,11 @@ from catalog.services import document_is_publishable
 from operations.models import AuditLog, PublicationReview, SupportTicket
 
 
+def _truncate_audit_summary(summary: str) -> str:
+    max_length = AuditLog._meta.get_field("summary").max_length
+    return summary[:max_length]
+
+
 def _target_parts(target) -> tuple[str, str, str]:
     if target is None:
         return "", "", ""
@@ -57,7 +62,7 @@ def open_publication_review(*, document, actor=None, reviewer=None, internal_not
             actor=actor,
             event_type="publication_review_opened",
             target=document,
-            summary=f"Publication review opened for {document.title}",
+            summary=_truncate_audit_summary(f"Publication review opened for {document.title}"),
             metadata={"review_id": review.pk, "reviewer_id": reviewer.pk if reviewer else None},
         )
         return review
@@ -110,7 +115,7 @@ def record_publication_decision(*, review, decision: str, actor=None, reason: st
             actor=actor,
             event_type=event_type,
             target=document,
-            summary=f"Publication review {decision} for {document.title}",
+            summary=_truncate_audit_summary(f"Publication review {decision} for {document.title}"),
             metadata={"review_id": review.pk, "decision_reason": reason},
         )
         return review

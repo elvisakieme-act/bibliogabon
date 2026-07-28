@@ -48,6 +48,24 @@ def test_open_publication_review_creates_open_review_and_audit_event():
 
 
 @pytest.mark.django_db
+def test_open_publication_review_truncates_audit_summary_for_max_length_title():
+    actor = create_user(email="long-title-review-opener@example.ga", is_staff=True)
+    document = create_publishable_document(slug="long-title-open-review")
+    document.title = "T" * 260
+    document.save(update_fields=["title", "updated_at"])
+
+    review = open_publication_review(document=document, actor=actor)
+
+    audit_log = AuditLog.objects.get(
+        event_type="publication_review_opened",
+        target_id=str(document.pk),
+    )
+    assert review.status == PublicationReview.Status.OPEN
+    assert audit_log.summary.startswith("Publication review opened for ")
+    assert len(audit_log.summary) == 240
+
+
+@pytest.mark.django_db
 def test_approving_publication_review_publishes_document_and_records_audit():
     actor = create_user(email="review-approver@example.ga", is_staff=True)
     document = create_publishable_document(slug="approve-review")
@@ -68,6 +86,30 @@ def test_approving_publication_review_publishes_document_and_records_audit():
     assert document.publication_status == Document.PublicationStatus.PUBLISHED
     assert document.published_at is not None
     assert AuditLog.objects.filter(event_type="publication_review_approved", target_id=str(document.pk)).exists()
+
+
+@pytest.mark.django_db
+def test_publication_decision_truncates_audit_summary_for_max_length_title():
+    actor = create_user(email="long-title-review-approver@example.ga", is_staff=True)
+    document = create_publishable_document(slug="long-title-approve-review")
+    document.title = "T" * 260
+    document.save(update_fields=["title", "updated_at"])
+    review = PublicationReview.objects.create(document=document, opened_by=actor)
+
+    decided = record_publication_decision(
+        review=review,
+        decision=PublicationReview.Status.APPROVED,
+        actor=actor,
+        reason="Rights and metadata approved",
+    )
+
+    audit_log = AuditLog.objects.get(
+        event_type="publication_review_approved",
+        target_id=str(document.pk),
+    )
+    assert decided.status == PublicationReview.Status.APPROVED
+    assert audit_log.summary.startswith("Publication review approved for ")
+    assert len(audit_log.summary) == 240
 
 
 @pytest.mark.django_db

@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.auth.models import Permission
 from django.test import RequestFactory
 import pytest
 
@@ -36,6 +37,36 @@ def test_operations_admin_search_filter_and_readonly_configuration():
     assert "document__title" in review_admin.search_fields
     assert "status" in ticket_admin.list_filter
     assert "user__email" in ticket_admin.search_fields
+
+
+@pytest.mark.django_db
+def test_workflow_admin_actions_are_registered_for_users_with_change_permission():
+    actor = create_user(email="admin-action-user@example.ga", is_staff=True)
+    actor.user_permissions.add(
+        Permission.objects.get(codename="change_publicationreview"),
+        Permission.objects.get(codename="change_supportticket"),
+    )
+    request = RequestFactory().get("/admin/operations/")
+    request.user = actor
+
+    review_actions = admin.site._registry[PublicationReview].get_actions(request)
+    ticket_actions = admin.site._registry[SupportTicket].get_actions(request)
+
+    assert {"approve_reviews", "reject_reviews", "cancel_reviews"} <= review_actions.keys()
+    assert "resolve_tickets" in ticket_actions
+
+
+@pytest.mark.django_db
+def test_workflow_admin_actions_are_hidden_without_change_permission():
+    actor = create_user(email="admin-action-denied@example.ga", is_staff=True)
+    request = RequestFactory().get("/admin/operations/")
+    request.user = actor
+
+    review_actions = admin.site._registry[PublicationReview].get_actions(request)
+    ticket_actions = admin.site._registry[SupportTicket].get_actions(request)
+
+    assert not {"approve_reviews", "reject_reviews", "cancel_reviews"} & review_actions.keys()
+    assert "resolve_tickets" not in ticket_actions
 
 
 @pytest.mark.django_db

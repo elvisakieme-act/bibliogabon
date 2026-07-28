@@ -10,6 +10,12 @@ class AuditLogQuerySet(models.QuerySet):
     def delete(self, *args, **kwargs):
         raise ValueError("Audit logs are immutable")
 
+    def update(self, *args, **kwargs):
+        raise ValueError("Audit logs are immutable")
+
+    def bulk_update(self, *args, **kwargs):
+        raise ValueError("Audit logs are immutable")
+
 
 class AuditLogManager(models.Manager.from_queryset(AuditLogQuerySet)):
     pass
@@ -20,7 +26,7 @@ class AuditLog(models.Model):
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         related_name="operations_audit_logs",
     )
     event_type = models.CharField(max_length=80, db_index=True)

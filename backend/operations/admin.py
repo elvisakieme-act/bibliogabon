@@ -31,21 +31,22 @@ class AuditLogAdmin(admin.ModelAdmin):
 
 @admin.register(PublicationReview)
 class PublicationReviewAdmin(admin.ModelAdmin):
+    actions = ["approve_reviews", "reject_reviews", "cancel_reviews"]
     list_display = ["document", "status", "reviewer", "opened_by", "decided_by", "opened_at", "decided_at"]
     list_filter = ["status", "opened_at", "decided_at"]
     search_fields = ["document__title", "reviewer__email", "opened_by__email", "decided_by__email", "decision_reason", "internal_notes"]
     autocomplete_fields = ["document", "opened_by", "reviewer", "decided_by"]
     readonly_fields = ["status", "decided_by", "opened_at", "decided_at", "created_at", "updated_at"]
 
-    @admin.action(description="Approve selected publication reviews")
+    @admin.action(description="Approve selected publication reviews", permissions=["change"])
     def approve_reviews(self, request, queryset):
         self._record_decisions(request, queryset, PublicationReview.Status.APPROVED)
 
-    @admin.action(description="Reject selected publication reviews")
+    @admin.action(description="Reject selected publication reviews", permissions=["change"])
     def reject_reviews(self, request, queryset):
         self._record_decisions(request, queryset, PublicationReview.Status.REJECTED)
 
-    @admin.action(description="Cancel selected publication reviews")
+    @admin.action(description="Cancel selected publication reviews", permissions=["change"])
     def cancel_reviews(self, request, queryset):
         self._record_decisions(request, queryset, PublicationReview.Status.CANCELLED)
 
@@ -65,6 +66,7 @@ class PublicationReviewAdmin(admin.ModelAdmin):
 
 @admin.register(SupportTicket)
 class SupportTicketAdmin(admin.ModelAdmin):
+    actions = ["resolve_tickets"]
     list_display = ["title", "status", "priority", "assigned_to", "user", "organization", "opened_at", "resolved_at"]
     list_filter = ["status", "priority", "opened_at", "resolved_at"]
     search_fields = [
@@ -88,7 +90,7 @@ class SupportTicketAdmin(admin.ModelAdmin):
     ]
     readonly_fields = ["status", "resolved_at", "created_at", "updated_at"]
 
-    @admin.action(description="Resolve selected support tickets")
+    @admin.action(description="Resolve selected support tickets", permissions=["change"])
     def resolve_tickets(self, request, queryset):
         try:
             with transaction.atomic():
