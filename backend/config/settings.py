@@ -1,5 +1,6 @@
-from pathlib import Path
 import os
+from datetime import timedelta
+from pathlib import Path
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -21,6 +22,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
+    "api",
     "accounts",
     "catalog",
     "document_ingestion",
@@ -105,3 +111,34 @@ validate_production_settings(
 )
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGGING = build_logging_config(os.getenv("DJANGO_LOG_LEVEL", "INFO"))
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.AllowAny",
+    ),
+    "DEFAULT_PAGINATION_CLASS": "api.v1.pagination.StandardResultsSetPagination",
+    "PAGE_SIZE": 20,
+    "EXCEPTION_HANDLER": "api.v1.errors.api_exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=14),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "BiblioGABON API",
+    "DESCRIPTION": "Public REST API for BiblioGABON.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
+}
