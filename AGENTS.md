@@ -2,31 +2,30 @@
 
 ## Project Structure & Module Organization
 
-This repository currently contains planning documents for the BiblioGABON backend, not runnable source code. The root files are:
+This repository contains the BiblioGABON Django backend and product planning documents. Backend code lives in `backend/`, with Django apps such as `accounts`, `catalog`, `document_reader`, `billing`, `operations`, and `analytics`. Technical specs and implementation plans live under `docs/`; operational runbooks live under `docs/operations/`.
 
-- `piliers.md`: backend pillars covering ingestion, page streaming/DRM, full-text search, and mobile-money payments.
-- `Application backend architecture BiblioGABON.docx`: architecture reference material.
+## Build, Test, And Development Commands
 
-When source code is added, keep it in a clear application directory such as `src/`, `app/`, or the framework default. Mirror code organization in `tests/`, place long-form design notes in `docs/`, and reserve `assets/` for diagrams, static fixtures, or sample files. Organize backend modules around the documented domains: ingestion workers, document page delivery, search indexing, subscription/session checks, and payment webhooks.
+Run backend commands from `backend/`:
 
-## Build, Test, and Development Commands
-
-No package manifest, Makefile, or test runner is present yet. Add exact commands to `README.md` and update this file when the stack is chosen. Expected future examples:
-
-- `npm install` or `pip install -r requirements.txt`: install project dependencies.
-- `npm test` or `pytest`: run the automated test suite.
-- `npm run dev` or `uvicorn app.main:app --reload`: start a local development server.
-
-Run commands from the repository root unless a tool-specific document says otherwise.
+- `.\.venv\Scripts\python.exe -m pytest -q`: run the full test suite.
+- `.\.venv\Scripts\python.exe manage.py check` (`python manage.py check` when the venv Python is on PATH): run Django system checks.
+- `.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run`: confirm migrations are committed.
+- `.\.venv\Scripts\python.exe manage.py migrate`: apply local migrations.
+- `.\.venv\Scripts\python.exe manage.py runserver`: start the local Django server.
 
 ## Coding Style & Naming Conventions
 
-Follow the formatter and linter for the selected language. Use 2-space indentation for JavaScript, TypeScript, JSON, and YAML; use 4-space indentation for Python. Prefer descriptive domain names such as `ingestion_worker`, `signed_page_url`, `search_index`, and `payment_webhook`. Keep configuration values in environment variables and document required names in `.env.example`, never in committed secrets.
+Use Python 3.12 and Django conventions. Keep models, services, admin classes, URLs, and tests close to their app. Use 4-space indentation, descriptive domain names, and small service functions for cross-model behavior. Keep secrets and environment-specific values in environment variables and document them in `backend/.env.example`.
 
 ## Testing Guidelines
 
-Add tests with each implementation change. Mirror source paths under `tests/` and use explicit names such as `test_payment_webhook_rejects_invalid_signature.py` or `signed-page-url.spec.ts`. Prioritize coverage for document ingestion, access control, signed URL expiry, subscription/device checks, search indexing, and mobile-money webhook state transitions.
+Use pytest and pytest-django. Add tests with every behavior change, and prefer tests that exercise real model/service behavior. Keep app tests under `backend/<app>/tests/`. Cover success, denial, idempotency, privacy, and boundary conditions for reader access, billing, operations, analytics, and launch hardening.
 
 ## Commit & Pull Request Guidelines
 
-This checkout has no Git history available, so no existing commit convention can be inferred. Use short, imperative commit messages such as `Add ingestion architecture notes` or `Implement payment webhook validation`. Pull requests should include a concise description, linked issue when available, test results, and screenshots or sample API responses for user-facing behavior.
+Use short imperative commit messages with a conventional prefix, such as `feat: add health endpoint`, `fix: harden production settings`, or `docs: add backup runbook`. Pull requests should include a concise summary, linked issue when available, test results, migration notes, and screenshots or sample API responses for user-facing behavior.
+
+## Security & Configuration Tips
+
+Never commit secrets, raw document files, payment credentials, or production database URLs. Production settings must use `DJANGO_ENV=production`, `DJANGO_DEBUG=False`, explicit allowed hosts, HTTPS CSRF trusted origins, secure cookies, and private document storage.
