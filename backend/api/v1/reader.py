@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.v1.errors import error_response
+from api.v1.serializers import (
+    ErrorResponseSerializer,
+    ReaderPageSerializer,
+    ReaderSessionCreateSerializer,
+    ReaderSessionSerializer,
+)
 from catalog.models import Document
 from document_reader.exceptions import ReaderAccessDenied, ReaderPageUnavailable, ReaderSessionInactive
 from document_reader.models import ReaderSession
@@ -28,6 +35,17 @@ def _user_agent(request) -> str:
 
 
 class ReaderSessionCreateView(APIView):
+    @extend_schema(
+        tags=["Reader"],
+        request=ReaderSessionCreateSerializer,
+        responses={
+            201: ReaderSessionSerializer,
+            400: ErrorResponseSerializer,
+            401: ErrorResponseSerializer,
+            403: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+    )
     def post(self, request):
         document_id = request.data.get("document_id")
         if not document_id:
@@ -77,6 +95,14 @@ class ReaderSessionCreateView(APIView):
 
 
 class ReaderPageView(APIView):
+    @extend_schema(
+        tags=["Reader"],
+        responses={
+            200: ReaderPageSerializer,
+            403: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+    )
     def get(self, request, session_key, page_number: int):
         try:
             session = ReaderSession.objects.select_related("user", "document", "version").get(
@@ -97,6 +123,10 @@ class ReaderPageView(APIView):
 
 
 class ReaderSessionDeleteView(APIView):
+    @extend_schema(
+        tags=["Reader"],
+        responses={204: None, 403: ErrorResponseSerializer},
+    )
     def delete(self, request, session_key):
         try:
             session = ReaderSession.objects.get(session_key=session_key)

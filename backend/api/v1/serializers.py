@@ -71,3 +71,24 @@ class ErrorDetailSerializer(serializers.Serializer):
 
 class ErrorResponseSerializer(serializers.Serializer):
     error = ErrorDetailSerializer(read_only=True)
+
+
+class ReaderSessionCreateSerializer(serializers.Serializer):
+    document_id = serializers.IntegerField(min_value=1)
+
+
+class ReaderSessionSerializer(serializers.Serializer):
+    session_key = serializers.UUIDField(read_only=True)
+    document_id = serializers.IntegerField(read_only=True)
+    version_id = serializers.IntegerField(read_only=True)
+    expires_at = serializers.DateTimeField(read_only=True)
+
+
+class ReaderPageSerializer(serializers.Serializer):
+    session_key = serializers.UUIDField(read_only=True)
+    document_id = serializers.IntegerField(read_only=True)
+    version_id = serializers.IntegerField(read_only=True)
+    page_number = serializers.IntegerField(read_only=True)
+    page_count = serializers.IntegerField(read_only=True)
+    language_code = serializers.CharField(read_only=True)
+    text = serializers.CharField(read_only=True)

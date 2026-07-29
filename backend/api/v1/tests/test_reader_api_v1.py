@@ -1,6 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from drf_spectacular.generators import SchemaGenerator
 from rest_framework.test import APIClient
 
 from accounts.models import Entitlement
@@ -162,3 +163,79 @@ def test_delete_reader_session_returns_204():
     )
 
     assert response.status_code == 204
+
+
+@pytest.mark.django_db
+def test_authenticated_user_cannot_read_another_users_reader_session():
+    client = APIClient()
+    owner_access, _ = create_user_and_token(client, email="reader-owner@example.ga")
+    attacker_access, _ = create_user_and_token(client, email="reader-attacker@example.ga")
+    document = create_readable_document(slug="reader-v1-owner-session")
+    session_response = client.post(
+        "/api/v1/reader/sessions/",
+        {"document_id": document.pk},
+        format="json",
+        **auth_headers(owner_access),
+    )
+
+    response = client.get(
+        f"/api/v1/reader/sessions/{session_response.json()['session_key']}/pages/1/",
+        **auth_headers(attacker_access),
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "access_denied"
+
+
+@pytest.mark.django_db
+def test_reader_page_access_is_denied_after_entitlement_revocation():
+    client = APIClient()
+    access, user = create_user_and_token(client)
+    document = create_readable_document(
+        slug="reader-v1-revoked-entitlement",
+        access_model=Document.AccessModel.SUBSCRIPTION,
+    )
+    entitlement = Entitlement.objects.create(
+        user=user,
+        source=Entitlement.Source.INDIVIDUAL_SUBSCRIPTION,
+        access_right=Entitlement.AccessRight.READ,
+        scope_type=Entitlement.ScopeType.DOCUMENT,
+        scope_id=document.entitlement_scope_id,
+        starts_at=timezone.now() - timezone.timedelta(minutes=5),
+        ends_at=timezone.now() + timezone.timedelta(minutes=30),
+    )
+    session_response = client.post(
+        "/api/v1/reader/sessions/",
+        {"document_id": document.pk},
+        format="json",
+        **auth_headers(access),
+    )
+    entitlement.revoked_at = timezone.now()
+    entitlement.save(update_fields=["revoked_at", "updated_at"])
+
+    response = client.get(
+        f"/api/v1/reader/sessions/{session_response.json()['session_key']}/pages/1/",
+        **auth_headers(access),
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "entitlement_required"
+
+
+def test_openapi_schema_documents_reader_endpoints():
+    paths = SchemaGenerator().get_schema(request=None, public=True)["paths"]
+
+    expected_operations = {
+        "/api/v1/reader/sessions/": {"post": {"201", "400", "401", "403", "404"}},
+        "/api/v1/reader/sessions/{session_key}/pages/{page_number}/": {
+            "get": {"200", "403", "404"}
+        },
+        "/api/v1/reader/sessions/{session_key}/": {"delete": {"204", "403"}},
+    }
+
+    for path, operations in expected_operations.items():
+        for method, response_codes in operations.items():
+            operation = paths[path][method]
+            assert response_codes <= set(operation["responses"])
+            if method == "post":
+                assert "requestBody" in operation
