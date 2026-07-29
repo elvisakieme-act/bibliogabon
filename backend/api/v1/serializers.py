@@ -3,6 +3,9 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from document_ingestion.models import DocumentVersion
+from document_reader.services import document_requires_entitlement, user_can_read_document
+
 
 def serialize_user(user) -> dict:
     return {
@@ -92,3 +95,106 @@ class ReaderPageSerializer(serializers.Serializer):
     page_count = serializers.IntegerField(read_only=True)
     language_code = serializers.CharField(read_only=True)
     text = serializers.CharField(read_only=True)
+
+
+def _ordered_authors(document) -> list[dict]:
+    return [
+        {
+            "id": authorship.author_id,
+            "display_name": authorship.author.display_name,
+            "role": authorship.role,
+        }
+        for authorship in document.document_authors.select_related("author").order_by("position")
+    ]
+
+
+def _page_count(document) -> int | None:
+    version = (
+        DocumentVersion.objects.filter(document=document, is_current=True)
+        .order_by("-created_at")
+        .first()
+    )
+    return version.page_count if version else None
+
+
+def _access_block(document, user=None) -> dict:
+    access_model = document.access_model
+    if user_can_read_document(user, document):
+        reason = "free" if not document_requires_entitlement(document) else "active_entitlement"
+        return {"can_read": True, "access_model": access_model, "reason": reason}
+    if document_requires_entitlement(document) and not getattr(user, "is_authenticated", False):
+        return {"can_read": False, "access_model": access_model, "reason": "authentication_required"}
+    if document_requires_entitlement(document):
+        return {"can_read": False, "access_model": access_model, "reason": "entitlement_required"}
+    return {"can_read": False, "access_model": access_model, "reason": "unavailable"}
+
+
+def serialize_document_metadata(document, user=None) -> dict:
+    domain = None
+    if document.academic_domain_id:
+        domain = {
+            "id": document.academic_domain_id,
+            "name": document.academic_domain.name,
+            "slug": document.academic_domain.slug,
+        }
+    owner = document.owner_organization.name if document.owner_organization_id else None
+    return {
+        "id": document.pk,
+        "slug": document.slug,
+        "title": document.title,
+        "abstract": document.abstract,
+        "language_code": document.language_code,
+        "publication_year": document.publication_year,
+        "document_type": document.category,
+        "access_model": document.access_model,
+        "domain": domain,
+        "authors": _ordered_authors(document),
+        "owner": owner,
+        "page_count": _page_count(document),
+        "cover": None,
+        "access": _access_block(document, user=user),
+    }
+
+
+class DocumentMetadataSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    slug = serializers.CharField(read_only=True)
+    title = serializers.CharField(read_only=True)
+    abstract = serializers.CharField(read_only=True)
+    language_code = serializers.CharField(read_only=True)
+    publication_year = serializers.IntegerField(read_only=True, allow_null=True)
+    document_type = serializers.CharField(read_only=True)
+    access_model = serializers.CharField(read_only=True)
+    domain = serializers.DictField(read_only=True, allow_null=True)
+    authors = serializers.ListField(child=serializers.DictField(), read_only=True)
+    owner = serializers.CharField(read_only=True, allow_null=True)
+    page_count = serializers.IntegerField(read_only=True, allow_null=True)
+    cover = serializers.URLField(read_only=True, allow_null=True)
+    access = serializers.DictField(read_only=True)
+
+
+class DomainSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    slug = serializers.CharField(read_only=True)
+
+
+class AuthorMetadataSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    display_name = serializers.CharField(read_only=True)
+    author_type = serializers.CharField(read_only=True)
+
+
+class SearchResultSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    title = serializers.CharField(read_only=True)
+    slug = serializers.CharField(read_only=True)
+    abstract = serializers.CharField(read_only=True)
+    language_code = serializers.CharField(read_only=True)
+    publication_year = serializers.IntegerField(read_only=True, allow_null=True)
+    domain = serializers.DictField(read_only=True, allow_null=True)
+    authors = serializers.ListField(child=serializers.CharField(), read_only=True)
+    access_model = serializers.CharField(read_only=True)
+    indexed_page_count = serializers.IntegerField(read_only=True)
+    score = serializers.IntegerField(read_only=True)
+    text_match = serializers.BooleanField(read_only=True)
