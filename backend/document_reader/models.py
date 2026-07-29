@@ -143,3 +143,64 @@ class PageAccessLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} read {self.document} page {self.page_number}"
+
+
+class FavoriteDocument(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="favorite_documents",
+    )
+    document = models.ForeignKey(
+        "catalog.Document",
+        on_delete=models.CASCADE,
+        related_name="favorited_by",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "document"], name="uniq_favorite_document_per_user"),
+        ]
+        indexes = [
+            models.Index(fields=["user", "created_at"], name="favorite_user_created_idx"),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.user} favorite {self.document}"
+
+
+class ReadingProgress(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="reading_progress",
+    )
+    document = models.ForeignKey(
+        "catalog.Document",
+        on_delete=models.CASCADE,
+        related_name="reading_progress",
+    )
+    last_page_number = models.PositiveIntegerField()
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "document"],
+                name="uniq_reading_progress_per_user_document",
+            ),
+            models.CheckConstraint(
+                condition=Q(last_page_number__gte=1),
+                name="reading_progress_page_positive",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "updated_at"], name="reading_progress_user_time_idx"),
+        ]
+        ordering = ["-updated_at"]
+
+    def __str__(self) -> str:
+        return f"{self.user} progress {self.document} page {self.last_page_number}"

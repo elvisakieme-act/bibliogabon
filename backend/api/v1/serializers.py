@@ -226,3 +226,36 @@ class SearchResultPageSerializer(serializers.Serializer):
     next = serializers.URLField(read_only=True, allow_null=True)
     previous = serializers.URLField(read_only=True, allow_null=True)
     results = SearchResultSerializer(many=True, read_only=True)
+
+
+class FavoriteCreateSerializer(serializers.Serializer):
+    document_id = serializers.IntegerField(min_value=1)
+
+
+class FavoriteSerializer(serializers.Serializer):
+    document = DocumentMetadataSerializer(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+
+class FavoritePageSerializer(serializers.Serializer):
+    count = serializers.IntegerField(read_only=True)
+    next = serializers.URLField(read_only=True, allow_null=True)
+    previous = serializers.URLField(read_only=True, allow_null=True)
+    results = FavoriteSerializer(many=True, read_only=True)
+
+
+class ReadingProgressUpdateSerializer(serializers.Serializer):
+    last_page_number = serializers.IntegerField(min_value=1)
+
+
+class ReadingProgressSerializer(serializers.Serializer):
+    document = DocumentMetadataSerializer(read_only=True)
+    last_page_number = serializers.IntegerField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+
+
+class ReadingProgressPageSerializer(serializers.Serializer):
+    count = serializers.IntegerField(read_only=True)
+    next = serializers.URLField(read_only=True, allow_null=True)
+    previous = serializers.URLField(read_only=True, allow_null=True)
+    results = ReadingProgressSerializer(many=True, read_only=True)

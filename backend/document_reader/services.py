@@ -10,7 +10,7 @@ from catalog.models import Document
 from document_ingestion.models import DocumentVersion
 from document_processing.models import DocumentPage, ExtractedText
 from document_reader.exceptions import ReaderAccessDenied, ReaderPageUnavailable, ReaderSessionInactive
-from document_reader.models import PageAccessLog, ReaderSession
+from document_reader.models import FavoriteDocument, PageAccessLog, ReaderSession, ReadingProgress
 
 
 RESTRICTED_ACCESS_MODELS = {
@@ -81,6 +81,33 @@ def get_current_processed_version(document: Document) -> DocumentVersion:
     return versions[0]
 
 
+def favorite_document(user, document: Document) -> tuple[FavoriteDocument, bool]:
+    if not document_is_reader_accessible(document):
+        raise ReaderAccessDenied("Document is not discoverable")
+    return FavoriteDocument.objects.get_or_create(user=user, document=document)
+
+
+def remove_favorite(user, document: Document) -> bool:
+    deleted_count, _ = FavoriteDocument.objects.filter(user=user, document=document).delete()
+    return deleted_count > 0
+
+
+def record_reading_progress(user, document: Document, last_page_number: int) -> ReadingProgress:
+    if last_page_number < 1:
+        raise ReaderPageUnavailable("last_page_number must be positive")
+    if not user_can_read_document(user, document):
+        raise ReaderAccessDenied("User cannot record progress for this document")
+    version = get_current_processed_version(document)
+    if last_page_number > version.page_count:
+        raise ReaderPageUnavailable("last_page_number is outside the readable document range")
+    progress, _ = ReadingProgress.objects.update_or_create(
+        user=user,
+        document=document,
+        defaults={"last_page_number": last_page_number},
+    )
+    return progress
+
+
 def start_reader_session(
     *,
     user,
@@ -90,6 +117,8 @@ def start_reader_session(
     at=None,
 ) -> ReaderSession:
     at = at or timezone.now()
+    if user is not None and not _user_is_authenticated(user):
+        raise ReaderAccessDenied("Anonymous users must be represented as None")
     if not user_can_read_document(user, document, at=at):
         raise ReaderAccessDenied("User cannot read this document")
 

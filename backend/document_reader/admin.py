@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from document_reader.models import PageAccessLog, ReaderSession
+from document_reader.models import FavoriteDocument, PageAccessLog, ReaderSession, ReadingProgress
 
 
 @admin.register(ReaderSession)
@@ -19,3 +19,17 @@ class PageAccessLogAdmin(admin.ModelAdmin):
     search_fields = ["user__email", "document__title", "session__session_key"]
     autocomplete_fields = ["session", "page", "user", "document"]
     readonly_fields = ["accessed_at"]
+
+
+@admin.register(FavoriteDocument)
+class FavoriteDocumentAdmin(admin.ModelAdmin):
+    list_display = ["user", "document", "created_at"]
+    search_fields = ["user__email", "document__title"]
+    list_filter = ["created_at"]
+
+
+@admin.register(ReadingProgress)
+class ReadingProgressAdmin(admin.ModelAdmin):
+    list_display = ["user", "document", "last_page_number", "updated_at"]
+    search_fields = ["user__email", "document__title"]
+    list_filter = ["updated_at"]
