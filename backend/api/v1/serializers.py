@@ -31,3 +31,43 @@ class RegisterSerializer(serializers.Serializer):
 class CurrentUserUpdateSerializer(serializers.Serializer):
     display_name = serializers.CharField(required=False, allow_blank=True, max_length=160)
     phone_number = serializers.CharField(required=False, allow_blank=True, max_length=32)
+
+
+class UserSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+    display_name = serializers.CharField(read_only=True)
+    account_type = serializers.CharField(read_only=True)
+
+
+class TokenPairSerializer(serializers.Serializer):
+    access = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(read_only=True)
+
+
+class TokenRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+
+class TokenRefreshRequestSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+
+class RegisterResponseSerializer(serializers.Serializer):
+    user = UserSerializer(read_only=True)
+    tokens = TokenPairSerializer(read_only=True)
+
+
+class ErrorDetailSerializer(serializers.Serializer):
+    code = serializers.CharField(read_only=True)
+    message = serializers.CharField(read_only=True)
+    field_errors = serializers.DictField(read_only=True)
+
+
+class ErrorResponseSerializer(serializers.Serializer):
+    error = ErrorDetailSerializer(read_only=True)
