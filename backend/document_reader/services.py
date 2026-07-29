@@ -57,12 +57,12 @@ def _user_has_document_read_entitlement(user, document: Document, at=None) -> bo
 
 
 def user_can_read_document(user, document: Document, at=None) -> bool:
-    if not _user_is_authenticated(user):
-        return False
     if not document_is_reader_accessible(document):
         return False
     if not document_requires_entitlement(document):
         return document.access_model == Document.AccessModel.FREE
+    if not _user_is_authenticated(user):
+        return False
     return _user_has_document_read_entitlement(user, document, at=at)
 
 

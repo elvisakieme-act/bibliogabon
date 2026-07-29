@@ -19,6 +19,8 @@ class ReaderSession(models.Model):
     session_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
         on_delete=models.CASCADE,
         related_name="reader_sessions",
     )
@@ -80,7 +82,8 @@ class ReaderSession(models.Model):
         return super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f"{self.user} reading {self.document}"
+        reader = self.user if self.user_id else "anonymous"
+        return f"{reader} reading {self.document}"
 
 
 class PageAccessLog(models.Model):
@@ -96,6 +99,8 @@ class PageAccessLog(models.Model):
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
         on_delete=models.PROTECT,
         related_name="page_access_logs",
     )

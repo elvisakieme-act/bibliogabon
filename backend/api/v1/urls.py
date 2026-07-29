@@ -7,6 +7,7 @@ from api.v1.auth import (
     LogoutView,
     RegisterView,
 )
+from api.v1.reader import ReaderPageView, ReaderSessionCreateView, ReaderSessionDeleteView
 from api.v1.views import api_index
 
 app_name = "api-v1"
@@ -18,4 +19,15 @@ urlpatterns = [
     path("auth/token/refresh/", DocumentedTokenRefreshView.as_view(), name="token-refresh"),
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("me/", CurrentUserView.as_view(), name="me"),
+    path("reader/sessions/", ReaderSessionCreateView.as_view(), name="reader-session-create"),
+    path(
+        "reader/sessions/<uuid:session_key>/pages/<int:page_number>/",
+        ReaderPageView.as_view(),
+        name="reader-page",
+    ),
+    path(
+        "reader/sessions/<uuid:session_key>/",
+        ReaderSessionDeleteView.as_view(),
+        name="reader-session-delete",
+    ),
 ]
