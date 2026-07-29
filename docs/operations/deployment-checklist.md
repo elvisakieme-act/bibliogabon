@@ -30,7 +30,7 @@ python manage.py check --deploy
 
 ## Smoke Checks
 
-- Request `/health/` and confirm HTTP 200.
+- Request `GET /health/` and confirm HTTP 200. The health probe is GET-only.
 - Sign in to Django Admin with a staff account.
 - Open one published free document in the reader.
 - Run one search query that should return a known published document.

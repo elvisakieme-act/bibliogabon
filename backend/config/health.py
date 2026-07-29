@@ -10,10 +10,9 @@ def database_is_healthy() -> bool:
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-            cursor.fetchone()
+            return cursor.fetchone() == (1,)
     except Exception:
         return False
-    return True
 
 
 @never_cache

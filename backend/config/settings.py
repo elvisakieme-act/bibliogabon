@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 from config.env import env_bool, env_int, env_list, validate_django_env, validate_production_settings
 from config.logconfig import build_logging_config
@@ -63,9 +64,13 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+if DJANGO_ENV == "production" and not DATABASE_URL:
+    raise ImproperlyConfigured("DATABASE_URL is required in production")
+
 DATABASES = {
     "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        default=DATABASE_URL or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=60,
     )
 }

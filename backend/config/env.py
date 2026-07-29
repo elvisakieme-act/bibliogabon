@@ -76,6 +76,8 @@ def validate_production_settings(
         raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS must include a non-local production host")
     if not csrf_trusted_origins:
         raise ImproperlyConfigured("DJANGO_CSRF_TRUSTED_ORIGINS is required in production")
+    if any(not origin.startswith("https://") for origin in csrf_trusted_origins):
+        raise ImproperlyConfigured("DJANGO_CSRF_TRUSTED_ORIGINS must use HTTPS in production")
     if not secure_ssl_redirect:
         raise ImproperlyConfigured("DJANGO_SECURE_SSL_REDIRECT must be True in production")
     if not session_cookie_secure:

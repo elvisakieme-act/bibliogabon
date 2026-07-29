@@ -1,5 +1,7 @@
 import pytest
 
+from config.health import database_is_healthy
+
 
 @pytest.mark.django_db
 def test_health_endpoint_returns_ok_when_database_responds(client):
@@ -49,3 +51,26 @@ def test_health_payload_contains_no_sensitive_domain_data(client):
     ]
     for term in forbidden_terms:
         assert term not in payload_text
+
+
+def test_database_is_healthy_requires_expected_query_result(monkeypatch):
+    class Cursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+        def execute(self, query):
+            assert query == "SELECT 1"
+
+        def fetchone(self):
+            return None
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+    monkeypatch.setattr("config.health.connection", Connection())
+
+    assert database_is_healthy() is False

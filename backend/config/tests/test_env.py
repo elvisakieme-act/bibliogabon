@@ -1,3 +1,8 @@
+import os
+from pathlib import Path
+import subprocess
+import sys
+
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 
@@ -108,3 +113,64 @@ def test_validate_production_settings_accepts_hardened_values():
         session_cookie_secure=True,
         csrf_cookie_secure=True,
     )
+
+
+SETTINGS_ENVIRONMENT_NAMES = [
+    "DATABASE_URL",
+    "DJANGO_ALLOWED_HOSTS",
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    "DJANGO_CSRF_COOKIE_SECURE",
+    "DJANGO_DEBUG",
+    "DJANGO_ENV",
+    "DJANGO_SECRET_KEY",
+    "DJANGO_SECURE_SSL_REDIRECT",
+    "DJANGO_SESSION_COOKIE_SECURE",
+]
+
+
+def import_production_settings(**environment):
+    env = os.environ.copy()
+    for name in SETTINGS_ENVIRONMENT_NAMES:
+        env.pop(name, None)
+    env.update(
+        {
+            "DJANGO_ENV": "production",
+            "DJANGO_SECRET_KEY": "a-production-secret-key",
+            "DJANGO_DEBUG": "False",
+            "DJANGO_ALLOWED_HOSTS": "bibliogabon.ga",
+            "DJANGO_CSRF_TRUSTED_ORIGINS": "https://bibliogabon.ga",
+            "DJANGO_SECURE_SSL_REDIRECT": "True",
+            "DJANGO_SESSION_COOKIE_SECURE": "True",
+            "DJANGO_CSRF_COOKIE_SECURE": "True",
+            "DATABASE_URL": "postgres://bibliogabon:secret@localhost:5432/bibliogabon",
+            **environment,
+        }
+    )
+    return subprocess.run(
+        [sys.executable, "-c", "import config.settings"],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_production_settings_import_with_valid_configuration():
+    result = import_production_settings()
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_production_settings_import_rejects_missing_database_url():
+    result = import_production_settings(DATABASE_URL="")
+
+    assert result.returncode != 0
+    assert "DATABASE_URL is required in production" in result.stderr
+
+
+def test_production_settings_import_rejects_non_https_csrf_trusted_origin():
+    result = import_production_settings(DJANGO_CSRF_TRUSTED_ORIGINS="http://bibliogabon.ga")
+
+    assert result.returncode != 0
+    assert "DJANGO_CSRF_TRUSTED_ORIGINS must use HTTPS in production" in result.stderr

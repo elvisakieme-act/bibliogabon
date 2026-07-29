@@ -21,7 +21,7 @@ Restore into a clean database first:
 ```bash
 createdb bibliogabon_restore_test
 pg_restore --dbname=bibliogabon_restore_test backup-file.dump
-psql "$RESTORE_DATABASE_URL" -c "select count(*) from django_migrations;"
+psql --dbname=bibliogabon_restore_test -c "select count(*) from django_migrations;"
 ```
 
 Only restore production after the restore test succeeds and the service owner approves the downtime window.
@@ -35,6 +35,8 @@ Before a risky migration, snapshot or sync the bucket with a provider-approved c
 ```bash
 aws s3 sync "s3://$DOCUMENT_STORAGE_BUCKET/$DOCUMENT_STORAGE_KEY_PREFIX/" "./storage-backup/" --only-show-errors
 ```
+
+Record the storage backup bucket, prefix, local sync location, timestamp, and operator with the backup record.
 
 Do not make raw document files public during backup or restore.
 
