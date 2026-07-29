@@ -17,6 +17,15 @@ def test_api_v1_index_returns_version_payload():
     }
 
 
+def test_api_v1_index_does_not_negotiate_html():
+    client = APIClient()
+
+    response = client.get("/api/v1/", HTTP_ACCEPT="text/html")
+
+    assert response.status_code == 406
+    assert response["Content-Type"].startswith("application/json")
+
+
 def test_openapi_schema_route_exists():
     client = APIClient()
 
