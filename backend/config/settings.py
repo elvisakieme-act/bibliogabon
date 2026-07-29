@@ -4,6 +4,7 @@ import os
 import dj_database_url
 
 from config.env import env_bool, env_int, env_list, validate_django_env, validate_production_settings
+from config.logconfig import build_logging_config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -98,3 +99,4 @@ validate_production_settings(
     csrf_cookie_secure=CSRF_COOKIE_SECURE,
 )
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+LOGGING = build_logging_config(os.getenv("DJANGO_LOG_LEVEL", "INFO"))
