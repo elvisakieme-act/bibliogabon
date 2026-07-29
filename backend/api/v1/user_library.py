@@ -44,7 +44,7 @@ def _metadata_prefetches():
 class FavoriteListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(tags=["Personal Library"], responses={200: FavoritePageSerializer, 401: ErrorResponseSerializer})
+    @extend_schema(tags=["Personal Library"], summary="List the current user's favorites", responses={200: FavoritePageSerializer, 401: ErrorResponseSerializer})
     def get(self, request):
         favorites = (
             FavoriteDocument.objects.select_related(
@@ -71,6 +71,7 @@ class FavoriteListCreateView(APIView):
 
     @extend_schema(
         tags=["Personal Library"],
+        summary="Add a document to the current user's favorites",
         request=FavoriteCreateSerializer,
         responses={201: FavoriteSerializer, 200: FavoriteSerializer, 401: ErrorResponseSerializer, 404: ErrorResponseSerializer},
     )
@@ -97,7 +98,7 @@ class FavoriteListCreateView(APIView):
 class FavoriteDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(tags=["Personal Library"], responses={204: None, 401: ErrorResponseSerializer})
+    @extend_schema(tags=["Personal Library"], summary="Remove a document from the current user's favorites", responses={204: None, 401: ErrorResponseSerializer})
     def delete(self, request, document_id: int):
         try:
             document = Document.objects.get(pk=document_id)
@@ -110,7 +111,7 @@ class FavoriteDeleteView(APIView):
 class ReadingProgressListView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(tags=["Personal Library"], responses={200: ReadingProgressPageSerializer, 401: ErrorResponseSerializer})
+    @extend_schema(tags=["Personal Library"], summary="List the current user's reading progress", responses={200: ReadingProgressPageSerializer, 401: ErrorResponseSerializer})
     def get(self, request):
         progress_rows = (
             ReadingProgress.objects.select_related(
@@ -142,6 +143,7 @@ class ReadingProgressUpdateView(APIView):
 
     @extend_schema(
         tags=["Personal Library"],
+        summary="Update the current user's reading progress",
         request=ReadingProgressUpdateSerializer,
         responses={200: ReadingProgressSerializer, 400: ErrorResponseSerializer, 401: ErrorResponseSerializer, 403: ErrorResponseSerializer, 404: ErrorResponseSerializer},
     )

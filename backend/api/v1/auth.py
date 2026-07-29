@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -41,12 +41,28 @@ class RegisterView(APIView):
 
     @extend_schema(
         tags=["Authentication"],
+        summary="Register an individual learner account",
         request=RegisterSerializer,
         responses={
-            201: RegisterResponseSerializer,
-            400: ErrorResponseSerializer,
-            409: ErrorResponseSerializer,
+            201: OpenApiResponse(RegisterResponseSerializer, description="User created with JWT tokens"),
+            400: OpenApiResponse(ErrorResponseSerializer, description="Invalid registration data"),
+            409: OpenApiResponse(ErrorResponseSerializer, description="Email already exists"),
         },
+        examples=[
+            OpenApiExample(
+                "Successful registration",
+                value={
+                    "user": {
+                        "id": 1,
+                        "email": "reader@example.ga",
+                        "display_name": "Reader One",
+                        "account_type": "individual",
+                    },
+                    "tokens": {"access": "<jwt>", "refresh": "<jwt>"},
+                },
+                response_only=True,
+            )
+        ],
     )
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -84,6 +100,7 @@ class LogoutView(APIView):
 
     @extend_schema(
         tags=["Authentication"],
+        summary="Log out the current user",
         request=LogoutSerializer,
         responses={
             204: None,
@@ -123,12 +140,13 @@ class LogoutView(APIView):
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(tags=["Current user"], responses={200: UserSerializer, 401: ErrorResponseSerializer})
+    @extend_schema(tags=["Current user"], summary="Retrieve the current user", responses={200: UserSerializer, 401: ErrorResponseSerializer})
     def get(self, request):
         return Response(serialize_user(request.user), status=status.HTTP_200_OK)
 
     @extend_schema(
         tags=["Current user"],
+        summary="Update the current user",
         request=CurrentUserUpdateSerializer,
         responses={200: UserSerializer, 400: ErrorResponseSerializer, 401: ErrorResponseSerializer},
     )
@@ -146,6 +164,7 @@ class CurrentUserView(APIView):
 class DocumentedTokenObtainPairView(TokenObtainPairView):
     @extend_schema(
         tags=["Authentication"],
+        summary="Obtain JWT tokens",
         request=TokenRequestSerializer,
         responses={200: TokenPairSerializer, 401: ErrorResponseSerializer},
     )
@@ -156,6 +175,7 @@ class DocumentedTokenObtainPairView(TokenObtainPairView):
 class DocumentedTokenRefreshView(TokenRefreshView):
     @extend_schema(
         tags=["Authentication"],
+        summary="Refresh a JWT access token",
         request=TokenRefreshRequestSerializer,
         responses={200: TokenPairSerializer, 401: ErrorResponseSerializer},
     )

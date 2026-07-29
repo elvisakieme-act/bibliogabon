@@ -37,6 +37,8 @@ def _user_agent(request) -> str:
 class ReaderSessionCreateView(APIView):
     @extend_schema(
         tags=["Reader"],
+        summary="Start a controlled reader session",
+        description="Free documents allow anonymous controlled reader sessions. Restricted documents require JWT authentication and active read entitlement.",
         request=ReaderSessionCreateSerializer,
         responses={
             201: ReaderSessionSerializer,
@@ -97,6 +99,8 @@ class ReaderSessionCreateView(APIView):
 class ReaderPageView(APIView):
     @extend_schema(
         tags=["Reader"],
+        summary="Retrieve a controlled reader page",
+        description="Free documents allow anonymous controlled reader sessions. Restricted documents require JWT authentication and active read entitlement.",
         responses={
             200: ReaderPageSerializer,
             403: ErrorResponseSerializer,
@@ -125,6 +129,8 @@ class ReaderPageView(APIView):
 class ReaderSessionDeleteView(APIView):
     @extend_schema(
         tags=["Reader"],
+        summary="End a controlled reader session",
+        description="Free documents allow anonymous controlled reader sessions. Restricted documents require JWT authentication and active read entitlement.",
         responses={204: None, 403: ErrorResponseSerializer},
     )
     def delete(self, request, session_key):

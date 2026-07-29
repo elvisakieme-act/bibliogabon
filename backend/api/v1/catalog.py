@@ -31,7 +31,13 @@ def _published_documents():
 
 
 class DocumentListView(APIView):
-    @extend_schema(tags=["Catalog"], responses={200: DocumentMetadataPageSerializer})
+    @extend_schema(
+        tags=["Catalog"],
+        summary="List public catalog documents",
+        description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
+        operation_id="v1_catalog_documents_list",
+        responses={200: DocumentMetadataPageSerializer},
+    )
     def get(self, request):
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(_published_documents(), request, view=self)
@@ -42,6 +48,9 @@ class DocumentListView(APIView):
 class DocumentDetailView(APIView):
     @extend_schema(
         tags=["Catalog"],
+        summary="Retrieve a public catalog document",
+        description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
+        operation_id="v1_catalog_documents_retrieve",
         responses={200: DocumentMetadataSerializer, 404: ErrorResponseSerializer},
     )
     def get(self, request, document_id: int):
@@ -57,7 +66,12 @@ class DocumentDetailView(APIView):
 
 
 class DomainListView(APIView):
-    @extend_schema(tags=["Catalog"], responses={200: DomainPageSerializer})
+    @extend_schema(
+        tags=["Catalog"],
+        summary="List active academic domains",
+        description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
+        responses={200: DomainPageSerializer},
+    )
     def get(self, request):
         domains = AcademicDomain.objects.filter(is_active=True).order_by("name", "id")
         paginator = StandardResultsSetPagination()
@@ -68,7 +82,12 @@ class DomainListView(APIView):
 
 
 class AuthorListView(APIView):
-    @extend_schema(tags=["Catalog"], responses={200: AuthorMetadataPageSerializer})
+    @extend_schema(
+        tags=["Catalog"],
+        summary="List public catalog authors",
+        description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
+        responses={200: AuthorMetadataPageSerializer},
+    )
     def get(self, request):
         authors = (
             Author.objects.filter(document_authorships__document__in=_published_documents())
@@ -85,6 +104,8 @@ class AuthorListView(APIView):
 class SearchView(APIView):
     @extend_schema(
         tags=["Search"],
+        summary="Search the public catalog",
+        description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
         parameters=[
             OpenApiParameter("q", OpenApiTypes.STR, OpenApiParameter.QUERY),
             OpenApiParameter("domain", OpenApiTypes.STR, OpenApiParameter.QUERY),

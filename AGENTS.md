@@ -9,7 +9,9 @@ This repository contains the BiblioGABON Django backend and product planning doc
 Run backend commands from `backend/`:
 
 - `.\.venv\Scripts\python.exe -m pytest -q`: run the full test suite.
+- `.\.venv\Scripts\python.exe -m pytest api/v1/tests -q`: run the public API V1 tests.
 - `.\.venv\Scripts\python.exe manage.py check` (`python manage.py check` when the venv Python is on PATH): run Django system checks.
+- `.\.venv\Scripts\python.exe manage.py spectacular --file schema.yml`: export the OpenAPI schema.
 - `.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run`: confirm migrations are committed.
 - `.\.venv\Scripts\python.exe manage.py migrate`: apply local migrations.
 - `.\.venv\Scripts\python.exe manage.py runserver`: start the local Django server.
