@@ -10,6 +10,41 @@ def bearer(access_token: str) -> dict:
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("content_type", "body"),
+    [
+        (
+            "application/x-www-form-urlencoded",
+            "email=form%40example.ga&password=StrongPass123%21",
+        ),
+        (
+            "multipart/form-data; boundary=BoUnDaRyStRiNg",
+            (
+                "--BoUnDaRyStRiNg\r\n"
+                'Content-Disposition: form-data; name="email"\r\n\r\n'
+                "multipart@example.ga\r\n"
+                "--BoUnDaRyStRiNg\r\n"
+                'Content-Disposition: form-data; name="password"\r\n\r\n'
+                "StrongPass123!\r\n"
+                "--BoUnDaRyStRiNg--\r\n"
+            ),
+        ),
+    ],
+)
+def test_registration_rejects_non_json_request_bodies(content_type, body):
+    client = APIClient()
+
+    response = client.post(
+        "/api/v1/auth/register/",
+        data=body,
+        content_type=content_type,
+    )
+
+    assert response.status_code == 415
+    assert response.json()["error"]["code"] == "unsupported_media_type"
+
+
+@pytest.mark.django_db
 def test_register_creates_individual_user_and_returns_tokens():
     client = APIClient()
 

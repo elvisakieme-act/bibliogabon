@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import Entitlement
-from accounts.services import user_has_entitlement
+from accounts.services import active_organization_ids_for_user, user_has_entitlement
 from catalog.models import Document
 from document_ingestion.models import DocumentVersion
 from document_processing.models import DocumentPage, ExtractedText
@@ -64,6 +65,61 @@ def user_can_read_document(user, document: Document, at=None) -> bool:
     if not _user_is_authenticated(user):
         return False
     return _user_has_document_read_entitlement(user, document, at=at)
+
+
+def readable_document_ids_for_user(user, documents, at=None) -> set[int]:
+    documents = list(documents)
+    readable_ids = {
+        document.pk
+        for document in documents
+        if document_is_reader_accessible(document)
+        and not document_requires_entitlement(document)
+        and document.access_model == Document.AccessModel.FREE
+    }
+    restricted_documents = [
+        document
+        for document in documents
+        if document_is_reader_accessible(document) and document_requires_entitlement(document)
+    ]
+    if not restricted_documents or not _user_is_authenticated(user):
+        return readable_ids
+
+    at = at or timezone.now()
+    organization_ids = active_organization_ids_for_user(user, at=at)
+    entitlements = Entitlement.objects.filter(
+        Q(user=user) | Q(user__isnull=True, organization_id__in=organization_ids),
+        access_right=Entitlement.AccessRight.READ,
+        scope_type__in=[
+            Entitlement.ScopeType.GLOBAL,
+            Entitlement.ScopeType.DOMAIN,
+            Entitlement.ScopeType.DOCUMENT,
+        ],
+        starts_at__lte=at,
+        revoked_at__isnull=True,
+    ).filter(Q(ends_at__isnull=True) | Q(ends_at__gt=at))
+
+    has_global_access = False
+    domain_scope_ids = set()
+    document_scope_ids = set()
+    for entitlement in entitlements:
+        if entitlement.scope_type == Entitlement.ScopeType.GLOBAL:
+            has_global_access = True
+        elif entitlement.scope_type == Entitlement.ScopeType.DOMAIN:
+            domain_scope_ids.add(entitlement.scope_id)
+        elif entitlement.scope_type == Entitlement.ScopeType.DOCUMENT:
+            document_scope_ids.add(entitlement.scope_id)
+
+    for document in restricted_documents:
+        if (
+            has_global_access
+            or document.entitlement_scope_id in document_scope_ids
+            or (
+                document.academic_domain_id
+                and str(document.academic_domain_id) in domain_scope_ids
+            )
+        ):
+            readable_ids.add(document.pk)
+    return readable_ids
 
 
 def get_current_processed_version(document: Document) -> DocumentVersion:

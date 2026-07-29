@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -46,7 +46,26 @@ class ReaderSessionCreateView(APIView):
             401: ErrorResponseSerializer,
             403: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
+            415: ErrorResponseSerializer,
         },
+        examples=[
+            OpenApiExample(
+                "Reader session request",
+                value={"document_id": 1},
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Reader session",
+                value={
+                    "session_key": "550e8400-e29b-41d4-a716-446655440000",
+                    "document_id": 1,
+                    "version_id": 1,
+                    "expires_at": "2026-07-29T18:00:00Z",
+                },
+                response_only=True,
+                status_codes=["201"],
+            )
+        ],
     )
     def post(self, request):
         document_id = request.data.get("document_id")
@@ -58,7 +77,14 @@ class ReaderSessionCreateView(APIView):
                 field_errors={"document_id": ["This field is required."]},
             )
         try:
-            document = Document.objects.get(pk=document_id)
+            document = (
+                Document.objects.filter(
+                    pk=document_id,
+                    publication_status=Document.PublicationStatus.PUBLISHED,
+                )
+                .exclude(access_model=Document.AccessModel.PRIVATE)
+                .get()
+            )
         except (TypeError, ValueError, Document.DoesNotExist):
             return error_response(
                 code="not_found",
@@ -103,9 +129,26 @@ class ReaderPageView(APIView):
         description="Free documents allow anonymous controlled reader sessions. Restricted documents require JWT authentication and active read entitlement.",
         responses={
             200: ReaderPageSerializer,
+            401: ErrorResponseSerializer,
             403: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
         },
+        examples=[
+            OpenApiExample(
+                "Reader page",
+                value={
+                    "session_key": "550e8400-e29b-41d4-a716-446655440000",
+                    "document_id": 1,
+                    "version_id": 1,
+                    "page_number": 1,
+                    "page_count": 120,
+                    "language_code": "fr",
+                    "text": "Contenu controle de la page.",
+                },
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
     )
     def get(self, request, session_key, page_number: int):
         try:
@@ -131,7 +174,11 @@ class ReaderSessionDeleteView(APIView):
         tags=["Reader"],
         summary="End a controlled reader session",
         description="Free documents allow anonymous controlled reader sessions. Restricted documents require JWT authentication and active read entitlement.",
-        responses={204: None, 403: ErrorResponseSerializer},
+        responses={
+            204: None,
+            401: ErrorResponseSerializer,
+            403: ErrorResponseSerializer,
+        },
     )
     def delete(self, request, session_key):
         try:

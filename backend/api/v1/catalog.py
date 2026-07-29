@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiTypes, extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -14,16 +14,18 @@ from api.v1.serializers import (
     DomainPageSerializer,
     ErrorResponseSerializer,
     SearchResultPageSerializer,
+    document_metadata_prefetches,
     serialize_document_metadata,
 )
 from catalog.models import AcademicDomain, Author, Document
+from document_reader.services import readable_document_ids_for_user
 from search_discovery.services import search_documents
 
 
 def _published_documents():
     return (
         Document.objects.select_related("academic_domain", "owner_organization")
-        .prefetch_related("document_authors__author")
+        .prefetch_related(*document_metadata_prefetches())
         .filter(publication_status=Document.PublicationStatus.PUBLISHED)
         .exclude(access_model=Document.AccessModel.PRIVATE)
         .order_by("title", "id")
@@ -36,12 +38,32 @@ class DocumentListView(APIView):
         summary="List public catalog documents",
         description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
         operation_id="v1_catalog_documents_list",
-        responses={200: DocumentMetadataPageSerializer},
+        responses={
+            200: DocumentMetadataPageSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Catalog page",
+                value={"count": 0, "next": None, "previous": None, "results": []},
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
     )
     def get(self, request):
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(_published_documents(), request, view=self)
-        results = [serialize_document_metadata(document, user=request.user) for document in page]
+        readable_document_ids = readable_document_ids_for_user(request.user, page)
+        results = [
+            serialize_document_metadata(
+                document,
+                user=request.user,
+                readable_document_ids=readable_document_ids,
+            )
+            for document in page
+        ]
         return paginator.get_paginated_response(results)
 
 
@@ -51,7 +73,38 @@ class DocumentDetailView(APIView):
         summary="Retrieve a public catalog document",
         description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
         operation_id="v1_catalog_documents_retrieve",
-        responses={200: DocumentMetadataSerializer, 404: ErrorResponseSerializer},
+        responses={
+            200: DocumentMetadataSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Catalog document",
+                value={
+                    "id": 1,
+                    "slug": "droit-public",
+                    "title": "Droit public",
+                    "abstract": "Introduction au droit public gabonais.",
+                    "language_code": "fr",
+                    "publication_year": 2026,
+                    "document_type": "open_resource",
+                    "access_model": "free",
+                    "domain": {"id": 1, "name": "Droit", "slug": "droit"},
+                    "authors": [],
+                    "owner": None,
+                    "page_count": 120,
+                    "cover": None,
+                    "access": {
+                        "can_read": True,
+                        "access_model": "free",
+                        "reason": "free",
+                    },
+                },
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
     )
     def get(self, request, document_id: int):
         try:
@@ -62,7 +115,15 @@ class DocumentDetailView(APIView):
                 message="Document not found.",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-        return Response(serialize_document_metadata(document, user=request.user), status=status.HTTP_200_OK)
+        readable_document_ids = readable_document_ids_for_user(request.user, [document])
+        return Response(
+            serialize_document_metadata(
+                document,
+                user=request.user,
+                readable_document_ids=readable_document_ids,
+            ),
+            status=status.HTTP_200_OK,
+        )
 
 
 class DomainListView(APIView):
@@ -70,7 +131,24 @@ class DomainListView(APIView):
         tags=["Catalog"],
         summary="List active academic domains",
         description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
-        responses={200: DomainPageSerializer},
+        responses={
+            200: DomainPageSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Domain page",
+                value={
+                    "count": 1,
+                    "next": None,
+                    "previous": None,
+                    "results": [{"id": 1, "name": "Droit", "slug": "droit"}],
+                },
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
     )
     def get(self, request):
         domains = AcademicDomain.objects.filter(is_active=True).order_by("name", "id")
@@ -86,7 +164,30 @@ class AuthorListView(APIView):
         tags=["Catalog"],
         summary="List public catalog authors",
         description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
-        responses={200: AuthorMetadataPageSerializer},
+        responses={
+            200: AuthorMetadataPageSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Author page",
+                value={
+                    "count": 1,
+                    "next": None,
+                    "previous": None,
+                    "results": [
+                        {
+                            "id": 1,
+                            "display_name": "Aline NZE",
+                            "author_type": "person",
+                        }
+                    ],
+                },
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
     )
     def get(self, request):
         authors = (
@@ -113,7 +214,20 @@ class SearchView(APIView):
             OpenApiParameter("access", OpenApiTypes.STR, OpenApiParameter.QUERY),
             OpenApiParameter("year", OpenApiTypes.INT, OpenApiParameter.QUERY),
         ],
-        responses={200: SearchResultPageSerializer, 400: ErrorResponseSerializer},
+        responses={
+            200: SearchResultPageSerializer,
+            400: ErrorResponseSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Search page",
+                value={"count": 0, "next": None, "previous": None, "results": []},
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
     )
     def get(self, request):
         try:
@@ -127,7 +241,7 @@ class SearchView(APIView):
             language_code=request.query_params.get("language", ""),
             access_model=request.query_params.get("access", ""),
             publication_year=publication_year,
-            limit=50,
+            limit=None,
         )
         normalized = [
             {

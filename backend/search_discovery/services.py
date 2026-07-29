@@ -172,10 +172,10 @@ def search_documents(
     language_code: str = "",
     access_model: str = "",
     publication_year: int | None = None,
-    limit: int = 20,
+    limit: int | None = 20,
 ) -> list[dict]:
     normalized_query = _normalize_query(query)
-    result_limit = _bounded_limit(limit)
+    result_limit = _bounded_limit(limit) if limit is not None else None
     indexes = DocumentSearchIndex.objects.select_related("document").filter(
         document__publication_status=Document.PublicationStatus.PUBLISHED
     )
@@ -206,4 +206,4 @@ def search_documents(
         results.append(_result_payload(index, score=score, text_match=text_match))
 
     results.sort(key=lambda result: (-result["score"], result["title"].lower(), result["document_id"]))
-    return results[:result_limit]
+    return results if result_limit is None else results[:result_limit]

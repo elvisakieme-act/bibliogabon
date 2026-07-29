@@ -47,8 +47,18 @@ class RegisterView(APIView):
             201: OpenApiResponse(RegisterResponseSerializer, description="User created with JWT tokens"),
             400: OpenApiResponse(ErrorResponseSerializer, description="Invalid registration data"),
             409: OpenApiResponse(ErrorResponseSerializer, description="Email already exists"),
+            415: OpenApiResponse(ErrorResponseSerializer, description="Request body must use application/json"),
         },
         examples=[
+            OpenApiExample(
+                "Registration request",
+                value={
+                    "email": "reader@example.ga",
+                    "password": "StrongPass123!",
+                    "display_name": "Reader One",
+                },
+                request_only=True,
+            ),
             OpenApiExample(
                 "Successful registration",
                 value={
@@ -105,8 +115,17 @@ class LogoutView(APIView):
         responses={
             204: None,
             400: ErrorResponseSerializer,
+            401: ErrorResponseSerializer,
             403: ErrorResponseSerializer,
+            415: ErrorResponseSerializer,
         },
+        examples=[
+            OpenApiExample(
+                "Logout request",
+                value={"refresh": "<jwt>"},
+                request_only=True,
+            )
+        ],
     )
     def post(self, request):
         refresh_token = str(request.data.get("refresh", "")).strip()
@@ -140,7 +159,24 @@ class LogoutView(APIView):
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(tags=["Current user"], summary="Retrieve the current user", responses={200: UserSerializer, 401: ErrorResponseSerializer})
+    @extend_schema(
+        tags=["Current user"],
+        summary="Retrieve the current user",
+        responses={200: UserSerializer, 401: ErrorResponseSerializer},
+        examples=[
+            OpenApiExample(
+                "Current user",
+                value={
+                    "id": 1,
+                    "email": "reader@example.ga",
+                    "display_name": "Reader One",
+                    "account_type": "individual",
+                },
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
+    )
     def get(self, request):
         return Response(serialize_user(request.user), status=status.HTTP_200_OK)
 
@@ -148,7 +184,30 @@ class CurrentUserView(APIView):
         tags=["Current user"],
         summary="Update the current user",
         request=CurrentUserUpdateSerializer,
-        responses={200: UserSerializer, 400: ErrorResponseSerializer, 401: ErrorResponseSerializer},
+        responses={
+            200: UserSerializer,
+            400: ErrorResponseSerializer,
+            401: ErrorResponseSerializer,
+            415: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Current user update",
+                value={"display_name": "Updated Reader"},
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Updated current user",
+                value={
+                    "id": 1,
+                    "email": "reader@example.ga",
+                    "display_name": "Updated Reader",
+                    "account_type": "individual",
+                },
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
     )
     def patch(self, request):
         serializer = CurrentUserUpdateSerializer(data=request.data, partial=True)
@@ -166,7 +225,28 @@ class DocumentedTokenObtainPairView(TokenObtainPairView):
         tags=["Authentication"],
         summary="Obtain JWT tokens",
         request=TokenRequestSerializer,
-        responses={200: TokenPairSerializer, 401: ErrorResponseSerializer},
+        responses={
+            200: TokenPairSerializer,
+            400: ErrorResponseSerializer,
+            401: ErrorResponseSerializer,
+            415: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "JWT login",
+                value={
+                    "email": "reader@example.ga",
+                    "password": "StrongPass123!",
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "JWT token pair",
+                value={"access": "<jwt>", "refresh": "<jwt>"},
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
     )
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
@@ -177,7 +257,25 @@ class DocumentedTokenRefreshView(TokenRefreshView):
         tags=["Authentication"],
         summary="Refresh a JWT access token",
         request=TokenRefreshRequestSerializer,
-        responses={200: TokenPairSerializer, 401: ErrorResponseSerializer},
+        responses={
+            200: TokenPairSerializer,
+            400: ErrorResponseSerializer,
+            401: ErrorResponseSerializer,
+            415: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "JWT refresh",
+                value={"refresh": "<jwt>"},
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Refreshed JWT token pair",
+                value={"access": "<jwt>", "refresh": "<jwt>"},
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
     )
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from django.db.models import Prefetch
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -17,40 +16,46 @@ from api.v1.serializers import (
     ReadingProgressPageSerializer,
     ReadingProgressSerializer,
     ReadingProgressUpdateSerializer,
+    document_metadata_prefetches,
     serialize_document_metadata,
 )
-from catalog.models import Document, DocumentAuthor
-from document_ingestion.models import DocumentVersion
+from catalog.models import Document
 from document_reader.exceptions import ReaderAccessDenied, ReaderPageUnavailable
 from document_reader.models import FavoriteDocument, ReadingProgress
-from document_reader.services import favorite_document, record_reading_progress, remove_favorite
-
-
-def _metadata_prefetches():
-    return [
-        Prefetch(
-            "document__document_authors",
-            queryset=DocumentAuthor.objects.select_related("author").order_by("position"),
-            to_attr="_api_document_authors",
-        ),
-        Prefetch(
-            "document__versions",
-            queryset=DocumentVersion.objects.filter(is_current=True).order_by("-created_at"),
-            to_attr="_api_current_versions",
-        ),
-    ]
+from document_reader.services import (
+    favorite_document,
+    readable_document_ids_for_user,
+    record_reading_progress,
+    remove_favorite,
+)
 
 
 class FavoriteListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(tags=["Personal Library"], summary="List the current user's favorites", responses={200: FavoritePageSerializer, 401: ErrorResponseSerializer})
+    @extend_schema(
+        tags=["Personal Library"],
+        summary="List the current user's favorites",
+        responses={
+            200: FavoritePageSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Favorite page",
+                value={"count": 0, "next": None, "previous": None, "results": []},
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
+    )
     def get(self, request):
         favorites = (
             FavoriteDocument.objects.select_related(
                 "document", "document__academic_domain", "document__owner_organization"
             )
-            .prefetch_related(*_metadata_prefetches())
+            .prefetch_related(*document_metadata_prefetches(prefix="document__"))
             .filter(
                 user=request.user,
                 document__publication_status=Document.PublicationStatus.PUBLISHED,
@@ -59,10 +64,18 @@ class FavoriteListCreateView(APIView):
         )
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(favorites, request, view=self)
+        readable_document_ids = readable_document_ids_for_user(
+            request.user,
+            [favorite.document for favorite in page],
+        )
         return paginator.get_paginated_response(
             [
                 {
-                    "document": serialize_document_metadata(favorite.document, user=request.user),
+                    "document": serialize_document_metadata(
+                        favorite.document,
+                        user=request.user,
+                        readable_document_ids=readable_document_ids,
+                    ),
                     "created_at": favorite.created_at.isoformat(),
                 }
                 for favorite in page
@@ -73,7 +86,48 @@ class FavoriteListCreateView(APIView):
         tags=["Personal Library"],
         summary="Add a document to the current user's favorites",
         request=FavoriteCreateSerializer,
-        responses={201: FavoriteSerializer, 200: FavoriteSerializer, 401: ErrorResponseSerializer, 404: ErrorResponseSerializer},
+        responses={
+            201: FavoriteSerializer,
+            200: FavoriteSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+            415: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Favorite request",
+                value={"document_id": 1},
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Favorite created",
+                value={
+                    "document": {
+                        "id": 1,
+                        "slug": "droit-public",
+                        "title": "Droit public",
+                        "abstract": "",
+                        "language_code": "fr",
+                        "publication_year": 2026,
+                        "document_type": "open_resource",
+                        "access_model": "free",
+                        "domain": None,
+                        "authors": [],
+                        "owner": None,
+                        "page_count": 120,
+                        "cover": None,
+                        "access": {
+                            "can_read": True,
+                            "access_model": "free",
+                            "reason": "free",
+                        },
+                    },
+                    "created_at": "2026-07-29T16:00:00Z",
+                },
+                response_only=True,
+                status_codes=["201"],
+            )
+        ],
     )
     def post(self, request):
         document_id = request.data.get("document_id")
@@ -111,13 +165,29 @@ class FavoriteDeleteView(APIView):
 class ReadingProgressListView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(tags=["Personal Library"], summary="List the current user's reading progress", responses={200: ReadingProgressPageSerializer, 401: ErrorResponseSerializer})
+    @extend_schema(
+        tags=["Personal Library"],
+        summary="List the current user's reading progress",
+        responses={
+            200: ReadingProgressPageSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Reading progress page",
+                value={"count": 0, "next": None, "previous": None, "results": []},
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
+    )
     def get(self, request):
         progress_rows = (
             ReadingProgress.objects.select_related(
                 "document", "document__academic_domain", "document__owner_organization"
             )
-            .prefetch_related(*_metadata_prefetches())
+            .prefetch_related(*document_metadata_prefetches(prefix="document__"))
             .filter(
                 user=request.user,
                 document__publication_status=Document.PublicationStatus.PUBLISHED,
@@ -126,10 +196,18 @@ class ReadingProgressListView(APIView):
         )
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(progress_rows, request, view=self)
+        readable_document_ids = readable_document_ids_for_user(
+            request.user,
+            [progress.document for progress in page],
+        )
         return paginator.get_paginated_response(
             [
                 {
-                    "document": serialize_document_metadata(progress.document, user=request.user),
+                    "document": serialize_document_metadata(
+                        progress.document,
+                        user=request.user,
+                        readable_document_ids=readable_document_ids,
+                    ),
                     "last_page_number": progress.last_page_number,
                     "updated_at": progress.updated_at.isoformat(),
                 }
@@ -145,7 +223,50 @@ class ReadingProgressUpdateView(APIView):
         tags=["Personal Library"],
         summary="Update the current user's reading progress",
         request=ReadingProgressUpdateSerializer,
-        responses={200: ReadingProgressSerializer, 400: ErrorResponseSerializer, 401: ErrorResponseSerializer, 403: ErrorResponseSerializer, 404: ErrorResponseSerializer},
+        responses={
+            200: ReadingProgressSerializer,
+            400: ErrorResponseSerializer,
+            401: ErrorResponseSerializer,
+            403: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+            415: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Reading progress request",
+                value={"last_page_number": 4},
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Reading progress updated",
+                value={
+                    "document": {
+                        "id": 1,
+                        "slug": "droit-public",
+                        "title": "Droit public",
+                        "abstract": "",
+                        "language_code": "fr",
+                        "publication_year": 2026,
+                        "document_type": "open_resource",
+                        "access_model": "free",
+                        "domain": None,
+                        "authors": [],
+                        "owner": None,
+                        "page_count": 120,
+                        "cover": None,
+                        "access": {
+                            "can_read": True,
+                            "access_model": "free",
+                            "reason": "free",
+                        },
+                    },
+                    "last_page_number": 4,
+                    "updated_at": "2026-07-29T16:00:00Z",
+                },
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
     )
     def patch(self, request, document_id: int):
         try:
@@ -157,12 +278,20 @@ class ReadingProgressUpdateView(APIView):
                 status.HTTP_400_BAD_REQUEST,
             )
         try:
-            document = Document.objects.get(pk=document_id)
+            document = (
+                Document.objects.filter(
+                    pk=document_id,
+                    publication_status=Document.PublicationStatus.PUBLISHED,
+                )
+                .exclude(access_model=Document.AccessModel.PRIVATE)
+                .get()
+            )
             progress = record_reading_progress(request.user, document, page_number)
         except Document.DoesNotExist:
             return error_response("not_found", "Document not found.", status.HTTP_404_NOT_FOUND)
-        except ReaderPageUnavailable:
-            return error_response("invalid_page_number", "last_page_number must be positive.", status.HTTP_400_BAD_REQUEST)
+        except ReaderPageUnavailable as exc:
+            message = f"{str(exc).rstrip('.')}."
+            return error_response("invalid_page_number", message, status.HTTP_400_BAD_REQUEST)
         except ReaderAccessDenied:
             return error_response("entitlement_required", "An active read entitlement is required.", status.HTTP_403_FORBIDDEN)
         return Response(

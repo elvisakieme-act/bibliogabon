@@ -25,7 +25,11 @@ def create_user_and_token(client, email="reader@example.ga"):
     return response.json()["tokens"]["access"], get_user_model().objects.get(email=email)
 
 
-def create_readable_document(slug="reader-v1-free", access_model=Document.AccessModel.FREE):
+def create_readable_document(
+    slug="reader-v1-free",
+    access_model=Document.AccessModel.FREE,
+    publication_status=Document.PublicationStatus.PUBLISHED,
+):
     domain = AcademicDomain.objects.create(name=f"Reader {slug}", slug=f"reader-{slug}")
     document = Document.objects.create(
         title=f"Reader {slug}",
@@ -33,7 +37,7 @@ def create_readable_document(slug="reader-v1-free", access_model=Document.Access
         academic_domain=domain,
         category=Document.Category.OPEN_RESOURCE,
         access_model=access_model,
-        publication_status=Document.PublicationStatus.PUBLISHED,
+        publication_status=publication_status,
     )
     version = DocumentVersion.objects.create(
         document=document,
@@ -47,6 +51,33 @@ def create_readable_document(slug="reader-v1-free", access_model=Document.Access
     page.save(update_fields=["status", "updated_at"])
     attach_extracted_text(page=page, text="Texte lisible API V1.", language_code="fr")
     return document
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("document_kind", ["private", "unpublished", "nonexistent"])
+def test_reader_session_creation_does_not_enumerate_hidden_document_ids(document_kind):
+    client = APIClient()
+    if document_kind == "private":
+        document_id = create_readable_document(
+            slug="reader-v1-private",
+            access_model=Document.AccessModel.PRIVATE,
+        ).pk
+    elif document_kind == "unpublished":
+        document_id = create_readable_document(
+            slug="reader-v1-unpublished",
+            publication_status=Document.PublicationStatus.DRAFT,
+        ).pk
+    else:
+        document_id = 999999
+
+    response = client.post(
+        "/api/v1/reader/sessions/",
+        {"document_id": document_id},
+        format="json",
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"
 
 
 @pytest.mark.django_db

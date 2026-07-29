@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model
+from django.db.models import Prefetch
 from rest_framework import serializers
 
+from catalog.models import DocumentAuthor
 from document_ingestion.models import DocumentVersion
 from document_reader.services import document_requires_entitlement, user_can_read_document
 
@@ -97,6 +99,21 @@ class ReaderPageSerializer(serializers.Serializer):
     text = serializers.CharField(read_only=True)
 
 
+def document_metadata_prefetches(prefix: str = "") -> list[Prefetch]:
+    return [
+        Prefetch(
+            f"{prefix}document_authors",
+            queryset=DocumentAuthor.objects.select_related("author").order_by("position"),
+            to_attr="_api_document_authors",
+        ),
+        Prefetch(
+            f"{prefix}versions",
+            queryset=DocumentVersion.objects.filter(is_current=True).order_by("-created_at"),
+            to_attr="_api_current_versions",
+        ),
+    ]
+
+
 def _ordered_authors(document) -> list[dict]:
     authorships = getattr(document, "_api_document_authors", None)
     if authorships is None:
@@ -123,9 +140,14 @@ def _page_count(document) -> int | None:
     return version.page_count if version else None
 
 
-def _access_block(document, user=None) -> dict:
+def _access_block(document, user=None, readable_document_ids: set[int] | None = None) -> dict:
     access_model = document.access_model
-    if user_can_read_document(user, document):
+    can_read = (
+        document.pk in readable_document_ids
+        if readable_document_ids is not None
+        else user_can_read_document(user, document)
+    )
+    if can_read:
         reason = "free" if not document_requires_entitlement(document) else "active_entitlement"
         return {"can_read": True, "access_model": access_model, "reason": reason}
     if document_requires_entitlement(document) and not getattr(user, "is_authenticated", False):
@@ -135,7 +157,11 @@ def _access_block(document, user=None) -> dict:
     return {"can_read": False, "access_model": access_model, "reason": "unavailable"}
 
 
-def serialize_document_metadata(document, user=None) -> dict:
+def serialize_document_metadata(
+    document,
+    user=None,
+    readable_document_ids: set[int] | None = None,
+) -> dict:
     domain = None
     if document.academic_domain_id:
         domain = {
@@ -158,7 +184,11 @@ def serialize_document_metadata(document, user=None) -> dict:
         "owner": owner,
         "page_count": _page_count(document),
         "cover": None,
-        "access": _access_block(document, user=user),
+        "access": _access_block(
+            document,
+            user=user,
+            readable_document_ids=readable_document_ids,
+        ),
     }
 
 
