@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.db.models import Prefetch
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -18,10 +19,26 @@ from api.v1.serializers import (
     ReadingProgressUpdateSerializer,
     serialize_document_metadata,
 )
-from catalog.models import Document
+from catalog.models import Document, DocumentAuthor
+from document_ingestion.models import DocumentVersion
 from document_reader.exceptions import ReaderAccessDenied, ReaderPageUnavailable
 from document_reader.models import FavoriteDocument, ReadingProgress
 from document_reader.services import favorite_document, record_reading_progress, remove_favorite
+
+
+def _metadata_prefetches():
+    return [
+        Prefetch(
+            "document__document_authors",
+            queryset=DocumentAuthor.objects.select_related("author").order_by("position"),
+            to_attr="_api_document_authors",
+        ),
+        Prefetch(
+            "document__versions",
+            queryset=DocumentVersion.objects.filter(is_current=True).order_by("-created_at"),
+            to_attr="_api_current_versions",
+        ),
+    ]
 
 
 class FavoriteListCreateView(APIView):
@@ -33,7 +50,7 @@ class FavoriteListCreateView(APIView):
             FavoriteDocument.objects.select_related(
                 "document", "document__academic_domain", "document__owner_organization"
             )
-            .prefetch_related("document__document_authors__author")
+            .prefetch_related(*_metadata_prefetches())
             .filter(
                 user=request.user,
                 document__publication_status=Document.PublicationStatus.PUBLISHED,
@@ -99,7 +116,7 @@ class ReadingProgressListView(APIView):
             ReadingProgress.objects.select_related(
                 "document", "document__academic_domain", "document__owner_organization"
             )
-            .prefetch_related("document__document_authors__author")
+            .prefetch_related(*_metadata_prefetches())
             .filter(
                 user=request.user,
                 document__publication_status=Document.PublicationStatus.PUBLISHED,

@@ -98,17 +98,23 @@ class ReaderPageSerializer(serializers.Serializer):
 
 
 def _ordered_authors(document) -> list[dict]:
+    authorships = getattr(document, "_api_document_authors", None)
+    if authorships is None:
+        authorships = document.document_authors.select_related("author").order_by("position")
     return [
         {
             "id": authorship.author_id,
             "display_name": authorship.author.display_name,
             "role": authorship.role,
         }
-        for authorship in document.document_authors.select_related("author").order_by("position")
+        for authorship in authorships
     ]
 
 
 def _page_count(document) -> int | None:
+    current_versions = getattr(document, "_api_current_versions", None)
+    if current_versions is not None:
+        return current_versions[0].page_count if current_versions else None
     version = (
         DocumentVersion.objects.filter(document=document, is_current=True)
         .order_by("-created_at")
