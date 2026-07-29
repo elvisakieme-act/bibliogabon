@@ -5,13 +5,20 @@ from pathlib import Path
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
-from config.env import env_bool, env_int, env_list, validate_django_env, validate_production_settings
+from config.env import (
+    DEFAULT_DEVELOPMENT_SECRET_KEY,
+    env_bool,
+    env_int,
+    env_list,
+    validate_django_env,
+    validate_production_settings,
+)
 from config.logconfig import build_logging_config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 DJANGO_ENV = validate_django_env(os.getenv("DJANGO_ENV", "development"))
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-secret-key")
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", DEFAULT_DEVELOPMENT_SECRET_KEY)
 DEBUG = env_bool("DJANGO_DEBUG", default=DJANGO_ENV != "production")
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1")
 

@@ -8,7 +8,13 @@ from django.core.exceptions import ImproperlyConfigured
 VALID_DJANGO_ENVS = {"development", "test", "production"}
 TRUTHY_VALUES = {"1", "true", "yes", "on"}
 FALSY_VALUES = {"0", "false", "no", "off"}
-DEVELOPMENT_SECRET_KEYS = {"", "dev-only-secret-key", "change-me-in-production"}
+DEFAULT_DEVELOPMENT_SECRET_KEY = "dev-only-secret-key-for-local-jwt-signing-2026"
+DEVELOPMENT_SECRET_KEYS = {
+    "",
+    "dev-only-secret-key",
+    "change-me-in-production",
+    DEFAULT_DEVELOPMENT_SECRET_KEY,
+}
 LOCAL_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
 
 

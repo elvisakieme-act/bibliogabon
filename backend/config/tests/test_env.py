@@ -128,6 +128,48 @@ SETTINGS_ENVIRONMENT_NAMES = [
 ]
 
 
+DEFAULT_DEVELOPMENT_SIGNING_SECRET = "dev-only-secret-key-for-local-jwt-signing-2026"
+
+
+def import_default_development_settings():
+    env = os.environ.copy()
+    for name in SETTINGS_ENVIRONMENT_NAMES:
+        env.pop(name, None)
+    return subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from config.settings import SECRET_KEY; print(len(SECRET_KEY.encode()))",
+        ],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_default_development_signing_secret_is_long_enough_for_jwt():
+    result = import_default_development_settings()
+
+    assert result.returncode == 0, result.stderr
+    assert int(result.stdout) >= 32
+
+
+def test_validate_production_settings_rejects_default_development_signing_secret():
+    with pytest.raises(ImproperlyConfigured):
+        validate_production_settings(
+            django_env="production",
+            debug=False,
+            secret_key=DEFAULT_DEVELOPMENT_SIGNING_SECRET,
+            allowed_hosts=["bibliogabon.ga"],
+            csrf_trusted_origins=["https://bibliogabon.ga"],
+            secure_ssl_redirect=True,
+            session_cookie_secure=True,
+            csrf_cookie_secure=True,
+        )
+
+
 def import_production_settings(**environment):
     env = os.environ.copy()
     for name in SETTINGS_ENVIRONMENT_NAMES:
