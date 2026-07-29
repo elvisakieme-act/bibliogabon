@@ -3,15 +3,14 @@ import os
 
 import dj_database_url
 
+from config.env import env_bool, env_int, env_list, validate_django_env, validate_production_settings
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+DJANGO_ENV = validate_django_env(os.getenv("DJANGO_ENV", "development"))
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-secret-key")
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-    if host.strip()
-]
+DEBUG = env_bool("DJANGO_DEBUG", default=DJANGO_ENV != "production")
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -80,5 +79,22 @@ USE_TZ = True
 STATIC_URL = "static/"
 DOCUMENT_STORAGE_BUCKET = os.getenv("DOCUMENT_STORAGE_BUCKET", "bibliogabon-private-documents")
 DOCUMENT_STORAGE_KEY_PREFIX = os.getenv("DOCUMENT_STORAGE_KEY_PREFIX", "documents")
-READER_SESSION_TTL_MINUTES = int(os.getenv("READER_SESSION_TTL_MINUTES", "120"))
+READER_SESSION_TTL_MINUTES = env_int("READER_SESSION_TTL_MINUTES", 120)
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", default=DJANGO_ENV == "production")
+SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", default=DJANGO_ENV == "production")
+CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", default=DJANGO_ENV == "production")
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
+
+validate_production_settings(
+    django_env=DJANGO_ENV,
+    debug=DEBUG,
+    secret_key=SECRET_KEY,
+    allowed_hosts=ALLOWED_HOSTS,
+    csrf_trusted_origins=CSRF_TRUSTED_ORIGINS,
+    secure_ssl_redirect=SECURE_SSL_REDIRECT,
+    session_cookie_secure=SESSION_COOKIE_SECURE,
+    csrf_cookie_secure=CSRF_COOKIE_SECURE,
+)
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
