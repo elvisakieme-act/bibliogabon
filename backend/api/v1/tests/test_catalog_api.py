@@ -126,7 +126,8 @@ def test_search_endpoint_uses_standard_pagination_and_hides_page_text():
 
 
 def test_openapi_schema_documents_catalog_and_search_endpoints():
-    paths = SchemaGenerator().get_schema(request=None, public=True)["paths"]
+    schema = SchemaGenerator().get_schema(request=None, public=True)
+    paths = schema["paths"]
 
     expected_paths = {
         "/api/v1/catalog/documents/",
@@ -137,3 +138,21 @@ def test_openapi_schema_documents_catalog_and_search_endpoints():
     }
 
     assert expected_paths <= set(paths)
+
+    paginated_endpoints = {
+        "/api/v1/catalog/documents/": "DocumentMetadata",
+        "/api/v1/catalog/domains/": "Domain",
+        "/api/v1/catalog/authors/": "AuthorMetadata",
+        "/api/v1/search/": "SearchResult",
+    }
+    for path, result_schema_name in paginated_endpoints.items():
+        response_schema = paths[path]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+        if "$ref" in response_schema:
+            response_schema = schema["components"]["schemas"][response_schema["$ref"].rsplit("/", 1)[-1]]
+
+        assert response_schema["type"] == "object"
+        assert {"count", "next", "previous", "results"} <= set(response_schema["properties"])
+        assert response_schema["properties"]["results"]["type"] == "array"
+        assert response_schema["properties"]["results"]["items"]["$ref"].endswith(
+            f"/{result_schema_name}"
+        )

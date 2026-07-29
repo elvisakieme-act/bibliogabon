@@ -8,11 +8,12 @@ from rest_framework.views import APIView
 from api.v1.errors import error_response
 from api.v1.pagination import StandardResultsSetPagination
 from api.v1.serializers import (
-    AuthorMetadataSerializer,
+    AuthorMetadataPageSerializer,
     DocumentMetadataSerializer,
-    DomainSerializer,
+    DocumentMetadataPageSerializer,
+    DomainPageSerializer,
     ErrorResponseSerializer,
-    SearchResultSerializer,
+    SearchResultPageSerializer,
     serialize_document_metadata,
 )
 from catalog.models import AcademicDomain, Author, Document
@@ -30,7 +31,7 @@ def _published_documents():
 
 
 class DocumentListView(APIView):
-    @extend_schema(tags=["Catalog"], responses={200: DocumentMetadataSerializer(many=True)})
+    @extend_schema(tags=["Catalog"], responses={200: DocumentMetadataPageSerializer})
     def get(self, request):
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(_published_documents(), request, view=self)
@@ -56,7 +57,7 @@ class DocumentDetailView(APIView):
 
 
 class DomainListView(APIView):
-    @extend_schema(tags=["Catalog"], responses={200: DomainSerializer(many=True)})
+    @extend_schema(tags=["Catalog"], responses={200: DomainPageSerializer})
     def get(self, request):
         domains = AcademicDomain.objects.filter(is_active=True).order_by("name", "id")
         paginator = StandardResultsSetPagination()
@@ -67,7 +68,7 @@ class DomainListView(APIView):
 
 
 class AuthorListView(APIView):
-    @extend_schema(tags=["Catalog"], responses={200: AuthorMetadataSerializer(many=True)})
+    @extend_schema(tags=["Catalog"], responses={200: AuthorMetadataPageSerializer})
     def get(self, request):
         authors = (
             Author.objects.filter(document_authorships__document__in=_published_documents())
@@ -91,7 +92,7 @@ class SearchView(APIView):
             OpenApiParameter("access", OpenApiTypes.STR, OpenApiParameter.QUERY),
             OpenApiParameter("year", OpenApiTypes.INT, OpenApiParameter.QUERY),
         ],
-        responses={200: SearchResultSerializer(many=True), 400: ErrorResponseSerializer},
+        responses={200: SearchResultPageSerializer, 400: ErrorResponseSerializer},
     )
     def get(self, request):
         try:

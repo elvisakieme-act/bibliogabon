@@ -198,3 +198,31 @@ class SearchResultSerializer(serializers.Serializer):
     indexed_page_count = serializers.IntegerField(read_only=True)
     score = serializers.IntegerField(read_only=True)
     text_match = serializers.BooleanField(read_only=True)
+
+
+class DocumentMetadataPageSerializer(serializers.Serializer):
+    count = serializers.IntegerField(read_only=True)
+    next = serializers.URLField(read_only=True, allow_null=True)
+    previous = serializers.URLField(read_only=True, allow_null=True)
+    results = DocumentMetadataSerializer(many=True, read_only=True)
+
+
+class DomainPageSerializer(serializers.Serializer):
+    count = serializers.IntegerField(read_only=True)
+    next = serializers.URLField(read_only=True, allow_null=True)
+    previous = serializers.URLField(read_only=True, allow_null=True)
+    results = DomainSerializer(many=True, read_only=True)
+
+
+class AuthorMetadataPageSerializer(serializers.Serializer):
+    count = serializers.IntegerField(read_only=True)
+    next = serializers.URLField(read_only=True, allow_null=True)
+    previous = serializers.URLField(read_only=True, allow_null=True)
+    results = AuthorMetadataSerializer(many=True, read_only=True)
+
+
+class SearchResultPageSerializer(serializers.Serializer):
+    count = serializers.IntegerField(read_only=True)
+    next = serializers.URLField(read_only=True, allow_null=True)
+    previous = serializers.URLField(read_only=True, allow_null=True)
+    results = SearchResultSerializer(many=True, read_only=True)
