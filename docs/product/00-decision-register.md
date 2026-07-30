@@ -6,6 +6,7 @@
 | D002 | 2026-07-27 | Build a complete launchable platform, not an MVP | The concept has already been validated in a challenge | Roadmap must include core platform, business, content, and governance capabilities | Product |
 | D003 | 2026-07-27 | Use hybrid monetization: B2B, B2C, sponsored access | This balances institutional revenue, student accessibility, and impact | Billing and organization modules must support several access models | Business |
 | D004 | 2026-07-27 | Use Django/PostgreSQL/Redis-Celery/S3-compatible storage as initial backend direction | Existing architecture notes already converge on this pragmatic stack | Subsystem plans should assume this stack until a formal decision changes it | Tech |
+| D005 | 2026-07-30 | Build the real web frontend in a clean `frontend/` app while preserving the maquette's UI/UX DNA | The maquette contains strong visual patterns but also mock data, demo flows, and routes outside API V1 scope | Frontend V1 must migrate visual components selectively and rebuild data/auth/routing around `/api/v1/` | Product/Tech |
 
 ## Decision Process
 
