@@ -26,6 +26,7 @@ export function createAppRouter(
     routeTree,
     defaultPreload: "intent",
     scrollRestoration: true,
+    defaultPendingMs: 0,
     ...options
   });
 }

@@ -1,6 +1,57 @@
 @import "tailwindcss";
 
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
+@theme inline {
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-navy: var(--navy);
+  --color-navy-deep: var(--navy-deep);
+  --color-navy-soft: var(--navy-soft);
+  --color-green: var(--green);
+  --color-green-soft: var(--green-soft);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --shadow-editorial: 0 1px 2px rgba(6, 39, 81, 0.04), 0 8px 24px -12px rgba(6, 39, 81, 0.12), 0 24px 48px -32px rgba(6, 39, 81, 0.18);
+  --shadow-editorial-lg: 0 2px 4px rgba(6, 39, 81, 0.06), 0 16px 40px -16px rgba(6, 39, 81, 0.18), 0 40px 80px -40px rgba(6, 39, 81, 0.28);
 }
+
+:root {
+  --radius: 0.875rem;
+  --navy: oklch(0.28 0.09 258);
+  --navy-deep: oklch(0.18 0.06 258);
+  --navy-soft: oklch(0.96 0.015 250);
+  --green: oklch(0.5 0.13 152);
+  --green-soft: oklch(0.96 0.03 152);
+  --gold: oklch(0.78 0.15 82);
+  --gold-soft: oklch(0.9 0.11 88);
+  --ink: oklch(0.18 0.03 258);
+  --surface-alt: oklch(0.98 0.006 250);
+  --background: oklch(1 0 0);
+  --foreground: var(--ink);
+  --card: oklch(1 0 0);
+  --muted: var(--surface-alt);
+  --muted-foreground: oklch(0.5 0.02 250);
+  --border: oklch(0.92 0.01 250);
+}
+
+html { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans); line-height: 1.7; }
+h1, h2, h3, .font-display { font-family: var(--font-display); }
+
+.container-editorial { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: 1.25rem; }
+@media (min-width: 768px) { .container-editorial { padding-inline: 2rem; } }
+.gabon-stripe { background: linear-gradient(90deg, var(--green) 0 33.33%, var(--gold) 33.33% 66.66%, var(--navy) 66.66% 100%); }
+.gabon-rule { height: 3px; background: linear-gradient(90deg, var(--green), var(--gold), var(--navy)); border-radius: 999px; }
+.glass-surface { background: color-mix(in oklch, var(--card) 80%, transparent); backdrop-filter: blur(12px) saturate(140%); }
+.shadow-editorial { box-shadow: var(--shadow-editorial); }
+.shadow-editorial-lg { box-shadow: var(--shadow-editorial-lg); }
+@keyframes ken-burns { 0% { transform: scale(1.05) translate3d(0, 0, 0); } 50% { transform: scale(1.16) translate3d(-2%, -1.5%, 0); } 100% { transform: scale(1.05) translate3d(0, 0, 0); } }
+.animate-ken-burns { animation: ken-burns 26s ease-in-out infinite; transform-origin: center; }
+@keyframes caret-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.animate-caret { animation: caret-blink 1s step-end infinite; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
