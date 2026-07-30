@@ -10,6 +10,11 @@ import { HomePage } from "@/routes/HomePage";
 import { ConnexionPage } from "@/routes/ConnexionPage";
 import { InscriptionPage } from "@/routes/InscriptionPage";
 import { ProfilPage } from "@/routes/ProfilPage";
+import { CatalogPage } from "@/routes/CatalogPage";
+import { RecherchePage } from "@/routes/RecherchePage";
+import { DomainesPage } from "@/routes/DomainesPage";
+import { DomainDetailPage } from "@/routes/DomainDetailPage";
+import { DocumentDetailPage } from "@/routes/DocumentDetailPage";
 
 const rootRoute = createRootRoute({
   component: () => <AuthProvider><Outlet /></AuthProvider>
@@ -42,7 +47,13 @@ const profilRoute = createRoute({
   component: ProfilPage
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, connexionRoute, inscriptionRoute, profilRoute]);
+const catalogueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/catalogue", component: CatalogPage });
+const rechercheRoute = createRoute({ getParentRoute: () => rootRoute, path: "/recherche", component: RecherchePage });
+const domainesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/domaines", component: DomainesPage });
+const domainDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: "/domaines/$slug", component: DomainDetailPage });
+const documentDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: "/documents/$id", component: DocumentDetailPage });
+
+const routeTree = rootRoute.addChildren([homeRoute, connexionRoute, inscriptionRoute, profilRoute, catalogueRoute, rechercheRoute, domainesRoute, domainDetailRoute, documentDetailRoute]);
 
 export function createAppRouter(
   options: Partial<Parameters<typeof createRouter>[0]> = {}
