@@ -15,6 +15,7 @@ import { RecherchePage } from "@/routes/RecherchePage";
 import { DomainesPage } from "@/routes/DomainesPage";
 import { DomainDetailPage } from "@/routes/DomainDetailPage";
 import { DocumentDetailPage } from "@/routes/DocumentDetailPage";
+import { LecturePage } from "@/routes/LecturePage";
 
 const rootRoute = createRootRoute({
   component: () => <AuthProvider><Outlet /></AuthProvider>
@@ -52,8 +53,9 @@ const rechercheRoute = createRoute({ getParentRoute: () => rootRoute, path: "/re
 const domainesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/domaines", component: DomainesPage });
 const domainDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: "/domaines/$slug", component: DomainDetailPage });
 const documentDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: "/documents/$id", component: DocumentDetailPage });
+const lectureRoute = createRoute({ getParentRoute: () => rootRoute, path: "/lecture/$documentId", component: LecturePage });
 
-const routeTree = rootRoute.addChildren([homeRoute, connexionRoute, inscriptionRoute, profilRoute, catalogueRoute, rechercheRoute, domainesRoute, domainDetailRoute, documentDetailRoute]);
+const routeTree = rootRoute.addChildren([homeRoute, connexionRoute, inscriptionRoute, profilRoute, catalogueRoute, rechercheRoute, domainesRoute, domainDetailRoute, documentDetailRoute, lectureRoute]);
 
 export function createAppRouter(
   options: Partial<Parameters<typeof createRouter>[0]> = {}
