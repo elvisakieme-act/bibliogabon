@@ -4,6 +4,8 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { Logo } from "@/components/brand/Logo";
+import { Footer } from "@/components/layout/Footer";
+import { Navbar } from "@/components/layout/Navbar";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 describe("maquette visual system", () => {
@@ -38,5 +40,33 @@ describe("maquette visual system", () => {
 
     expect(screen.getByText("Aucun document")).toBeInTheDocument();
     expect(screen.getByText("Essayez un autre filtre.")).toBeInTheDocument();
+  });
+
+  it("keeps primary navigation reachable below the large breakpoint", () => {
+    const navbarSource = fs.readFileSync(
+      path.resolve(process.cwd(), "src/components/layout/Navbar.tsx"),
+      "utf8"
+    );
+
+    expect(navbarSource).toContain("lg:flex");
+    expect(navbarSource).toContain("lg:hidden");
+    expect(navbarSource).not.toContain("md:hidden");
+  });
+
+  it("shows logged-out account affordances without a logout action", () => {
+    render(<Navbar />);
+
+    expect(screen.getByRole("link", { name: "Connexion" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "S'inscrire" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Se deconnecter")).not.toBeInTheDocument();
+  });
+
+  it("uses a Gabon stripe and readable logo in the footer", () => {
+    const { container } = render(<Footer />);
+
+    expect(container.querySelector("footer > .gabon-stripe")).toBeInTheDocument();
+    expect(
+      container.querySelector('footer a[aria-label="BiblioGABON"]')
+    ).toHaveClass("text-[var(--navy)]");
   });
 });

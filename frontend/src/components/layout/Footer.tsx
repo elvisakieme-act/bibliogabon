@@ -10,10 +10,10 @@ const FOOTER_LINKS = [
 export function Footer() {
   return (
     <footer className="mt-auto bg-[var(--navy-deep)] text-white/80">
-      <div className="gabon-rule" aria-hidden="true" />
+      <div className="h-1 gabon-stripe" aria-hidden="true" />
       <div className="container-editorial grid gap-10 py-12 md:grid-cols-[1.5fr_1fr]">
         <div>
-          <div className="inline-flex rounded-xl bg-white px-3 py-2"><Logo /></div>
+          <div className="inline-flex rounded-xl bg-white px-3 py-2"><Logo className="text-[var(--navy)]" /></div>
           <p className="mt-4 max-w-md text-sm">La bibliotheque numerique des universites et grandes ecoles de la Republique Gabonaise.</p>
         </div>
         <div>
