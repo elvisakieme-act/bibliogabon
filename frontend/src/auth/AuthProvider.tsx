@@ -9,6 +9,7 @@ interface AuthContextValue {
   tokens: AuthTokens | null;
   isHydrating: boolean;
   setSession(session: { user: ApiUser; tokens: AuthTokens }): void;
+  clearSession(): void;
   logout(): Promise<void>;
 }
 
@@ -18,6 +19,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<ApiUser | null>(null);
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
+
+  function clearSession() {
+    tokenStore.clear();
+    setUser(null);
+    setTokens(null);
+    setIsHydrating(false);
+  }
 
   useEffect(() => {
     const storedTokens = tokenStore.get();
@@ -30,10 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTokens(storedTokens);
     getCurrentUser(storedTokens.access)
       .then(setUser)
-      .catch(() => {
-        tokenStore.clear();
-        setTokens(null);
-      })
+      .catch(clearSession)
       .finally(() => setIsHydrating(false));
   }, []);
 
@@ -47,15 +52,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session.user);
       setIsHydrating(false);
     },
+    clearSession,
     async logout() {
       try {
         if (tokens) {
           await logoutRequest(tokens.refresh, tokens.access);
         }
       } finally {
-        tokenStore.clear();
-        setUser(null);
-        setTokens(null);
+        clearSession();
       }
     }
   }), [isHydrating, tokens, user]);

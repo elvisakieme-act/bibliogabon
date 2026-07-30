@@ -1,15 +1,33 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/api/auth", () => ({
   getCurrentUser: vi.fn(),
-  logout: vi.fn().mockResolvedValue(undefined)
+  logout: vi.fn().mockResolvedValue(undefined),
+  updateCurrentUser: vi.fn()
 }));
 
+import { getCurrentUser, updateCurrentUser } from "@/api/auth";
+import { ApiError } from "@/api/client";
 import { AuthProvider, useAuth } from "@/auth/AuthProvider";
 import { tokenStore } from "@/auth/tokenStore";
+import { createAppRouter } from "@/router";
+
+const reader = {
+  id: 1,
+  email: "reader@example.ga",
+  display_name: "Reader",
+  account_type: "individual" as const
+};
+
+afterEach(() => {
+  cleanup();
+  tokenStore.clear();
+  vi.resetAllMocks();
+});
 
 function Probe() {
   const auth = useAuth();
@@ -40,6 +58,16 @@ function renderAuth() {
   );
 }
 
+function renderAt(path: string) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const router = createAppRouter({ history: createMemoryHistory({ initialEntries: [path] }) });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  );
+}
+
 describe("AuthProvider", () => {
   it("stores and clears JWT session through tokenStore", async () => {
     tokenStore.clear();
@@ -52,5 +80,47 @@ describe("AuthProvider", () => {
     await userEvent.click(screen.getByRole("button", { name: "logout" }));
     await waitFor(() => expect(tokenStore.get()).toBeNull());
     expect(screen.getByText("anonymous")).toBeInTheDocument();
+  });
+
+  it("shows normalized profile field errors after a failed update", async () => {
+    tokenStore.set({ access: "access", refresh: "refresh" });
+    vi.mocked(getCurrentUser).mockResolvedValue(reader);
+    vi.mocked(updateCurrentUser).mockRejectedValue(new ApiError(
+      400,
+      "invalid_profile",
+      "Profile data is invalid.",
+      { display_name: ["Le nom affiche est obligatoire."] }
+    ));
+
+    renderAt("/profil");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Enregistrer" }));
+
+    expect(await screen.findByText("Le nom affiche est obligatoire.")).toBeInTheDocument();
+  });
+
+  it("clears the session and redirects after a profile refresh 401", async () => {
+    tokenStore.set({ access: "access", refresh: "refresh" });
+    vi.mocked(getCurrentUser)
+      .mockResolvedValueOnce(reader)
+      .mockRejectedValueOnce(new ApiError(401, "token_not_valid", "Token is invalid."));
+
+    renderAt("/profil");
+
+    expect(await screen.findByRole("heading", { name: "Bienvenue" })).toBeInTheDocument();
+    expect(tokenStore.get()).toBeNull();
+  });
+
+  it("clears the session and redirects after a profile update 401", async () => {
+    tokenStore.set({ access: "access", refresh: "refresh" });
+    vi.mocked(getCurrentUser).mockResolvedValue(reader);
+    vi.mocked(updateCurrentUser).mockRejectedValue(new ApiError(401, "token_not_valid", "Token is invalid."));
+
+    renderAt("/profil");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Enregistrer" }));
+
+    expect(await screen.findByRole("heading", { name: "Bienvenue" })).toBeInTheDocument();
+    expect(tokenStore.get()).toBeNull();
   });
 });
