@@ -24,7 +24,7 @@ export function LecturePage() {
   const document = useDocument(documentId);
   const createSession = useCreateReaderSession();
   const closeSession = useCloseReaderSession();
-  const createSessionMutate = createSession.mutate;
+  const createSessionMutateAsync = createSession.mutateAsync;
   const closeSessionMutate = closeSession.mutate;
   const [sessionKey, setSessionKey] = useState<string | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
@@ -41,7 +41,7 @@ export function LecturePage() {
     closeSessionMutate(activeSessionKey);
   }, [closeSessionMutate]);
 
-  const startSession = useCallback(() => {
+  const startSession = useCallback(async () => {
     const generation = sessionGenerationRef.current + 1;
     sessionGenerationRef.current = generation;
     const activeSessionKey = sessionKeyRef.current;
@@ -51,20 +51,21 @@ export function LecturePage() {
     }
     setPageNumber(1);
     setSessionKey(null);
-    createSessionMutate(documentId, {
-      onSuccess: (session) => {
-        if (sessionGenerationRef.current !== generation) {
-          closeSessionMutate(session.session_key);
-          return;
-        }
-        sessionKeyRef.current = session.session_key;
-        setSessionKey(session.session_key);
+    try {
+      const session = await createSessionMutateAsync(documentId);
+      if (sessionGenerationRef.current !== generation) {
+        closeSessionMutate(session.session_key);
+        return;
       }
-    });
-  }, [closeSessionMutate, createSessionMutate, documentId]);
+      sessionKeyRef.current = session.session_key;
+      setSessionKey(session.session_key);
+    } catch {
+      // The mutation state supplies the route's access and retry UI.
+    }
+  }, [closeSessionMutate, createSessionMutateAsync, documentId]);
 
   useEffect(() => {
-    startSession();
+    void startSession();
     return endSession;
   }, [endSession, startSession]);
 
@@ -90,7 +91,7 @@ export function LecturePage() {
   }
 
   if (createSession.isError || page.isError) {
-    return <SiteLayout><main className="container-editorial py-10 sm:py-16"><EmptyState title="Lecture indisponible" description="La page ne peut pas etre chargee pour le moment." /><button type="button" onClick={startSession} className="mt-6 rounded-lg bg-[var(--navy)] px-5 py-3 text-sm font-semibold text-white">Reessayer</button></main></SiteLayout>;
+    return <SiteLayout><main className="container-editorial py-10 sm:py-16"><EmptyState title="Lecture indisponible" description="La page ne peut pas etre chargee pour le moment." /><button type="button" onClick={() => void startSession()} className="mt-6 rounded-lg bg-[var(--navy)] px-5 py-3 text-sm font-semibold text-white">Reessayer</button></main></SiteLayout>;
   }
 
   if (createSession.isPending || !sessionKey || page.isPending || !page.data) {

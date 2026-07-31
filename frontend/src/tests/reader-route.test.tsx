@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -25,10 +26,11 @@ const documentPayload = {
   access: { can_read: true, access_model: "free", reason: "free" }
 };
 
-function renderLectureRoute() {
+function renderLectureRoute({ strict = false }: { strict?: boolean } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createAppRouter({ history: createMemoryHistory({ initialEntries: ["/lecture/10"] }) });
-  return render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
+  const route = <QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>;
+  return render(strict ? <StrictMode>{route}</StrictMode> : route);
 }
 
 afterEach(() => {
@@ -70,6 +72,37 @@ describe("reader components", () => {
 });
 
 describe("secure reader route", () => {
+  it("closes a superseded StrictMode session when its creation resolves late", async () => {
+    let sessionCount = 0;
+    let resolveFirstSession: (response: Response) => void;
+    const firstSession = new Promise<Response>((resolve) => {
+      resolveFirstSession = resolve;
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/catalog/documents/10/")) return new Response(JSON.stringify(documentPayload));
+      if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
+        sessionCount += 1;
+        if (sessionCount === 1) return firstSession;
+        return new Response(JSON.stringify({ session_key: "session-current", document_id: 10, version_id: 1, expires_at: "2026-08-01T00:00:00Z" }), { status: 201 });
+      }
+      if (url.endsWith("/api/v1/reader/sessions/session-current/pages/1/")) {
+        return new Response(JSON.stringify({ session_key: "session-current", document_id: 10, version_id: 1, page_number: 1, page_count: 2, language_code: "fr", text: "Page actuelle" }));
+      }
+      if (init?.method === "DELETE") return new Response(null, { status: 204 });
+      throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderLectureRoute({ strict: true });
+    await waitFor(() => expect(sessionCount).toBeGreaterThanOrEqual(2));
+    resolveFirstSession!(new Response(JSON.stringify({ session_key: "session-superseded", document_id: 10, version_id: 1, expires_at: "2026-08-01T00:00:00Z" }), { status: 201 }));
+
+    await waitFor(() => expect(fetchMock.mock.calls.map(([url, init]) => `${(init as RequestInit | undefined)?.method ?? "GET"} ${String(url)}`)).toContain(
+      "DELETE http://127.0.0.1:8000/api/v1/reader/sessions/session-superseded/"
+    ));
+  });
+
   it("closes the active session before retrying a failed page request", async () => {
     let sessionCount = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
