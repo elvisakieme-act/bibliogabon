@@ -29,31 +29,44 @@ export function LecturePage() {
   const [sessionKey, setSessionKey] = useState<string | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const sessionKeyRef = useRef<string | null>(null);
+  const sessionGenerationRef = useRef(0);
   const page = useReaderPage(sessionKey, pageNumber);
 
   const endSession = useCallback(() => {
+    sessionGenerationRef.current += 1;
     const activeSessionKey = sessionKeyRef.current;
     if (!activeSessionKey) return;
     sessionKeyRef.current = null;
+    setSessionKey(null);
     closeSessionMutate(activeSessionKey);
   }, [closeSessionMutate]);
 
   const startSession = useCallback(() => {
+    const generation = sessionGenerationRef.current + 1;
+    sessionGenerationRef.current = generation;
+    const activeSessionKey = sessionKeyRef.current;
+    if (activeSessionKey) {
+      sessionKeyRef.current = null;
+      closeSessionMutate(activeSessionKey);
+    }
     setPageNumber(1);
     setSessionKey(null);
     createSessionMutate(documentId, {
       onSuccess: (session) => {
+        if (sessionGenerationRef.current !== generation) {
+          closeSessionMutate(session.session_key);
+          return;
+        }
         sessionKeyRef.current = session.session_key;
         setSessionKey(session.session_key);
       }
     });
-  }, [createSessionMutate, documentId]);
+  }, [closeSessionMutate, createSessionMutate, documentId]);
 
   useEffect(() => {
     startSession();
-  }, [startSession]);
-
-  useEffect(() => () => endSession(), [endSession]);
+    return endSession;
+  }, [endSession, startSession]);
 
   async function returnToDocument() {
     endSession();

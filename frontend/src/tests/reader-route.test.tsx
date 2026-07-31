@@ -1,9 +1,40 @@
-import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ReaderControls } from "@/components/reader/ReaderControls";
 import { ReaderPage } from "@/components/reader/ReaderPage";
+import { createAppRouter } from "@/router";
+
+const documentPayload = {
+  id: 10,
+  slug: "droit-public",
+  title: "Droit public gabonais",
+  abstract: "Resume public.",
+  language_code: "fr",
+  publication_year: 2026,
+  document_type: "open_resource",
+  access_model: "free",
+  domain: null,
+  authors: [],
+  owner: null,
+  page_count: 2,
+  cover: null,
+  access: { can_read: true, access_model: "free", reason: "free" }
+};
+
+function renderLectureRoute() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const router = createAppRouter({ history: createMemoryHistory({ initialEntries: ["/lecture/10"] }) });
+  return render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
+}
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("reader components", () => {
   it("renders page content without raw download controls", () => {
@@ -35,5 +66,59 @@ describe("reader components", () => {
 
     expect(previous).toHaveBeenCalledTimes(1);
     expect(next).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("secure reader route", () => {
+  it("closes the active session before retrying a failed page request", async () => {
+    let sessionCount = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/catalog/documents/10/")) {
+        return new Response(JSON.stringify(documentPayload));
+      }
+      if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
+        sessionCount += 1;
+        return new Response(JSON.stringify({ session_key: `session-${sessionCount}`, document_id: 10, version_id: 1, expires_at: "2026-08-01T00:00:00Z" }), { status: 201 });
+      }
+      if (url.endsWith("/api/v1/reader/sessions/session-1/pages/1/")) {
+        throw new TypeError("Network unavailable");
+      }
+      if (url.endsWith("/api/v1/reader/sessions/session-2/pages/1/")) {
+        return new Response(JSON.stringify({ session_key: "session-2", document_id: 10, version_id: 1, page_number: 1, page_count: 2, language_code: "fr", text: "Page securisee" }));
+      }
+      if (url.endsWith("/api/v1/reader/sessions/session-1/") && init?.method === "DELETE") {
+        return new Response(null, { status: 204 });
+      }
+      throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderLectureRoute();
+    await userEvent.click(await screen.findByRole("button", { name: "Reessayer" }));
+
+    await waitFor(() => expect(screen.getByText("Page securisee")).toBeInTheDocument());
+    const requests = fetchMock.mock.calls.map(([url, init]) => `${(init as RequestInit | undefined)?.method ?? "GET"} ${String(url)}`);
+    expect(requests).toContain("DELETE http://127.0.0.1:8000/api/v1/reader/sessions/session-1/");
+    expect(requests.indexOf("DELETE http://127.0.0.1:8000/api/v1/reader/sessions/session-1/")).toBeLessThan(
+      requests.lastIndexOf("POST http://127.0.0.1:8000/api/v1/reader/sessions/")
+    );
+  });
+
+  it("shows a login call to action when the reader session requires authentication", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/catalog/documents/10/")) return new Response(JSON.stringify(documentPayload));
+      if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
+        return new Response(JSON.stringify({ error: { code: "authentication_required", message: "Authentication is required.", field_errors: {} } }), { status: 401 });
+      }
+      throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderLectureRoute();
+
+    expect(await screen.findByRole("heading", { name: "Connexion requise" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Se connecter" })).toHaveAttribute("href", "/connexion?next=%2Flecture%2F10");
   });
 });
