@@ -26,6 +26,7 @@ const reader = {
 afterEach(() => {
   cleanup();
   tokenStore.clear();
+  window.history.replaceState({}, "", "/");
   vi.resetAllMocks();
 });
 
@@ -61,11 +62,12 @@ function renderAuth() {
 function renderAt(path: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createAppRouter({ history: createMemoryHistory({ initialEntries: [path] }) });
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>
   );
+  return { router, view };
 }
 
 describe("AuthProvider", () => {
@@ -92,6 +94,24 @@ describe("AuthProvider", () => {
 
     await waitFor(() => expect(tokenStore.get()).toBeNull());
     expect(screen.getByText("anonymous")).toBeInTheDocument();
+  });
+
+  it("preserves the protected route query after an unauthorized event", async () => {
+    window.history.replaceState({}, "", "/profil?tab=securite");
+    tokenStore.set({ access: "access", refresh: "refresh" });
+    vi.mocked(getCurrentUser).mockResolvedValue(reader);
+    const { router } = renderAt("/profil?tab=securite");
+
+    expect(await screen.findByRole("heading", { name: "Profil" })).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new Event("bibliogabon:unauthorized"));
+    });
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/connexion"));
+    expect(router.state.location.search).toEqual({
+      next: "/profil?tab=securite"
+    });
   });
 
   it("shows normalized profile field errors after a failed update", async () => {

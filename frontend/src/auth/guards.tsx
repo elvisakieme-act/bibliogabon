@@ -10,7 +10,12 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     return <Skeleton label="Chargement de la session" />;
   }
   if (!auth.user) {
-    return <Navigate to="/connexion" search={{ next: window.location.pathname }} />;
+    return (
+      <Navigate
+        to="/connexion"
+        search={{ next: `${window.location.pathname}${window.location.search}` }}
+      />
+    );
   }
   return children;
 }
