@@ -15,6 +15,10 @@ Run backend commands from `backend/`:
 - `.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run`: confirm migrations are committed.
 - `.\.venv\Scripts\python.exe manage.py migrate`: apply local migrations.
 - `.\.venv\Scripts\python.exe manage.py runserver`: start the local Django server.
+- `cd frontend && npm install`: install frontend dependencies.
+- `cd frontend && npm run dev`: start the reader-facing web app.
+- `cd frontend && npm run build`: type-check and build the frontend.
+- `cd frontend && npm run test`: run frontend tests.
 
 ## Coding Style & Naming Conventions
 

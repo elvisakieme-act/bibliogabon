@@ -99,18 +99,36 @@ describe("SearchResultCard", () => {
 
 describe("reader route", () => {
   it("registers a minimal lecture route for readable document CTAs", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/catalog/documents/10/")) {
+        return new Response(JSON.stringify(document));
+      }
+      if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
+        return new Response(JSON.stringify({ session_key: "session-10", document_id: 10, version_id: 1, expires_at: "2026-08-01T00:00:00Z" }), { status: 201 });
+      }
+      if (url.endsWith("/api/v1/reader/sessions/session-10/pages/1/")) {
+        return new Response(JSON.stringify({ session_key: "session-10", document_id: 10, version_id: 1, page_number: 1, page_count: 1, language_code: "fr", text: "Page de lecture" }));
+      }
+      throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const router = createAppRouter({ history: createMemoryHistory({ initialEntries: ["/lecture/10"] }) });
 
     render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
 
-    expect(await screen.findByRole("heading", { name: "Lecture" })).toBeInTheDocument();
+    expect(await screen.findByText("Lecture")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: document.title })).toBeInTheDocument();
   });
 });
 
 describe("search route query parameters", () => {
   it("forwards supported search and pagination parameters to the search endpoint", async () => {
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => new Response(JSON.stringify({ count: 0, next: null, previous: null, results: [] }), { status: 200 }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      void input;
+      return new Response(JSON.stringify({ count: 0, next: null, previous: null, results: [] }), { status: 200 });
+    });
     vi.stubGlobal("fetch", fetchMock);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const router = createAppRouter({

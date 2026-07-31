@@ -7,6 +7,7 @@ import { Logo } from "@/components/brand/Logo";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { AuthProvider } from "@/auth/AuthProvider";
 
 describe("maquette visual system", () => {
   it("preserves BiblioGABON brand tokens and motion utilities", () => {
@@ -54,7 +55,7 @@ describe("maquette visual system", () => {
   });
 
   it("shows logged-out account affordances without a logout action", () => {
-    render(<Navbar />);
+    render(<AuthProvider><Navbar /></AuthProvider>);
 
     expect(screen.getByRole("link", { name: "Connexion" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "S'inscrire" })).toBeInTheDocument();

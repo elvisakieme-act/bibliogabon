@@ -17,9 +17,23 @@ import { DomainDetailPage } from "@/routes/DomainDetailPage";
 import { DocumentDetailPage } from "@/routes/DocumentDetailPage";
 import { LecturePage } from "@/routes/LecturePage";
 import { BibliothequePage } from "@/routes/BibliothequePage";
+import { SiteLayout } from "@/components/layout/SiteLayout";
+import { EmptyState } from "@/components/ui/EmptyState";
+
+function NotFoundPage() {
+  return (
+    <SiteLayout>
+      <EmptyState
+        title="Page introuvable"
+        description="Cette adresse ne correspond a aucune page publique de BiblioGABON."
+      />
+    </SiteLayout>
+  );
+}
 
 const rootRoute = createRootRoute({
-  component: () => <AuthProvider><Outlet /></AuthProvider>
+  component: () => <AuthProvider><Outlet /></AuthProvider>,
+  notFoundComponent: NotFoundPage
 });
 
 const homeRoute = createRoute({
