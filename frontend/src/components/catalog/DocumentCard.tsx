@@ -1,3 +1,5 @@
+import { Heart } from "lucide-react";
+
 import type { DocumentMetadata } from "@/api/types";
 import { DocumentCover } from "@/components/catalog/DocumentCover";
 import { DomainBadge } from "@/components/catalog/DomainBadge";
@@ -9,7 +11,13 @@ export function documentReadLabel(document: DocumentMetadata) {
   return "Indisponible";
 }
 
-export function DocumentCard({ document }: { document: DocumentMetadata }) {
+interface FavoriteControl {
+  isFavorite: boolean;
+  isPending?: boolean;
+  onToggle(): void;
+}
+
+export function DocumentCard({ document, favorite }: { document: DocumentMetadata; favorite?: FavoriteControl }) {
   const readLabel = documentReadLabel(document);
   const authors = document.authors.map((author) => author.display_name).join(", ");
 
@@ -19,9 +27,12 @@ export function DocumentCard({ document }: { document: DocumentMetadata }) {
       <DocumentCover document={document} />
       <div className="p-5">
         {document.domain ? <DomainBadge domain={document.domain} /> : null}
-        <a href={`/documents/${document.id}`} className="mt-3 block font-display text-xl leading-tight text-[var(--navy)] hover:text-[var(--green)]">
-          {document.title}
-        </a>
+        <div className="mt-3 flex items-start gap-3">
+          <a href={`/documents/${document.id}`} className="min-w-0 flex-1 font-display text-xl leading-tight text-[var(--navy)] hover:text-[var(--green)]">
+            {document.title}
+          </a>
+          {favorite ? <button type="button" aria-label={favorite.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"} aria-pressed={favorite.isFavorite} disabled={favorite.isPending} onClick={favorite.onToggle} className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-[var(--navy)] transition hover:bg-[var(--navy-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] disabled:opacity-60"><Heart className="size-5" fill={favorite.isFavorite ? "currentColor" : "none"} /></button> : null}
+        </div>
         <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{document.abstract}</p>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span className="rounded-full bg-[var(--navy-soft)] px-2.5 py-1 uppercase">{document.language_code}</span>
