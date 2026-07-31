@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { SearchResult } from "@/api/types";
 import { DocumentCard } from "@/components/catalog/DocumentCard";
@@ -10,7 +10,10 @@ import { documentDetailReadLabel } from "@/routes/DocumentDetailPage";
 import { createAppRouter } from "@/router";
 import type { DocumentMetadata } from "@/api/types";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const document: DocumentMetadata = {
   id: 10,
@@ -102,5 +105,26 @@ describe("reader route", () => {
     render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
 
     expect(await screen.findByRole("heading", { name: "Lecture" })).toBeInTheDocument();
+  });
+});
+
+describe("search route query parameters", () => {
+  it("forwards supported search and pagination parameters to the search endpoint", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => new Response(JSON.stringify({ count: 0, next: null, previous: null, results: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const router = createAppRouter({
+      history: createMemoryHistory({
+        initialEntries: ["/recherche?q=droit+public&domain=droit&language=fr&access=free&year=2026&page=2&page_size=8"]
+      })
+    });
+
+    render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain(
+      "http://127.0.0.1:8000/api/v1/search/?q=droit+public&domain=droit&language=fr&access=free&year=2026&page=2&page_size=8"
+    );
   });
 });
