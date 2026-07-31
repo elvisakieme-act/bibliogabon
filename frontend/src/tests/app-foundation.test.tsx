@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { createAppRouter } from "@/router";
+
+afterEach(cleanup);
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -25,6 +27,14 @@ describe("app foundation", () => {
 
     expect(
       await screen.findByRole("heading", { name: /BiblioGABON/i })
+    ).toBeInTheDocument();
+  });
+
+  it("renders the route-level not-found state for unknown URLs", async () => {
+    renderAt("/adresse-inconnue");
+
+    expect(
+      await screen.findByRole("heading", { name: "Page introuvable" })
     ).toBeInTheDocument();
   });
 });

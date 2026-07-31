@@ -5,8 +5,15 @@ import type {
   ReadingProgressItem
 } from "@/api/types";
 
-export function listFavorites(access: string) {
-  return apiRequest<PaginatedResponse<FavoriteItem>>("/api/v1/me/favorites/", {
+function pagePath(path: string, page: number) {
+  return `${path}?${new URLSearchParams({ page: String(page) }).toString()}`;
+}
+
+export function listFavorites(access: string, page = 1) {
+  return apiRequest<PaginatedResponse<FavoriteItem>>(pagePath(
+    "/api/v1/me/favorites/",
+    page
+  ), {
     token: access
   });
 }
@@ -26,9 +33,9 @@ export function removeFavorite(access: string, documentId: number | string) {
   });
 }
 
-export function listReadingProgress(access: string) {
+export function listReadingProgress(access: string, page = 1) {
   return apiRequest<PaginatedResponse<ReadingProgressItem>>(
-    "/api/v1/me/reading-progress/",
+    pagePath("/api/v1/me/reading-progress/", page),
     { token: access }
   );
 }

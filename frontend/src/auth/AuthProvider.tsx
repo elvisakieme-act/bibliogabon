@@ -1,6 +1,14 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
 
 import { getCurrentUser, logout as logoutRequest } from "@/api/auth";
+import { UNAUTHORIZED_EVENT } from "@/api/client";
 import type { ApiUser, AuthTokens } from "@/api/types";
 import { tokenStore } from "@/auth/tokenStore";
 
@@ -20,12 +28,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
 
-  function clearSession() {
+  const clearSession = useCallback(() => {
     tokenStore.clear();
     setUser(null);
     setTokens(null);
     setIsHydrating(false);
-  }
+  }, []);
+
+  useEffect(() => {
+    const handleUnauthorized = () => clearSession();
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, [clearSession]);
 
   useEffect(() => {
     const storedTokens = tokenStore.get();
@@ -40,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then(setUser)
       .catch(clearSession)
       .finally(() => setIsHydrating(false));
-  }, []);
+  }, [clearSession]);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
@@ -62,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearSession();
       }
     }
-  }), [isHydrating, tokens, user]);
+  }), [clearSession, isHydrating, tokens, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

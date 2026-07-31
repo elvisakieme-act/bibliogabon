@@ -1,6 +1,7 @@
 import type { ApiErrorEnvelope } from "@/api/types";
 
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
+export const UNAUTHORIZED_EVENT = "bibliogabon:unauthorized";
 
 type ViteEnvironment = {
   VITE_API_BASE_URL?: string;
@@ -29,7 +30,8 @@ export class ApiError extends Error {
 
 export function apiBaseUrl() {
   const environment = import.meta as ImportMeta & { env?: ViteEnvironment };
-  return environment.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
+  const configuredUrl = environment.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
+  return configuredUrl.replace(/\/+$/, "");
 }
 
 function urlFor(path: string) {
@@ -76,7 +78,11 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    throw await parseError(response);
+    const error = await parseError(response);
+    if (error.status === 401 && options.token) {
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    }
+    throw error;
   }
   if (response.status === 204) {
     return undefined as T;

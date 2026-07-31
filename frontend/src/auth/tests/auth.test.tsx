@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -78,6 +78,18 @@ describe("AuthProvider", () => {
     expect(screen.getByText("reader@example.ga")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "logout" }));
+    await waitFor(() => expect(tokenStore.get()).toBeNull());
+    expect(screen.getByText("anonymous")).toBeInTheDocument();
+  });
+
+  it("clears the stored session after a global unauthorized event", async () => {
+    renderAuth();
+    await userEvent.click(screen.getByRole("button", { name: "set session" }));
+
+    act(() => {
+      window.dispatchEvent(new Event("bibliogabon:unauthorized"));
+    });
+
     await waitFor(() => expect(tokenStore.get()).toBeNull());
     expect(screen.getByText("anonymous")).toBeInTheDocument();
   });

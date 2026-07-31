@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useParams
+} from "@tanstack/react-router";
 
 import { ApiError } from "@/api/client";
+import { useAuth } from "@/auth/AuthProvider";
 import { ReaderControls } from "@/components/reader/ReaderControls";
 import { ReaderPage } from "@/components/reader/ReaderPage";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDocument } from "@/features/catalog/hooks";
+import { useUpdateReadingProgress } from "@/features/library/hooks";
 import {
   useCloseReaderSession,
   useCreateReaderSession,
@@ -18,18 +25,29 @@ function readerErrorStatus(error: unknown) {
   return error instanceof ApiError ? error.status : null;
 }
 
+function resumePageNumber(searchStr: string) {
+  const value = Number(new URLSearchParams(searchStr).get("page") ?? 1);
+  return Number.isInteger(value) && value > 0 ? value : 1;
+}
+
 export function LecturePage() {
   const { documentId } = useParams({ from: "/lecture/$documentId" });
+  const location = useLocation();
   const navigate = useNavigate();
+  const { tokens } = useAuth();
+  const initialPageNumber = resumePageNumber(location.searchStr);
   const document = useDocument(documentId);
   const createSession = useCreateReaderSession();
   const closeSession = useCloseReaderSession();
+  const updateProgress = useUpdateReadingProgress();
   const createSessionMutateAsync = createSession.mutateAsync;
   const closeSessionMutate = closeSession.mutate;
+  const updateProgressMutate = updateProgress.mutate;
   const [sessionKey, setSessionKey] = useState<string | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
+  const [pageNumber, setPageNumber] = useState(initialPageNumber);
   const sessionKeyRef = useRef<string | null>(null);
   const sessionGenerationRef = useRef(0);
+  const persistedPageRef = useRef<string | null>(null);
   const page = useReaderPage(sessionKey, pageNumber);
 
   const endSession = useCallback(() => {
@@ -49,7 +67,7 @@ export function LecturePage() {
       sessionKeyRef.current = null;
       closeSessionMutate(activeSessionKey);
     }
-    setPageNumber(1);
+    setPageNumber(initialPageNumber);
     setSessionKey(null);
     try {
       const session = await createSessionMutateAsync(documentId);
@@ -62,12 +80,34 @@ export function LecturePage() {
     } catch {
       // The mutation state supplies the route's access and retry UI.
     }
-  }, [closeSessionMutate, createSessionMutateAsync, documentId]);
+  }, [
+    closeSessionMutate,
+    createSessionMutateAsync,
+    documentId,
+    initialPageNumber
+  ]);
 
   useEffect(() => {
     void startSession();
     return endSession;
   }, [endSession, startSession]);
+
+  useEffect(() => {
+    const loadedPageNumber = page.data?.page_number;
+    if (!tokens?.access || !loadedPageNumber) return;
+    const persistedPageKey = `${documentId}:${loadedPageNumber}`;
+    if (persistedPageRef.current === persistedPageKey) return;
+    persistedPageRef.current = persistedPageKey;
+    updateProgressMutate({
+      documentId,
+      lastPageNumber: loadedPageNumber
+    });
+  }, [
+    documentId,
+    page.data?.page_number,
+    tokens?.access,
+    updateProgressMutate
+  ]);
 
   async function returnToDocument() {
     endSession();
@@ -79,7 +119,7 @@ export function LecturePage() {
   const errorStatus = sessionErrorStatus ?? pageErrorStatus;
 
   if (errorStatus === 401) {
-    return <SiteLayout><main className="container-editorial py-10 sm:py-16"><EmptyState title="Connexion requise" description="Connectez-vous pour acceder a ce document." /><Link to="/connexion" search={{ next: `/lecture/${documentId}` }} className="mt-6 inline-flex rounded-lg bg-[var(--navy)] px-5 py-3 text-sm font-semibold text-white">Se connecter</Link></main></SiteLayout>;
+    return <SiteLayout><main className="container-editorial py-10 sm:py-16"><EmptyState title="Connexion requise" description="Connectez-vous pour acceder a ce document." /><Link to="/connexion" search={{ next: `/lecture/${documentId}${location.searchStr}` }} className="mt-6 inline-flex rounded-lg bg-[var(--navy)] px-5 py-3 text-sm font-semibold text-white">Se connecter</Link></main></SiteLayout>;
   }
 
   if (errorStatus === 403) {

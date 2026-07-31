@@ -7,6 +7,7 @@ import { SiteLayout } from "@/components/layout/SiteLayout";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDomains, useSearch } from "@/features/catalog/hooks";
+import { paginationFromSearch } from "@/routes/paginationParams";
 
 function searchValues(searchStr: string) {
   const values = Object.fromEntries(new URLSearchParams(searchStr));
@@ -16,8 +17,7 @@ function searchValues(searchStr: string) {
 export function RecherchePage() {
   const location = useLocation();
   const values = searchValues(location.searchStr);
-  const page = Number(new URLSearchParams(location.searchStr).get("page") ?? 1) || 1;
-  const pageSize = Number(new URLSearchParams(location.searchStr).get("page_size") ?? 12) || 12;
+  const { page, pageSize } = paginationFromSearch(location.searchStr);
   const search = useSearch({ ...values, page, page_size: pageSize });
   const domains = useDomains();
 

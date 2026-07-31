@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ReaderControls } from "@/components/reader/ReaderControls";
 import { ReaderPage } from "@/components/reader/ReaderPage";
+import { tokenStore } from "@/auth/tokenStore";
 import { createAppRouter } from "@/router";
 
 const documentPayload = {
@@ -26,15 +27,23 @@ const documentPayload = {
   access: { can_read: true, access_model: "free", reason: "free" }
 };
 
-function renderLectureRoute({ strict = false }: { strict?: boolean } = {}) {
+function renderLectureRoute({
+  strict = false,
+  path = "/lecture/10"
+}: {
+  strict?: boolean;
+  path?: string;
+} = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const router = createAppRouter({ history: createMemoryHistory({ initialEntries: ["/lecture/10"] }) });
+  const router = createAppRouter({ history: createMemoryHistory({ initialEntries: [path] }) });
   const route = <QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>;
   return render(strict ? <StrictMode>{route}</StrictMode> : route);
 }
 
 afterEach(() => {
   cleanup();
+  tokenStore.clear();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -72,6 +81,114 @@ describe("reader components", () => {
 });
 
 describe("secure reader route", () => {
+  it("starts the reader on the page requested by a resume link", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/catalog/documents/10/")) {
+        return new Response(JSON.stringify(documentPayload));
+      }
+      if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          session_key: "session-resume",
+          document_id: 10,
+          version_id: 1,
+          expires_at: "2026-08-01T00:00:00Z"
+        }), { status: 201 });
+      }
+      if (url.endsWith("/api/v1/reader/sessions/session-resume/pages/2/")) {
+        return new Response(JSON.stringify({
+          session_key: "session-resume",
+          document_id: 10,
+          version_id: 1,
+          page_number: 2,
+          page_count: 2,
+          language_code: "fr",
+          text: "Page reprise"
+        }));
+      }
+      if (init?.method === "DELETE") return new Response(null, { status: 204 });
+      throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderLectureRoute({ path: "/lecture/10?page=2" });
+
+    expect(await screen.findByText("Page reprise")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain(
+      "http://127.0.0.1:8000/api/v1/reader/sessions/session-resume/pages/2/"
+    );
+  });
+
+  it("persists a successfully loaded page change for an authenticated reader", async () => {
+    tokenStore.set({ access: "access-token", refresh: "refresh-token" });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/me/")) {
+        return new Response(JSON.stringify({
+          id: 1,
+          email: "reader@example.ga",
+          display_name: "Reader",
+          account_type: "individual"
+        }));
+      }
+      if (url.endsWith("/api/v1/catalog/documents/10/")) {
+        return new Response(JSON.stringify(documentPayload));
+      }
+      if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          session_key: "session-progress",
+          document_id: 10,
+          version_id: 1,
+          expires_at: "2026-08-01T00:00:00Z"
+        }), { status: 201 });
+      }
+      if (url.includes("/api/v1/reader/sessions/session-progress/pages/1/")) {
+        return new Response(JSON.stringify({
+          session_key: "session-progress",
+          document_id: 10,
+          version_id: 1,
+          page_number: 1,
+          page_count: 2,
+          language_code: "fr",
+          text: "Premiere page"
+        }));
+      }
+      if (url.includes("/api/v1/reader/sessions/session-progress/pages/2/")) {
+        return new Response(JSON.stringify({
+          session_key: "session-progress",
+          document_id: 10,
+          version_id: 1,
+          page_number: 2,
+          page_count: 2,
+          language_code: "fr",
+          text: "Deuxieme page"
+        }));
+      }
+      if (url.endsWith("/api/v1/me/reading-progress/10/") && init?.method === "PATCH") {
+        return new Response(JSON.stringify({}));
+      }
+      if (init?.method === "DELETE") return new Response(null, { status: 204 });
+      throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderLectureRoute();
+    expect(await screen.findByText("Premiere page")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Page suivante/i }));
+    expect(await screen.findByText("Deuxieme page")).toBeInTheDocument();
+
+    await waitFor(() => {
+      const progressCall = fetchMock.mock.calls.find(([url, init]) =>
+        String(url).endsWith("/api/v1/me/reading-progress/10/")
+        && (init as RequestInit | undefined)?.method === "PATCH"
+        && (init as RequestInit | undefined)?.body === JSON.stringify({
+          last_page_number: 2
+        })
+      );
+      expect(progressCall).toBeDefined();
+    });
+  });
+
   it("closes a superseded StrictMode session when its creation resolves late", async () => {
     let sessionCount = 0;
     let resolveFirstSession: (response: Response) => void;

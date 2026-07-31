@@ -1,4 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient
+} from "@tanstack/react-query";
 
 import {
   addFavorite,
@@ -16,9 +20,13 @@ function requireAccessToken(access?: string | null) {
 
 export function useFavorites() {
   const { tokens } = useAuth();
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["favorites", tokens?.access ?? null],
-    queryFn: () => listFavorites(requireAccessToken(tokens?.access)),
+    queryFn: ({ pageParam }) =>
+      listFavorites(requireAccessToken(tokens?.access), pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.next ? pages.length + 1 : undefined,
     enabled: Boolean(tokens?.access)
   });
 }
@@ -45,9 +53,13 @@ export function useRemoveFavorite() {
 
 export function useReadingProgress() {
   const { tokens } = useAuth();
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["reading-progress", tokens?.access ?? null],
-    queryFn: () => listReadingProgress(requireAccessToken(tokens?.access)),
+    queryFn: ({ pageParam }) =>
+      listReadingProgress(requireAccessToken(tokens?.access), pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.next ? pages.length + 1 : undefined,
     enabled: Boolean(tokens?.access)
   });
 }

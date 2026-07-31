@@ -5,7 +5,10 @@ export function Reveal({ children, className = "" }: { children: ReactNode; clas
   const [shown, setShown] = useState(false);
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      typeof window.matchMedia === "function"
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       setShown(true);
       return;
     }
