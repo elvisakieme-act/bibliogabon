@@ -72,3 +72,31 @@ the shared clamping implementation was already present in the inherited patch.
 - The in-app browser runtime exposed no browser instance, so visual validation
   was limited to source review, direct hero-asset inspection, tests, and the
   production build rather than responsive browser screenshots.
+
+## Follow-up: Protected Return Query
+
+Date: 2026-07-31
+
+Status: `DONE_WITH_CONCERNS`
+
+Implementation commit:
+`3fe4f6c8a3aecb3d3b195c1df4d3e365aa5de910`
+
+### RED Evidence
+
+- Focused auth run: `1 failed, 5 passed`.
+- The new central-unauthorized regression expected
+  `{ next: "/profil?tab=securite" }` but received `{ next: "/" }`.
+- A router-location implementation was rejected during recovery because it
+  caused `<Navigate>` to resubmit while the protected route unmounted. The
+  final change retains the existing browser-location contract and appends
+  `window.location.search`.
+
+### GREEN Evidence
+
+- Focused auth suite: `6` tests passed with no unhandled errors.
+- `npm run lint`: exit `0`, `0` errors, the same `5` pre-existing warnings.
+- `npm run test`: `7` files, `48` tests passed.
+- `npm run build`: TypeScript and Vite production build passed; `1884` modules
+  transformed.
+- `git diff --cached --check`: passed before the implementation commit.
