@@ -16,3 +16,6 @@ __pycache__/
 
 .env
 *.log
+
+# Personal documents, not for the shared repo
+AKIEMEOYONO_ElvisTheo_PFE_Promo26_Plan_directeur.md
