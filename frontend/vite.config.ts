@@ -7,6 +7,13 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    // Vite's Host header check rejects cloud dev proxies (Lightning AI,
+    // Codespaces, etc.) by default. Allow known proxy domains by suffix
+    // instead of listing individual session hostnames, which change per
+    // workspace.
+    allowedHosts: [".cloudspaces.litng.ai"]
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src")
