@@ -31,14 +31,14 @@ class Command(BaseCommand):
         except Document.DoesNotExist as exc:
             raise CommandError(f"Aucun document avec l'id {options['document_id']}.") from exc
 
-        data = path.read_bytes()
-        version = ingest_document_file(
-            document=document,
-            data=data,
-            original_filename=path.name,
-            uploaded_by=None,
-            version_label=options["version_label"],
-        )
+        with path.open("rb") as handle:
+            version = ingest_document_file(
+                document=document,
+                fileobj=handle,
+                original_filename=path.name,
+                uploaded_by=None,
+                version_label=options["version_label"],
+            )
         self.stdout.write(
             self.style.SUCCESS(
                 f"Ingéré : « {document.title} » → version {version.version_label}, "

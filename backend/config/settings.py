@@ -140,6 +140,8 @@ DOCUMENT_STORAGE_BACKEND = validate_document_storage_backend(
 DOCUMENT_STORAGE_ENDPOINT_URL = os.getenv("DOCUMENT_STORAGE_ENDPOINT_URL", "").strip()
 DOCUMENT_STORAGE_ACCESS_KEY = os.getenv("DOCUMENT_STORAGE_ACCESS_KEY", "").strip()
 DOCUMENT_STORAGE_SECRET_KEY = os.getenv("DOCUMENT_STORAGE_SECRET_KEY", "").strip()
+# boto3 exige une region, meme quand le fournisseur S3-compatible l'ignore.
+DOCUMENT_STORAGE_REGION = os.getenv("DOCUMENT_STORAGE_REGION", "").strip() or "us-east-1"
 
 DOCUMENT_PAGE_IMAGE_WIDTH = env_int("DOCUMENT_PAGE_IMAGE_WIDTH", 1240)
 OCR_LANGUAGES = os.getenv("OCR_LANGUAGES", "").strip() or "fra"

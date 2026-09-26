@@ -14,12 +14,11 @@ remplacées par un texte de remplacement — c'est là qu'interviendra l'OCR
 from __future__ import annotations
 
 import hashlib
-import io
 
 from django.db import transaction
 from django.utils import timezone
 
-from document_ingestion.blob_storage import read_bytes, save_bytes
+from document_ingestion.blob_storage import open_stream, save_stream
 from document_ingestion.models import DocumentVersion, ProcessingJob
 from document_ingestion.services import register_private_upload
 from document_ingestion.storage import build_private_storage_key
@@ -32,9 +31,20 @@ from document_processing.services import (
 from search_discovery.services import rebuild_document_search_index
 
 EMPTY_PAGE_PLACEHOLDER = "[Page {n} : aucun texte extractible — OCR requis]"
+CHUNK_SIZE = 1024 * 1024
 
 
-def _extract_pdf_page_texts(data: bytes) -> list[str]:
+def _checksum_and_size(fileobj) -> tuple[str, int]:
+    """Empreinte et taille calculées en streaming, sans charger le fichier."""
+    digest = hashlib.sha256()
+    size = 0
+    for chunk in iter(lambda: fileobj.read(CHUNK_SIZE), b""):
+        digest.update(chunk)
+        size += len(chunk)
+    return digest.hexdigest(), size
+
+
+def _extract_pdf_page_texts(source) -> list[str]:
     try:
         from pypdf import PdfReader
     except ImportError as exc:  # pragma: no cover - dépend de l'environnement
@@ -42,7 +52,7 @@ def _extract_pdf_page_texts(data: bytes) -> list[str]:
             "pypdf n'est pas installé. Lance : pip install pypdf"
         ) from exc
 
-    reader = PdfReader(io.BytesIO(data))
+    reader = PdfReader(source)
     return [(page.extract_text() or "").strip() for page in reader.pages]
 
 
@@ -59,8 +69,8 @@ def process_ingest_job(job: ProcessingJob) -> DocumentVersion:
 
     job.mark_started()
     try:
-        data = read_bytes(source_asset.storage_key)
-        page_texts = _extract_pdf_page_texts(data)
+        with open_stream(source_asset.storage_key) as handle:
+            page_texts = _extract_pdf_page_texts(handle)
         page_count = len(page_texts)
         if page_count < 1:
             raise ValueError("Le PDF ne contient aucune page exploitable.")
@@ -114,7 +124,7 @@ def process_ingest_job(job: ProcessingJob) -> DocumentVersion:
 def ingest_document_file(
     *,
     document,
-    data: bytes,
+    fileobj,
     original_filename: str,
     mime_type: str = "application/pdf",
     uploaded_by=None,
@@ -123,24 +133,34 @@ def ingest_document_file(
     """Point d'entrée haut niveau : stocke le fichier, enregistre la version et
     l'asset, puis lance le traitement. Renvoie la version traitée.
 
+    `fileobj` est un flux binaire repositionnable : la clé de stockage dépend
+    de l'empreinte du contenu, donc on le parcourt une fois pour l'empreinte
+    puis une seconde fois pour l'écriture. Rien n'est jamais entièrement
+    chargé en mémoire.
+
     Passage à l'asynchrone plus tard : remplacer l'appel direct à
     `process_ingest_job(job)` par la mise en file d'une tâche Celery.
     """
-    checksum = hashlib.sha256(data).hexdigest()
+    if not fileobj.seekable():
+        raise ValueError("Le flux source doit être repositionnable (seekable).")
+
+    fileobj.seek(0)
+    checksum, byte_size = _checksum_and_size(fileobj)
     storage_key = build_private_storage_key(
         document=document,
         version_label=version_label,
         original_filename=original_filename,
         checksum_sha256=checksum,
     )
-    save_bytes(storage_key, data)
+    fileobj.seek(0)
+    save_stream(storage_key, fileobj)
 
     register_private_upload(
         document=document,
         storage_key=storage_key,
         original_filename=original_filename,
         mime_type=mime_type,
-        byte_size=len(data),
+        byte_size=byte_size,
         checksum_sha256=checksum,
         uploaded_by=uploaded_by,
         version_label=version_label,

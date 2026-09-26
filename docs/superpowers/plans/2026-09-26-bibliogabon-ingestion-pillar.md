@@ -90,12 +90,12 @@ backend/
 - Produces `save_stream(storage_key, fileobj) -> None` and `open_stream(storage_key) -> IO[bytes]`.
 - Retires `save_bytes` / `read_bytes`.
 
-- [ ] Write failing tests with `moto`: an object written under an S3 backend lands at the exact `storage_key`, is private, and round-trips; the filesystem backend behaves identically for the same key; an unknown backend name raises `ImproperlyConfigured`.
-- [ ] Write a failing test proving ingestion never materialises the whole file: feed a file-like object and assert the reader is consumed in chunks rather than via a single `.read()`.
-- [ ] Implement backend selection and the streaming helpers, keeping the existing delete-before-write guarantee so the key is exact under both backends.
-- [ ] Update `pipeline.py` call sites to the streaming API.
-- [ ] Run `pytest document_ingestion/tests -q`.
-- [ ] Commit `feat: select document storage backend by configuration`.
+- [x] Write failing tests with `moto`: an object written under an S3 backend lands at the exact `storage_key`, is private, and round-trips; the filesystem backend behaves identically for the same key; an unknown backend name raises `ImproperlyConfigured`.
+- [x] Write a failing test proving ingestion never materialises the whole file: feed a file-like object and assert the reader is consumed in chunks rather than via a single `.read()`.
+- [x] Implement backend selection and the streaming helpers, keeping the existing delete-before-write guarantee so the key is exact under both backends.
+- [x] Update `pipeline.py` call sites to the streaming API.
+- [x] Run `pytest document_ingestion/tests -q`.
+- [x] Commit `feat: select document storage backend by configuration`.
 
 ---
 
