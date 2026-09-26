@@ -86,7 +86,10 @@ def test_replace_converges_to_a_single_clean_set(local_storage, document):
     assert DocumentPage.objects.filter(version=second).count() == 2
     assert ExtractedText.objects.filter(page__version=second).count() == 2
     assert SearchIndexRecord.objects.filter(page__version=second).count() == 2
-    assert DocumentAsset.objects.filter(version=second).count() == 1
+    sources = DocumentAsset.objects.filter(
+        version=second, asset_type=DocumentAsset.AssetType.SOURCE_PDF
+    )
+    assert sources.count() == 1
     texts = ExtractedText.objects.filter(page__version=second)
     assert all("remplacement" in text.text for text in texts)
 
@@ -131,14 +134,18 @@ def test_replace_removes_the_previous_private_object(
     local_storage, document, django_capture_on_commit_callbacks
 ):
     first = ingest(document, pages=3)
-    old_key = DocumentAsset.objects.get(version=first).storage_key
+    old_key = DocumentAsset.objects.get(
+        version=first, asset_type=DocumentAsset.AssetType.SOURCE_PDF
+    ).storage_key
     assert (local_storage / old_key).is_file()
 
     # La suppression des objets stockes est differee au commit : un rollback
     # ne doit pas laisser la base pointer vers des fichiers deja effaces.
     with django_capture_on_commit_callbacks(execute=True):
         second = ingest(document, pages=2, marker="remplacement", replace=True)
-    new_key = DocumentAsset.objects.get(version=second).storage_key
+    new_key = DocumentAsset.objects.get(
+        version=second, asset_type=DocumentAsset.AssetType.SOURCE_PDF
+    ).storage_key
 
     assert new_key != old_key
     assert not (local_storage / old_key).exists(), "le fichier source remplace reste en stockage"

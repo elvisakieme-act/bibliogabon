@@ -13,7 +13,7 @@ import io
 import logging
 import shutil
 
-from celery import shared_task
+from celery import chain, chord, group, shared_task
 from django.conf import settings
 
 from document_ingestion.blob_storage import open_stream, save_stream
@@ -290,3 +290,59 @@ def finalize_version(self, version_id: int) -> int:
     version = DocumentVersion.objects.select_related("document").get(pk=version_id)
     mark_version_current_and_index(version)
     return version.pk
+
+
+# --- Chaine complete ---------------------------------------------------------
+
+
+def page_workflow(page_id: int):
+    """Travail d'une page : reconnaitre le texte manquant, rendre l'image,
+    puis consommer son enregistrement d'index. L'ordre compte — l'index doit
+    voir le texte issu de l'OCR."""
+    return chain(
+        ocr_page.si(page_id),
+        render_page_image.si(page_id),
+        index_page.si(page_id),
+    )
+
+
+@shared_task(bind=True, max_retries=MAX_RETRIES, acks_late=True)
+def process_version_pages(self, version_id: int):
+    """Eclate le travail page par page, puis finalise une fois tout fini.
+
+    La barriere est indispensable : `finalize_version` reconstruit l'index
+    du document a partir des textes, donc il doit courir apres l'OCR.
+    """
+    page_ids = list(
+        DocumentPage.objects.filter(version_id=version_id)
+        .order_by("page_number")
+        .values_list("pk", flat=True)
+    )
+    if not page_ids:
+        return finalize_version.apply_async(args=[version_id])
+    return chord(
+        group(page_workflow(page_id) for page_id in page_ids),
+        finalize_version.si(version_id),
+    ).apply_async()
+
+
+def dispatch_ingestion(job_id: int, version_id: int):
+    """Met la chaine complete en file."""
+    return chain(
+        ingest_source_document.si(job_id),
+        process_version_pages.si(version_id),
+    ).apply_async()
+
+
+def run_ingestion_inline(job) -> None:
+    """Deroule la meme chaine sans passer par Celery.
+
+    Pour un contributeur qui n'a pas de worker sous la main : meme ordre,
+    memes fonctions, donc meme resultat.
+    """
+    process_ingest_job(job)
+    for page in DocumentPage.objects.filter(version=job.version).order_by("page_number"):
+        ocr_page.run(page.pk)
+        render_page_image.run(page.pk)
+        index_page.run(page.pk)
+    mark_version_current_and_index(job.version)

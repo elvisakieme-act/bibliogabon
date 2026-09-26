@@ -8,6 +8,7 @@ from catalog.models import AcademicDomain, Document, DocumentAuthor, Author, Rig
 from document_ingestion import tasks
 from document_ingestion.models import DocumentVersion
 from document_ingestion.pipeline import ingest_document_file
+from document_ingestion.tests.ingestion_helpers import ingest_source_only
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
 from search_discovery.models import DocumentSearchIndex
 from search_discovery.services import search_documents
@@ -72,8 +73,24 @@ def test_index_page_moves_a_record_from_queued_to_indexed(version):
     assert record.error_code == ""
 
 
-def test_a_placeholder_page_is_recorded_as_failed_not_indexed(version):
-    page = DocumentPage.objects.get(version=version, page_number=3)
+def test_a_placeholder_page_is_recorded_as_failed_not_indexed(local_storage, db):
+    """Sur une ingestion source seule, la page 3 reste un placeholder :
+    c'est l'etat que le consommateur doit refuser d'indexer."""
+    from document_ingestion.tasks import index_page
+
+    domain = AcademicDomain.objects.create(name="Brut", slug="brut")
+    document = Document.objects.create(
+        title="Sans OCR",
+        slug="sans-ocr",
+        academic_domain=domain,
+        category=Document.Category.OPEN_RESOURCE,
+        access_model=Document.AccessModel.FREE,
+        publication_status=Document.PublicationStatus.PUBLISHED,
+    )
+    raw = ingest_source_only(document, FIXTURE.read_bytes())
+    page = DocumentPage.objects.get(version=raw, page_number=3)
+
+    index_page.apply(args=[page.pk]).get()
 
     record = SearchIndexRecord.objects.get(page=page)
     assert record.status == SearchIndexRecord.Status.FAILED
@@ -101,9 +118,22 @@ def test_a_page_without_text_fails_its_record(version):
     assert record.error_code == "no_extracted_text"
 
 
-def test_placeholder_text_never_reaches_the_document_index(version):
-    index = DocumentSearchIndex.objects.get(document=version.document)
+def test_placeholder_text_never_reaches_the_document_index(local_storage, db):
+    from document_ingestion.services import mark_version_current_and_index
 
+    domain = AcademicDomain.objects.create(name="Brut", slug="brut-index")
+    document = Document.objects.create(
+        title="Sans OCR indexe",
+        slug="sans-ocr-indexe",
+        academic_domain=domain,
+        category=Document.Category.OPEN_RESOURCE,
+        access_model=Document.AccessModel.FREE,
+        publication_status=Document.PublicationStatus.PUBLISHED,
+    )
+    raw = ingest_source_only(document, FIXTURE.read_bytes())
+    mark_version_current_and_index(raw)
+
+    index = DocumentSearchIndex.objects.get(document=document)
     assert "aucun texte extractible" not in index.page_text
     assert index.indexed_page_count == 2, "seules les deux pages lisibles comptent"
 

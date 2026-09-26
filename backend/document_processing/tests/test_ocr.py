@@ -9,7 +9,7 @@ import pytest
 
 from catalog.models import AcademicDomain, Document
 from document_ingestion import tasks
-from document_ingestion.pipeline import ingest_document_file
+from document_ingestion.tests.ingestion_helpers import ingest_source_only
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
 
 
@@ -46,10 +46,9 @@ def scanned_version(local_storage, db):
         category=Document.Category.OPEN_RESOURCE,
         access_model=Document.AccessModel.FREE,
     )
-    with FIXTURE.open("rb") as handle:
-        return ingest_document_file(
-            document=document, fileobj=handle, original_filename="sample.pdf"
-        )
+    # Source seule : la chaine complete passerait l'OCR d'elle-meme et il
+    # n'y aurait plus de placeholder a observer.
+    return ingest_source_only(document, FIXTURE.read_bytes())
 
 
 def test_the_fixture_really_has_a_page_without_a_text_layer(scanned_version):

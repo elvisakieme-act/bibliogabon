@@ -22,12 +22,11 @@ from django.utils import timezone
 from document_ingestion.blob_storage import get_document_storage, open_stream, save_stream
 from document_ingestion.exceptions import VersionAlreadyIngested
 from document_ingestion.models import DocumentAsset, DocumentVersion, ProcessingJob
-from document_ingestion.services import mark_version_current_and_index, register_private_upload
+from document_ingestion.services import register_private_upload
 from document_ingestion.storage import build_private_storage_key
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
 from document_processing.services import (
     attach_extracted_text,
-    consume_page_index_record,
     create_page_records,
     queue_page_index_record,
 )
@@ -93,10 +92,9 @@ def process_ingest_job(job: ProcessingJob) -> DocumentVersion:
                 )
                 page.status = DocumentPage.Status.PROCESSED
                 page.save(update_fields=["status", "updated_at"])
+                # La file est consommee par `index_page`, en fin de chaine :
+                # l'index doit voir le texte issu de l'OCR, pas celui d'avant.
                 queue_page_index_record(page=page)
-                # La file est consommee dans la foulee : elle ne doit jamais
-                # rester pleine derriere une ingestion terminee.
-                consume_page_index_record(page)
 
             version.status = DocumentVersion.Status.PROCESSED
             version.is_current = True
@@ -115,9 +113,8 @@ def process_ingest_job(job: ProcessingJob) -> DocumentVersion:
                     "updated_at",
                 ]
             )
-            # Bascule de version courante et reconstruction de l'index :
-            # un seul mecanisme, partage avec la tache finalize_version.
-            mark_version_current_and_index(version)
+            # Les autres versions sont declassees et l'index du document
+            # reconstruit par `finalize_version`, apres le travail par page.
 
         job.mark_completed(output_asset_ids=[])
         return version
@@ -181,6 +178,7 @@ def ingest_document_file(
     uploaded_by=None,
     version_label: str = "v1",
     replace: bool = False,
+    dispatch: bool = True,
 ) -> DocumentVersion:
     """Point d'entrée haut niveau : stocke le fichier, enregistre la version et
     l'asset, puis lance le traitement. Renvoie la version traitée.
@@ -190,8 +188,13 @@ def ingest_document_file(
     puis une seconde fois pour l'écriture. Rien n'est jamais entièrement
     chargé en mémoire.
 
-    Passage à l'asynchrone plus tard : remplacer l'appel direct à
-    `process_ingest_job(job)` par la mise en file d'une tâche Celery.
+    `dispatch=True` met la chaîne complète en file : découpage, OCR,
+    rendu des images, indexation, finalisation. En développement et en
+    test les tâches s'exécutent en ligne, donc la version renvoyée est
+    déjà traitée ; derrière un vrai broker elle revient en attente.
+
+    `dispatch=False` déroule la même chaîne sans Celery, pour un
+    contributeur qui n'a pas de worker sous la main.
     """
     if not fileobj.seekable():
         raise ValueError("Le flux source doit être repositionnable (seekable).")
@@ -227,4 +230,13 @@ def ingest_document_file(
     job = ProcessingJob.objects.get(
         idempotency_key=f"ingest:{document.pk}:{version_label}:{checksum}"
     )
-    return process_ingest_job(job)
+
+    from document_ingestion.tasks import dispatch_ingestion, run_ingestion_inline
+
+    if dispatch:
+        dispatch_ingestion(job.pk, job.version_id)
+    else:
+        run_ingestion_inline(job)
+
+    job.version.refresh_from_db()
+    return job.version

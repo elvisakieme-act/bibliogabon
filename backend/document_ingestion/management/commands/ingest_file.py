@@ -18,6 +18,14 @@ class Command(BaseCommand):
         parser.add_argument("pdf_path", type=str, help="Chemin du fichier PDF à ingérer.")
         parser.add_argument("--version-label", default="v1", help="Libellé de version (défaut : v1).")
         parser.add_argument(
+            "--sync",
+            action="store_true",
+            help=(
+                "Déroule le traitement dans ce processus au lieu de le mettre "
+                "en file, pour une machine sans worker Celery."
+            ),
+        )
+        parser.add_argument(
             "--replace",
             action="store_true",
             help=(
@@ -49,6 +57,7 @@ class Command(BaseCommand):
                     uploaded_by=None,
                     version_label=options["version_label"],
                     replace=options["replace"],
+                    dispatch=not options["sync"],
                 )
         except VersionAlreadyIngested as exc:
             raise CommandError(
@@ -57,10 +66,24 @@ class Command(BaseCommand):
                 f"--version-label v2\n"
                 f"  • pour écraser celle-ci : --replace"
             ) from exc
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Ingéré : « {document.title} » → version {version.version_label}, "
-                f"{version.page_count} page(s), statut {version.status}."
+        if version.status == "processed":
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Ingéré : « {document.title} » → version {version.version_label}, "
+                    f"{version.page_count} page(s), statut {version.status}."
+                )
             )
-        )
-        self.stdout.write("Le document est maintenant lisible via le lecteur et interrogeable par la recherche.")
+            self.stdout.write(
+                "Le document est maintenant lisible via le lecteur et interrogeable par la recherche."
+            )
+        else:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Mis en file : « {document.title} » → version {version.version_label}, "
+                    f"statut {version.status}."
+                )
+            )
+            self.stdout.write(
+                "Un worker Celery doit tourner pour traiter le document. "
+                "Sans worker, relancez avec --sync."
+            )

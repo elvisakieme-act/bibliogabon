@@ -227,12 +227,15 @@ backend/
 **Interfaces:**
 - Produces the task chain `ingest_source_document -> (ocr_page | render_page_image | index_page) -> finalize_version`.
 
-- [ ] Write the failing end-to-end test on the fixture PDF: every page has normalised text, the image-only page went through OCR, every page has a private image asset, no index record is `queued`, the version is `processed` and current, the job is `succeeded`, and a reader session serves a page with no storage field in the payload.
-- [ ] Replace the synchronous body of `ingest_document_file` with the task chain; keep `process_ingest_job` as the per-job domain function the task calls.
-- [ ] Delete the now-dead synchronous fan-out and the last `save_bytes` / `read_bytes` references.
-- [ ] Point `ingest_file` at the chain, with `--sync` for a developer with no worker running.
-- [ ] Run the full suite, `manage.py check`, `manage.py makemigrations --check --dry-run`.
-- [ ] Commit `refactor: retire the synchronous ingestion stopgap`.
+- [x] Write the failing end-to-end test on the fixture PDF: every page has normalised text, the image-only page went through OCR, every page has a private image asset, no index record is `queued`, the version is `processed` and current, the job is `succeeded`, and a reader session serves a page with no storage field in the payload.
+- [x] Replace the synchronous body of `ingest_document_file` with the task chain; keep `process_ingest_job` as the per-job domain function the task calls.
+- [x] Delete the now-dead synchronous fan-out and the last `save_bytes` / `read_bytes` references.
+- [x] Realign the Task 6 and Task 8 tests that assumed a raw ingestion. The chain now runs OCR automatically,
+      so the fixture's image-only page is no longer a placeholder by the time they look. They use a shared
+      `ingest_source_only` helper to observe the intermediate state deliberately.
+- [x] Point `ingest_file` at the chain, with `--sync` for a developer with no worker running.
+- [x] Run the full suite, `manage.py check`, `manage.py makemigrations --check --dry-run`.
+- [x] Commit `refactor: retire the synchronous ingestion stopgap`.
 
 ---
 
