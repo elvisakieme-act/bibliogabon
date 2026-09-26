@@ -92,3 +92,20 @@ def register_private_upload(
             input_payload={"original_filename": original_filename},
         )
         return asset
+
+
+def mark_version_current_and_index(version) -> None:
+    """Rend la version courante et reconstruit l'index du document.
+
+    Unique endroit ou l'index document est reconstruit pendant l'ingestion.
+    """
+    from search_discovery.services import rebuild_document_search_index
+
+    with transaction.atomic():
+        DocumentVersion.objects.filter(document=version.document).exclude(
+            pk=version.pk
+        ).update(is_current=False)
+        if not version.is_current:
+            version.is_current = True
+            version.save(update_fields=["is_current", "updated_at"])
+        rebuild_document_search_index(version.document)

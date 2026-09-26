@@ -22,15 +22,15 @@ from django.utils import timezone
 from document_ingestion.blob_storage import get_document_storage, open_stream, save_stream
 from document_ingestion.exceptions import VersionAlreadyIngested
 from document_ingestion.models import DocumentAsset, DocumentVersion, ProcessingJob
-from document_ingestion.services import register_private_upload
+from document_ingestion.services import mark_version_current_and_index, register_private_upload
 from document_ingestion.storage import build_private_storage_key
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
 from document_processing.services import (
     attach_extracted_text,
+    consume_page_index_record,
     create_page_records,
     queue_page_index_record,
 )
-from search_discovery.services import rebuild_document_search_index
 
 logger = logging.getLogger(__name__)
 
@@ -94,11 +94,10 @@ def process_ingest_job(job: ProcessingJob) -> DocumentVersion:
                 page.status = DocumentPage.Status.PROCESSED
                 page.save(update_fields=["status", "updated_at"])
                 queue_page_index_record(page=page)
+                # La file est consommee dans la foulee : elle ne doit jamais
+                # rester pleine derriere une ingestion terminee.
+                consume_page_index_record(page)
 
-            # Cette version devient l'unique version courante du document.
-            DocumentVersion.objects.filter(document=version.document).exclude(pk=version.pk).update(
-                is_current=False
-            )
             version.status = DocumentVersion.Status.PROCESSED
             version.is_current = True
             version.page_count = page_count
@@ -116,7 +115,9 @@ def process_ingest_job(job: ProcessingJob) -> DocumentVersion:
                     "updated_at",
                 ]
             )
-            rebuild_document_search_index(version.document)
+            # Bascule de version courante et reconstruction de l'index :
+            # un seul mecanisme, partage avec la tache finalize_version.
+            mark_version_current_and_index(version)
 
         job.mark_completed(output_asset_ids=[])
         return version

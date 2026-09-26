@@ -17,10 +17,16 @@ from celery import shared_task
 from django.conf import settings
 
 from document_ingestion.blob_storage import open_stream, save_stream
-from document_ingestion.models import DocumentAsset, ProcessingJob
+from document_ingestion.models import DocumentAsset, DocumentVersion, ProcessingJob
 from document_ingestion.pipeline import EMPTY_PAGE_PLACEHOLDER, process_ingest_job
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
-from document_processing.services import attach_extracted_text, queue_page_index_record
+from document_ingestion.services import mark_version_current_and_index
+from document_processing.services import (
+    attach_extracted_text,
+    consume_page_index_record,
+    fail_page_index_record,
+    queue_page_index_record,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -167,7 +173,7 @@ def ocr_page(self, page_id: int) -> bool:
     )
     if source is None:
         logger.warning("Page %s : aucun fichier source, OCR impossible.", page_id)
-        _fail_index_record(page, "no_source_asset", "Aucun fichier source pour cette page.")
+        fail_page_index_record(page, "no_source_asset", "Aucun fichier source pour cette page.")
         return False
 
     with open_stream(source.storage_key) as handle:
@@ -175,7 +181,7 @@ def ocr_page(self, page_id: int) -> bool:
 
     if not text.strip():
         logger.info("Page %s : aucun texte reconnu par l'OCR.", page_id)
-        _fail_index_record(page, "ocr_empty", "L'OCR n'a reconnu aucun texte sur cette page.")
+        fail_page_index_record(page, "ocr_empty", "L'OCR n'a reconnu aucun texte sur cette page.")
         return False
 
     attach_extracted_text(
@@ -187,18 +193,6 @@ def ocr_page(self, page_id: int) -> bool:
     )
     queue_page_index_record(page=page)
     return True
-
-
-def _fail_index_record(page: DocumentPage, error_code: str, message: str) -> None:
-    record = SearchIndexRecord.objects.filter(page=page).first()
-    if record is None:
-        return
-    record.status = SearchIndexRecord.Status.FAILED
-    record.error_code = error_code
-    record.error_message = message
-    record.save(update_fields=["status", "error_code", "error_message", "updated_at"])
-
-
 # --- Rendu des pages en images privees ---------------------------------------
 
 
@@ -281,3 +275,18 @@ def render_page_image(self, page_id: int) -> bool:
         defaults=defaults,
     )
     return True
+
+
+# --- Indexation --------------------------------------------------------------
+
+
+@shared_task(bind=True, max_retries=MAX_RETRIES, acks_late=True)
+def index_page(self, page_id: int) -> bool:
+    return consume_page_index_record(DocumentPage.objects.get(pk=page_id))
+
+
+@shared_task(bind=True, max_retries=MAX_RETRIES, acks_late=True)
+def finalize_version(self, version_id: int) -> int:
+    version = DocumentVersion.objects.select_related("document").get(pk=version_id)
+    mark_version_current_and_index(version)
+    return version.pk

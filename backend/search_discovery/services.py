@@ -61,7 +61,14 @@ def _current_processed_page_text(document: Document) -> tuple[str, int]:
         .select_related("page")
         .order_by("page__page_number")
     )
-    page_texts = [text.text.strip() for text in extracted_texts if text.text and text.text.strip()]
+    # Les pages illisibles portent un texte de remplacement. L'indexer
+    # rendrait le document trouvable sur les mots du placeholder — une
+    # recherche « OCR requis » remontait tous les documents numerises.
+    page_texts = [
+        text.text.strip()
+        for text in extracted_texts
+        if text.text and text.text.strip() and not text.text.strip().startswith("[Page ")
+    ]
     return "\n".join(page_texts), len(page_texts)
 
 

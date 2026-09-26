@@ -207,10 +207,14 @@ backend/
 **Interfaces:**
 - Produces `index_page(page_id)` and `finalize_version(version_id)`.
 
-- [ ] Write failing tests: `index_page` moves a record from `queued` to `indexed` and stamps `indexed_at`; a failure sets `failed` with a reason; replaying is idempotent; `finalize_version` rebuilds `DocumentSearchIndex` once from indexed pages and flips `is_current`; after a full ingestion no record is left `queued`.
-- [ ] Implement both tasks and remove the inline `rebuild_document_search_index` call from the ingestion path, so one mechanism remains instead of two.
-- [ ] Run `pytest document_processing/tests search_discovery/tests -q`.
-- [ ] Commit `feat: consume the page index queue`.
+- [x] Write failing tests: `index_page` moves a record from `queued` to `indexed` and stamps `indexed_at`; a failure sets `failed` with a reason; replaying is idempotent; `finalize_version` rebuilds `DocumentSearchIndex` once from indexed pages and flips `is_current`; after a full ingestion no record is left `queued`.
+- [x] Implement both tasks and remove the inline `rebuild_document_search_index` call from the ingestion path, so one mechanism remains instead of two.
+- [x] Exclude placeholder pages from the document index. Searching "OCR requis" returned every scanned document,
+      because the unreadable-page placeholder was being indexed as if it were content.
+- [x] Keep the domain logic in services and the tasks as thin wrappers: `tasks.py` already imports `pipeline.py`,
+      so putting it in the task module would have made the import circular.
+- [x] Run `pytest document_processing/tests search_discovery/tests -q`.
+- [x] Commit `feat: consume the page index queue`.
 
 ---
 
