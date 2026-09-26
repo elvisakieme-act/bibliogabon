@@ -1,0 +1,93 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+BiblioGABON — national academic digital library for Gabon. Django 5 / DRF backend (`backend/`) + React 19 / Vite reader web app (`frontend/`). Product docs, specs, plans and runbooks live in `docs/`. Product language is French (UI copy, some code comments, docs); code identifiers are English.
+
+## Commands
+
+Backend (run from `backend/`). On this Linux studio Django is already on `PATH`, so use plain `python`; `README.md` and `AGENTS.md` document the Windows `.\.venv\Scripts\python.exe` form used on the author's machine — translate accordingly.
+
+```bash
+python -m pytest -q                              # full suite (~345 tests, ~45s)
+python -m pytest api/v1/tests -q                 # one app's tests
+python -m pytest catalog/tests/test_x.py::test_y # single test
+python manage.py check
+python manage.py makemigrations --check --dry-run  # CI fails if migrations are uncommitted
+python manage.py migrate
+python manage.py runserver
+python manage.py spectacular --file schema.yml   # export OpenAPI
+python manage.py seed_demo                       # idempotent demo dataset (dev only)
+python manage.py ingest_file <document_id> file.pdf  # run the ingestion pipeline locally
+```
+
+Frontend (run from `frontend/`):
+
+```bash
+npm run dev     # vite on 127.0.0.1:5174
+npm run test    # vitest
+npm run lint    # eslint
+npm run build   # tsc --noEmit + vite build
+```
+
+CI (`.github/workflows/ci.yml`) runs exactly: backend `check` → `makemigrations --check` → `pytest`; frontend `lint` → `test` → `build`. Run those four backend/three frontend steps before claiming work is done.
+
+Local dev defaults to SQLite (`backend/db.sqlite3`, gitignored); set `DATABASE_URL` for Postgres. Both sides need a `.env` copied from `.env.example`. API docs at `/api/docs/` (Swagger) and `/api/v1/schema/`.
+
+## Architecture
+
+### Layering (backend)
+
+Business logic lives in `<app>/services.py`, never in views. Views are thin: parse input, call a service, map domain exceptions to an error response. Most apps (`accounts`, `catalog`, `billing`, `operations`, `analytics`, `document_processing`) have **no views or urls at all** — they are pure domain layers consumed by `api/v1/` and by other services. When adding behaviour, add a service function and test it directly against models; only then expose it.
+
+The app sequence mirrors the plan sequence in `docs/technical/00-subsystem-plan-index.md`: identity → catalog → ingestion → processing → reader → search → billing → operations → analytics → hardening. Dependencies flow in that direction (e.g. `document_reader` imports `accounts`/`catalog`; never the reverse).
+
+### Entitlements are the access-control core
+
+`accounts.Entitlement` is the single gate for restricted reads. It is scoped (`GLOBAL` / `DOMAIN` / `DOCUMENT` / `COLLECTION`) and time-bounded (`starts_at`, `ends_at`, `revoked_at`), and can be attached to a **user** or to an **organization** (org entitlements reach a user through an active, identity-verified `OrganizationMembership` — see `accounts.services.active_organization_ids_for_user`).
+
+Nothing creates entitlements ad hoc: `billing/services.py` mints and revokes them when a `Subscription`, `OrganizationQuota`, or `SponsoredCampaign` activates/cancels/expires. Read checks go through `document_reader.services.user_can_read_document` (single document) or `readable_document_ids_for_user` (list pages — a batched version that avoids N+1 entitlement queries; keep the two in sync when access rules change).
+
+`Document.access_model` decides whether a check is even needed: `FREE` is open, `PRIVATE` is invisible, and `SUBSCRIPTION`/`INSTITUTION_ONLY`/`SPONSORED`/`RESTRICTED` require a `READ` entitlement.
+
+### Two reader surfaces
+
+- `/api/v1/reader/...` (`api/v1/reader.py`) — JWT, the surface the frontend uses.
+- `/reader/...` (`document_reader/views.py`) — Django-session/CSRF, plain `JsonResponse` with a flat `{"error": code}` body.
+
+Both delegate to the same `document_reader/services.py`. A change to reader access rules must be made in the service and covered on both surfaces.
+
+Reading is page-at-a-time by design: a `ReaderSession` is opened against a specific processed `DocumentVersion` with a TTL (`READER_SESSION_TTL_MINUTES`), every page fetch re-validates session liveness *and* current entitlement, writes a `PageAccessLog`, and returns extracted text only. Raw files, storage keys and signed URLs must never appear in any response.
+
+### Ingestion pipeline
+
+`document_ingestion/pipeline.py` is synchronous on purpose: `process_ingest_job(job)` is written to become a Celery task body unchanged once Redis/Celery land. Files go through `blob_storage.py` (local `FileSystemStorage` under `backend/private-media/`, swappable for S3 behind the same `storage_key`) and `storage.py` builds/validates private keys. Processing creates `DocumentPage` + `ExtractedText` rows, flips the new version to the sole `is_current` one, and rebuilds the search index. Text extraction is pypdf-only today; scanned PDFs yield placeholder pages — OCR is the known gap.
+
+Search (`search_discovery/`) is a denormalized `DocumentSearchIndex` row per document rebuilt from metadata + extracted text, scored in Python — the placeholder for Postgres FTS / Meilisearch.
+
+### API v1 contract
+
+All `/api/v1/` errors use one envelope — `{"error": {"code", "message", "field_errors"}}` — produced by `api/v1/errors.py` (`error_response` for explicit returns, `api_exception_handler` for DRF exceptions). Pagination is `StandardResultsSetPagination` (page size 20, max 50). Views are `APIView` subclasses annotated with `@extend_schema` including examples; `api/v1/tests/test_openapi_schema.py` guards the generated schema, so new endpoints need schema annotations. DRF default permission is `AllowAny` — every view states its own auth requirement.
+
+### Frontend
+
+TanStack Router routes declared centrally in `src/router.tsx` (French URL segments: `/connexion`, `/recherche`, `/lecture/...`, `/bibliotheque`). Layers: `src/api/` (typed fetch wrappers over `apiRequest`, which unwraps the error envelope into `ApiError`), `src/features/<domain>/hooks.ts` (TanStack Query hooks), `src/routes/` (pages), `src/components/` (presentational). Auth state lives in `src/auth/AuthProvider.tsx` with JWT access/refresh in `localStorage` via `tokenStore`; a 401 dispatches `UNAUTHORIZED_EVENT` so the provider can clear the session, and `guards.tsx` redirects to `/connexion?next=...`. Import alias `@/` → `src/`.
+
+## Conventions and invariants
+
+- Tests live in `backend/<app>/tests/` and `frontend/src/**/tests/`; `pytest.ini` lists `testpaths` explicitly — a new app's test directory must be added there (and to `pyproject.toml`'s matching list) or its tests silently never run.
+- Cover success, denial, idempotency, privacy and boundary conditions — especially for reader access, billing and analytics. Prefer real model/service behaviour over mocks.
+- Payments and webhooks must be idempotent (`idempotency_key` with a terms check that rejects reuse under different terms — see `billing.services.create_payment_transaction`).
+- Sensitive admin/access decisions go through `operations.services.record_audit_event`.
+- Institutional analytics aggregate to `DailyUsageAggregate`; reports must not leak per-user reading data.
+- Config comes from env vars only, documented in `backend/.env.example`. `config/env.py` hard-fails production on unsafe settings (debug on, default secret key, missing allowed hosts, insecure cookies) — don't loosen those checks.
+- Never commit secrets, raw documents, or production database URLs.
+- Commits use conventional prefixes (`feat:`, `fix:`, `docs:`, `test:`, `ci:`) with short imperative subjects.
+
+## Docs map
+
+- `docs/technical/00-subsystem-plan-index.md` — stack direction, shared domain concepts, cross-cutting requirements.
+- `docs/superpowers/plans/` and `docs/superpowers/specs/` — per-subsystem design and implementation plans, dated; read the matching one before reworking a subsystem.
+- `docs/operations/` — backup/restore, incident response, deployment checklist.
+- `docs/product/`, `docs/business/` — baseline, roles, rights governance, commercial offers.
+- `AGENTS.md` — the same conventions in short form (keep the two consistent when either changes).
