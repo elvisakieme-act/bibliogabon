@@ -55,11 +55,11 @@ backend/
 **Interfaces:**
 - Produces `AccountType.CONTENT_ADMIN`.
 
-- [ ] Write a failing test: a content-admin account can be created, is distinct from `platform_staff`, and `create_superuser` still yields `platform_staff` with `is_superuser`.
-- [ ] Add the choice and generate the migration. No existing row changes meaning: current `platform_staff` accounts stay super admins, which is the safe direction.
-- [ ] Check the admin list filter still reads clearly with five values.
-- [ ] Run `pytest accounts/tests -q`.
-- [ ] Commit `feat: add a content admin account type`.
+- [x] Write a failing test: a content-admin account can be created, is distinct from `platform_staff`, and `create_superuser` still yields `platform_staff` with `is_superuser`.
+- [x] Add the choice and generate the migration. No existing row changes meaning: current `platform_staff` accounts stay super admins, which is the safe direction.
+- [x] Check the admin list filter still reads clearly with five values.
+- [x] Run `pytest accounts/tests -q`.
+- [x] Commit `feat: add a content admin account type`.
 
 ---
 

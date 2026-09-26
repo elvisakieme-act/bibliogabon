@@ -37,9 +37,20 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
     class AccountType(models.TextChoices):
+        """Les sept acteurs du document produit se projettent sur ces valeurs,
+        plus le role d'adhesion qui porte la portee organisationnelle.
+
+        `Sponsor Partner` n'a pas de valeur propre : c'est un
+        `ORGANIZATION_ADMIN` dont l'organisation est de type `sponsor`.
+        """
+
         INDIVIDUAL = "individual", "Individual learner"
         TEACHER_AUTHOR = "teacher_author", "Teacher/author"
         ORGANIZATION_ADMIN = "organization_admin", "Organization admin"
+        # Perimetre borne : metadonnees, droits, statut, publication. Distinct
+        # du staff plateforme, qui porte configuration, facturation et
+        # operations sensibles.
+        CONTENT_ADMIN = "content_admin", "BiblioGABON content admin"
         PLATFORM_STAFF = "platform_staff", "Platform staff"
 
     username = None
