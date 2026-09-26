@@ -108,10 +108,10 @@ backend/
 **Interfaces:**
 - Produces `normalize_extracted_text(text: str) -> str`.
 
-- [ ] Write failing tests using the real artefacts observed in production output: `\x13` and `\x14` become typographic quotes, other C0 control characters are stripped, runs of whitespace collapse, and text that is already clean is returned unchanged.
-- [ ] Implement the helper and call it inside `attach_extracted_text`, so every path — text layer and OCR alike — is normalised at one point.
-- [ ] Run `pytest document_processing/tests -q`.
-- [ ] Commit `fix: normalise extracted page text`.
+- [x] Write failing tests using the real artefacts observed in production output: `\x13` and `\x14` become typographic quotes, other C0 control characters are stripped, runs of whitespace collapse, and text that is already clean is returned unchanged.
+- [x] Implement the helper and call it inside `attach_extracted_text`, so every path — text layer and OCR alike — is normalised at one point.
+- [x] Run `pytest document_processing/tests -q`.
+- [x] Commit `fix: normalise extracted page text`.
 
 ---
 

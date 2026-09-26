@@ -5,6 +5,7 @@ import hashlib
 from django.db import transaction
 
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
+from document_processing.text import normalize_extracted_text
 
 
 def create_page_records(*, version, page_count: int, created_by_job=None) -> list[DocumentPage]:
@@ -50,6 +51,12 @@ def attach_extracted_text(
         raise ValueError("text must not be blank")
     if created_by_job is not None and created_by_job.version_id != page.version_id:
         raise ValueError("created_by_job must belong to the same document version")
+
+    # Point unique de normalisation : couche texte et OCR y passent tous deux,
+    # donc aucun caractère de contrôle ne peut atteindre l'index ni le lecteur.
+    text = normalize_extracted_text(text)
+    if not text:
+        raise ValueError("text must not be blank")
 
     extracted_text, _ = ExtractedText.objects.update_or_create(
         page=page,
