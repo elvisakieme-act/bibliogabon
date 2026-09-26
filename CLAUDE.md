@@ -9,7 +9,7 @@ BiblioGABON — national academic digital library for Gabon. Django 5 / DRF back
 Backend (run from `backend/`). On this Linux studio Django is already on `PATH`, so use plain `python`; `README.md` and `AGENTS.md` document the Windows `.\.venv\Scripts\python.exe` form used on the author's machine — translate accordingly.
 
 ```bash
-python -m pytest -q                              # full suite (~345 tests, ~45s)
+python -m pytest -q                              # full suite (~427 tests, ~3 min)
 python -m pytest api/v1/tests -q                 # one app's tests
 python -m pytest catalog/tests/test_x.py::test_y # single test
 python manage.py check
@@ -18,7 +18,8 @@ python manage.py migrate
 python manage.py runserver
 python manage.py spectacular --file schema.yml   # export OpenAPI
 python manage.py seed_demo                       # idempotent demo dataset (dev only)
-python manage.py ingest_file <document_id> file.pdf  # run the ingestion pipeline locally
+python manage.py ingest_file <document_id> file.pdf  # --sync with no worker, --replace to overwrite
+python -m celery -A config worker -l info            # ingestion worker (needs CELERY_BROKER_URL)
 ```
 
 Frontend (run from `frontend/`):
@@ -61,9 +62,23 @@ Reading is page-at-a-time by design: a `ReaderSession` is opened against a speci
 
 ### Ingestion pipeline
 
-`document_ingestion/pipeline.py` is synchronous on purpose: `process_ingest_job(job)` is written to become a Celery task body unchanged once Redis/Celery land. Files go through `blob_storage.py` (local `FileSystemStorage` under `backend/private-media/`, swappable for S3 behind the same `storage_key`) and `storage.py` builds/validates private keys. Processing creates `DocumentPage` + `ExtractedText` rows, flips the new version to the sole `is_current` one, and rebuilds the search index. Text extraction is pypdf-only today; scanned PDFs yield placeholder pages — OCR is the known gap.
+`ingest_document_file` registers the upload then enqueues a Celery chain:
 
-Search (`search_discovery/`) is a denormalized `DocumentSearchIndex` row per document rebuilt from metadata + extracted text, scored in Python — the placeholder for Postgres FTS / Meilisearch.
+```
+ingest_source_document          split pages, extract the text layer, queue index records
+  └─ per page, in order:        ocr_page → render_page_image → index_page
+       └─ chord barrier      →  finalize_version
+```
+
+The barrier matters: `finalize_version` rebuilds the document index from page text, so it must run after OCR or recognised text never becomes searchable. Chords need a result backend — `CELERY_RESULT_BACKEND` defaults to the broker URL.
+
+Domain logic lives in services, tasks are thin wrappers that take an id and reload the row, so any task can be replayed after a worker dies. `CELERY_TASK_ALWAYS_EAGER` is on outside production, so the suite and local development need no broker. `ingest_document_file(dispatch=False)` (exposed as `ingest_file --sync`) runs the same functions in the same order without Celery.
+
+Storage is chosen by `DOCUMENT_STORAGE_BACKEND` (`filesystem` or `s3`) behind an unchanged `storage_key`; production refuses `filesystem`. Files are streamed, never fully read into memory. Page images are WebP derivatives of a private source, so they are private too and never appear in any catalog, search or reader payload — a regression test scans five responses for that.
+
+Re-ingesting a populated version label raises `VersionAlreadyIngested`; `replace=True` clears the version, its assets and their stored objects in one transaction. `seed_demo` deliberately creates no pages — fabricated ones used to collide with real ingestion.
+
+Search (`search_discovery/`) is a denormalized `DocumentSearchIndex` row per document rebuilt from indexable page text, scored in Python — the placeholder for Postgres FTS / Meilisearch. Unreadable pages keep a `[Page N …]` placeholder that is excluded from the index; indexing it made every scanned document match a search for "OCR requis".
 
 ### API v1 contract
 
@@ -80,6 +95,7 @@ TanStack Router routes declared centrally in `src/router.tsx` (French URL segmen
 - Payments and webhooks must be idempotent (`idempotency_key` with a terms check that rejects reuse under different terms — see `billing.services.create_payment_transaction`).
 - Sensitive admin/access decisions go through `operations.services.record_audit_event`.
 - Institutional analytics aggregate to `DailyUsageAggregate`; reports must not leak per-user reading data.
+- OCR needs `tesseract-ocr` and `tesseract-ocr-fra`; without them those tests skip and the pipeline keeps going with placeholders.
 - Config comes from env vars only, documented in `backend/.env.example`. `config/env.py` hard-fails production on unsafe settings (debug on, default secret key, missing allowed hosts, insecure cookies) — don't loosen those checks.
 - Never commit secrets, raw documents, or production database URLs.
 - Commits use conventional prefixes (`feat:`, `fix:`, `docs:`, `test:`, `ci:`) with short imperative subjects.

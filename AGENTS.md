@@ -15,6 +15,8 @@ Run backend commands from `backend/`:
 - `.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run`: confirm migrations are committed.
 - `.\.venv\Scripts\python.exe manage.py migrate`: apply local migrations.
 - `.\.venv\Scripts\python.exe manage.py runserver`: start the local Django server.
+- `.\.venv\Scripts\python.exe manage.py ingest_file <document_id> file.pdf`: ingest a PDF (add `--sync` with no worker, `--replace` to overwrite a version).
+- `python -m celery -A config worker -l info`: run an ingestion worker; needs `CELERY_BROKER_URL` and a Redis instance.
 - `cd frontend && npm install`: install frontend dependencies.
 - `cd frontend && npm run dev`: start the reader-facing web app.
 - `cd frontend && npm run build`: type-check and build the frontend.
@@ -26,7 +28,7 @@ Use Python 3.12 and Django conventions. Keep models, services, admin classes, UR
 
 ## Testing Guidelines
 
-Use pytest and pytest-django. Add tests with every behavior change, and prefer tests that exercise real model/service behavior. Keep app tests under `backend/<app>/tests/`. Cover success, denial, idempotency, privacy, and boundary conditions for reader access, billing, operations, analytics, and launch hardening.
+Use pytest and pytest-django. Add tests with every behavior change, and prefer tests that exercise real model/service behavior. Keep app tests under `backend/<app>/tests/`. Celery tasks run inline in tests (`CELERY_TASK_ALWAYS_EAGER`), so the suite needs no broker; OCR tests skip when the `tesseract` binary is absent. Cover success, denial, idempotency, privacy, and boundary conditions for reader access, billing, operations, analytics, and launch hardening.
 
 ## Commit & Pull Request Guidelines
 

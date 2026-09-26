@@ -6,7 +6,8 @@ Plateforme de bibliothèque numérique académique nationale pour le Gabon : cat
 
 - **Backend** : Django 5 / Django REST Framework, JWT (`djangorestframework-simplejwt`), OpenAPI via `drf-spectacular`. PostgreSQL en production, SQLite en local.
 - **Frontend** : React 19, Vite, TanStack Router/Query, Tailwind CSS.
-- **Cible future** (voir `docs/technical/00-subsystem-plan-index.md`) : Redis + Celery pour les jobs asynchrones, stockage objet S3-compatible pour les documents privés.
+- **Ingestion** : Celery + Redis pour les traitements asynchrones, PyMuPDF pour le découpage et le rendu des pages, Tesseract pour l'OCR.
+- **Stockage privé** : disque local ou objet S3-compatible, au choix via `DOCUMENT_STORAGE_BACKEND`.
 
 ## Structure du dépôt
 
@@ -36,6 +37,32 @@ copy .env.example .env
 `requirements-lock.txt` fixe des versions exactes pour un environnement reproductible ; `pyproject.toml` reste la source des plages de versions acceptées. Pour régénérer le lock après un changement de dépendances, voir l'en-tête de `backend/requirements-lock.txt`.
 
 Le serveur local par défaut utilise SQLite (`backend/db.sqlite3`, non versionné). Pour PostgreSQL, définir `DATABASE_URL` dans `.env` (voir `backend/.env.example`).
+
+### Traitement des documents
+
+Le pipeline s'exécute en tâches Celery. En développement, `CELERY_TASK_ALWAYS_EAGER`
+vaut `True` par défaut : tout tourne en ligne, sans broker ni worker.
+
+Pour s'approcher de la production, lancer un broker et un worker :
+
+```bash
+docker run -d --name bibliogabon-redis -p 6379:6379 redis:7-alpine
+
+# dans backend/, avec CELERY_BROKER_URL renseigné dans .env
+python -m celery -A config worker -l info
+```
+
+Ingérer un PDF dans un document existant :
+
+```bash
+python manage.py ingest_file <document_id> /chemin/vers/fichier.pdf
+python manage.py ingest_file <document_id> fichier.pdf --sync      # sans worker
+python manage.py ingest_file <document_id> fichier.pdf --replace   # remplace la version
+```
+
+L'OCR nécessite `tesseract-ocr` et le pack de langue correspondant
+(`tesseract-ocr-fra`). Sans eux, les pages sans couche texte conservent un
+texte de remplacement et le pipeline continue.
 
 ### Tests et vérifications backend
 
@@ -79,4 +106,6 @@ npm run build   # type-check (tsc) + build de production
 
 ## État du projet
 
-Le backend couvre le modèle de données et la logique métier (identité, catalogue, entitlements, lecteur sécurisé, facturation, opérations, analytics) avec une suite de tests par app. Le pipeline de stockage réel des fichiers (upload, S3, jobs asynchrones Celery/Redis, OCR) est modélisé mais pas encore implémenté — voir `document_ingestion/` et `document_processing/`.
+Le backend couvre le modèle de données et la logique métier (identité, catalogue, entitlements, lecteur sécurisé, facturation, opérations, analytics) avec une suite de tests par app.
+
+Le pilier d'ingestion est opérationnel : un PDF déposé est découpé page par page, son texte extrait puis normalisé, les pages sans couche texte passent à l'OCR, chaque page est rendue en image privée, et l'index de recherche est reconstruit — le tout en tâches Celery rejouables. Restent hors périmètre : l'EPUB, l'API de dépôt et l'écran back-office de dépôt (voir `docs/superpowers/specs/2026-09-26-bibliogabon-ingestion-pillar-design.md`).

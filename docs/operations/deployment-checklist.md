@@ -44,6 +44,13 @@ python manage.py check --deploy
 
 ## Rollback
 
+Migration `document_reader.0004_alter_pageaccesslog_page` cannot be reversed
+once any document has been re-ingested with `--replace`: access logs survive
+their deleted page with a null reference, and restoring the NOT NULL
+constraint has no data to restore. Roll back the application release, not
+that migration.
+
+
 - Stop the new application process.
 - Restore the previous application release directory or service image.
 - Repoint the process manager to the previous release.

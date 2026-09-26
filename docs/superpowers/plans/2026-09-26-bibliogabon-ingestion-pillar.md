@@ -245,31 +245,38 @@ backend/
 - Modify: `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/operations/deployment-checklist.md`
 - Modify only files flagged by review findings.
 
-- [ ] Document how to run a worker locally (`docker run redis:7-alpine`, `celery -A config worker -l info`) and how to ingest a file.
-- [ ] Update the architecture notes: the pipeline is asynchronous, storage is configurable, OCR and page images exist.
-- [ ] Record in `docs/product/00-decision-register.md` the decision to rebuild the pillar and the storage-provider arbitration left open.
-- [ ] Request review focused on idempotency under replay, privacy of generated assets, storage-key stability, and migration safety.
-- [ ] Verify each finding against the code before changing it; add a failing test for any behavioural fix.
-- [ ] Rerun full verification: `pytest -q`, `manage.py check`, `manage.py makemigrations --check --dry-run`, `git diff --check`.
+- [x] Document how to run a worker locally (`docker run redis:7-alpine`, `celery -A config worker -l info`) and how to ingest a file.
+- [x] Update the architecture notes: the pipeline is asynchronous, storage is configurable, OCR and page images exist.
+- [x] Record in `docs/product/00-decision-register.md` the decision to rebuild the pillar and the storage-provider arbitration left open.
+- [x] Review on the four axes, run against the code rather than read:
+      - **idempotency** — replaying every task leaves (pages, texts, index records, assets) identical; `render_page_image`
+        and `ocr_page` short-circuit, `index_page` is a no-op when already indexed;
+      - **privacy** — no public subsystem references `page_image`, and no serializer exposes a storage key;
+      - **storage keys** — deterministic, slugified, no public scheme, and page images share the source prefix;
+      - **migrations** — `document_ingestion.0004` reverses cleanly; `document_reader.0004` does **not**, and cannot:
+        once a page is deleted its access log survives with a null reference and NOT NULL has nothing to restore.
+        Documented in the migration header and in the deployment checklist's rollback section.
+- [x] Verify each finding against the code before changing it; add a failing test for any behavioural fix.
+- [x] Rerun full verification: `pytest -q`, `manage.py check`, `manage.py makemigrations --check --dry-run`, `git diff --check`.
 - [ ] Present finishing options for the branch.
 
 ---
 
 ## Self-Review Checklist
 
-- [ ] No raw source file or generated image is reachable by a public or signed URL.
-- [ ] Reader and catalog payloads still expose no storage key, URL or asset reference.
-- [ ] Every task is idempotent when replayed with the same id.
-- [ ] A failing task records retry count, error code and error message, and ends the job `failed`.
-- [ ] Re-ingesting an existing version label is explicit, never a collision error.
-- [ ] `seed_demo` creates no page records and cannot block ingestion.
-- [ ] Extracted text is normalised on both the text-layer and OCR paths.
-- [ ] Exactly one indexing mechanism remains, and no record is left `queued` after ingestion.
-- [ ] Source files are streamed, never fully read into memory.
-- [ ] The suite runs with no broker and no object storage, using eager tasks and `moto`.
-- [ ] Production fails closed without a broker or an S3 backend.
-- [ ] The synchronous stopgap is gone, and it was removed only once its replacement passed.
-- [ ] No upload API, deposit screen, EPUB support, thumbnail or signed URL was added.
+- [x] No raw source file or generated image is reachable by a public or signed URL.
+- [x] Reader and catalog payloads still expose no storage key, URL or asset reference.
+- [x] Every task is idempotent when replayed with the same id.
+- [x] A failing task records retry count, error code and error message, and ends the job `failed`.
+- [x] Re-ingesting an existing version label is explicit, never a collision error.
+- [x] `seed_demo` creates no page records and cannot block ingestion.
+- [x] Extracted text is normalised on both the text-layer and OCR paths.
+- [x] Exactly one indexing mechanism remains, and no record is left `queued` after ingestion.
+- [x] Source files are streamed, never fully read into memory.
+- [x] The suite runs with no broker and no object storage, using eager tasks and `moto`.
+- [x] Production fails closed without a broker or an S3 backend.
+- [x] The synchronous stopgap is gone, and it was removed only once its replacement passed.
+- [x] No upload API, deposit screen, EPUB support, thumbnail or signed URL was added.
 
 ## Execution Handoff
 
