@@ -186,19 +186,36 @@ class ProcessingJob(models.Model):
         self.started_at = timezone.now()
         self.save(update_fields=["status", "started_at", "updated_at"])
 
-    def mark_failed(self, *, error_code: str, message: str):
+    def mark_failed(self, *, error_code: str, message: str, retry_count: int | None = None):
+        """Échec définitif.
+
+        `retry_count` appartient à ce qui réessaie — la tâche Celery — et non
+        à l'enregistrement de l'échec : le compteur n'est donc écrit que
+        lorsqu'on le fournit. L'incrémenter ici donnerait un nombre de
+        tentatives inventé, sans rapport avec les réessais réels.
+        """
         self.status = self.Status.FAILED
-        self.retry_count += 1
         self.error_code = error_code
         self.error_message = message
         self.failed_at = timezone.now()
+        fields = ["status", "error_code", "error_message", "failed_at", "updated_at"]
+        if retry_count is not None:
+            self.retry_count = retry_count
+            fields.append("retry_count")
+        self.save(update_fields=fields)
+
+    def mark_retrying(self, *, error_code: str, message: str, retry_count: int):
+        """Échec rattrapable : une nouvelle tentative est programmée."""
+        self.status = self.Status.RETRYING
+        self.error_code = error_code
+        self.error_message = message
+        self.retry_count = retry_count
         self.save(
             update_fields=[
                 "status",
-                "retry_count",
                 "error_code",
                 "error_message",
-                "failed_at",
+                "retry_count",
                 "updated_at",
             ]
         )

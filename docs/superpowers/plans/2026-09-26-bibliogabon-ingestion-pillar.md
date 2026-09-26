@@ -124,12 +124,14 @@ backend/
 **Interfaces:**
 - Produces the `celery_app`, autodiscovered tasks, and `ingest_source_document(job_id)`.
 
-- [ ] Write failing tests: the task resolves a job by id, delegates to `process_ingest_job`, and is safe to call twice for the same job; a task raising records `retry_count`, `error_code`, `error_message` and leaves the job `failed`; the suite runs with no broker because tasks are eager.
-- [ ] Implement `config/celery.py` reading configuration from Django settings under the `CELERY_` namespace.
-- [ ] Implement the task as a thin wrapper with `autoretry_for`, `retry_backoff`, `max_retries`, and `acks_late`.
-- [ ] Make `retry_count` reflect real Celery retries instead of being set once.
-- [ ] Run `pytest document_ingestion/tests -q`.
-- [ ] Commit `feat: run ingestion through celery tasks`.
+- [x] Write failing tests: the task resolves a job by id, delegates to `process_ingest_job`, and is safe to call twice for the same job; a task raising records `retry_count`, `error_code`, `error_message` and leaves the job `failed`; the suite runs with no broker because tasks are eager.
+- [x] Implement `config/celery.py` reading configuration from Django settings under the `CELERY_` namespace.
+- [x] Implement the task as a thin wrapper with explicit `self.retry`, exponential backoff, `max_retries` and `acks_late`.
+      `autoretry_for` was rejected: under `task_always_eager` it never re-executes the task and replaces the real
+      exception with `Retry`, which would hide every development failure behind a misleading error.
+- [x] Make `retry_count` reflect real Celery retries instead of being set once.
+- [x] Run `pytest document_ingestion/tests -q`.
+- [x] Commit `feat: run ingestion through celery tasks`.
 
 ---
 

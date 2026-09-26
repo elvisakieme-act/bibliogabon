@@ -131,7 +131,7 @@ def test_processing_job_state_transitions_record_timestamps_and_errors():
         source_asset=asset,
     )
     failed_job.mark_started()
-    failed_job.mark_failed(error_code="parse_error", message="Unsupported file")
+    failed_job.mark_failed(error_code="parse_error", message="Unsupported file", retry_count=1)
     assert failed_job.status == ProcessingJob.Status.FAILED
     assert failed_job.retry_count == 1
     assert failed_job.error_code == "parse_error"
