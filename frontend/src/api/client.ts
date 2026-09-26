@@ -3,10 +3,6 @@ import type { ApiErrorEnvelope } from "@/api/types";
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
 export const UNAUTHORIZED_EVENT = "bibliogabon:unauthorized";
 
-type ViteEnvironment = {
-  VITE_API_BASE_URL?: string;
-};
-
 export interface ApiRequestOptions {
   method?: string;
   token?: string | null;
@@ -29,8 +25,10 @@ export class ApiError extends Error {
 }
 
 export function apiBaseUrl() {
-  const environment = import.meta as ImportMeta & { env?: ViteEnvironment };
-  const configuredUrl = environment.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
+  // Written literally: Vite only substitutes the exact text
+  // `import.meta.env.VITE_API_BASE_URL`. Reading it through an intermediate
+  // variable silently yields undefined and falls back to the local server.
+  const configuredUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
   return configuredUrl.replace(/\/+$/, "");
 }
 

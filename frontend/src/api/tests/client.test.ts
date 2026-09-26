@@ -1,10 +1,24 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { apiRequest } from "@/api/client";
+import { apiBaseUrl, apiRequest } from "@/api/client";
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
+});
+
+describe("apiBaseUrl", () => {
+  it("honours VITE_API_BASE_URL instead of the local fallback", () => {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.exemple.test");
+
+    expect(apiBaseUrl()).toBe("https://api.exemple.test");
+  });
+
+  it("trims trailing slashes", () => {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.exemple.test///");
+
+    expect(apiBaseUrl()).toBe("https://api.exemple.test");
+  });
 });
 
 describe("apiRequest", () => {
