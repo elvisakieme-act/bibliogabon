@@ -8,12 +8,21 @@ from accounts.models import Entitlement, Organization, OrganizationMembership, U
 
 def active_organization_ids_for_user(user: User, at=None) -> list[int]:
     at = at or timezone.now()
-    memberships = OrganizationMembership.objects.filter(
-        user=user,
-        status=OrganizationMembership.Status.ACTIVE,
-        starts_at__lte=at,
-        organization__status=Organization.Status.ACTIVE,
-    ).filter(Q(ends_at__isnull=True) | Q(ends_at__gt=at))
+    memberships = (
+        OrganizationMembership.objects.filter(
+            user=user,
+            status=OrganizationMembership.Status.ACTIVE,
+            starts_at__lte=at,
+            organization__status=Organization.Status.ACTIVE,
+        )
+        .filter(Q(ends_at__isnull=True) | Q(ends_at__gt=at))
+        .filter(
+            # Une organisation qui exige une preuve d'identité n'ouvre l'accès
+            # qu'aux adhésions dont l'identité a été vérifiée.
+            Q(organization__requires_identity_verification=False)
+            | Q(verification_status=OrganizationMembership.VerificationStatus.VERIFIED)
+        )
+    )
 
     return list(memberships.values_list("organization_id", flat=True))
 

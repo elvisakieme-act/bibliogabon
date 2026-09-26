@@ -91,6 +91,14 @@ class Organization(models.Model):
         default=Status.ACTIVE,
     )
     contact_email = models.EmailField(blank=True)
+    requires_identity_verification = models.BooleanField(
+        default=False,
+        help_text=(
+            "Si vrai, seules les adhésions à l'identité vérifiée ouvrent l'accès "
+            "(cas des universités partenaires offrant l'accès gratuit sur preuve). "
+            "Mettre à faux pour une entreprise qui achète simplement des places."
+        ),
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -112,6 +120,20 @@ class OrganizationMembership(models.Model):
         SUSPENDED = "suspended", "Suspended"
         ENDED = "ended", "Ended"
 
+    class VerificationStatus(models.TextChoices):
+        UNVERIFIED = "unverified", "Unverified"
+        PENDING = "pending", "Pending"
+        VERIFIED = "verified", "Verified"
+        REJECTED = "rejected", "Rejected"
+
+    class VerificationMethod(models.TextChoices):
+        STUDENT_CARD = "student_card", "Student card"
+        STAFF_ID = "staff_id", "Staff ID"
+        ENROLLMENT_CERTIFICATE = "enrollment_certificate", "Enrollment certificate"
+        EMAIL_DOMAIN = "email_domain", "Institutional email domain"
+        MANUAL = "manual", "Manual admin decision"
+        OTHER = "other", "Other"
+
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -126,6 +148,38 @@ class OrganizationMembership(models.Model):
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.ACTIVE)
     starts_at = models.DateTimeField(default=timezone.now)
     ends_at = models.DateTimeField(null=True, blank=True)
+
+    # Preuve d'identité : traçabilité de la vérification de l'appartenance.
+    verification_status = models.CharField(
+        max_length=16,
+        choices=VerificationStatus.choices,
+        default=VerificationStatus.UNVERIFIED,
+    )
+    verification_method = models.CharField(
+        max_length=32,
+        choices=VerificationMethod.choices,
+        blank=True,
+        default="",
+    )
+    proof_reference = models.CharField(
+        max_length=300,
+        blank=True,
+        default="",
+        help_text=(
+            "Référence de la preuve stockée (clé de stockage, n° de dossier, "
+            "domaine e-mail validé…). Jamais le fichier lui-même."
+        ),
+    )
+    verified_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="verified_memberships",
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verification_notes = models.TextField(blank=True, default="")
+
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -146,6 +200,36 @@ class OrganizationMembership(models.Model):
         if self.ends_at and self.ends_at <= now:
             return False
         return self.organization.status == Organization.Status.ACTIVE
+
+    @property
+    def is_identity_verified(self) -> bool:
+        return self.verification_status == self.VerificationStatus.VERIFIED
+
+    @property
+    def grants_access(self) -> bool:
+        """Une adhésion ouvre l'accès si elle est active et, quand l'organisation
+        l'exige, si l'identité a été vérifiée."""
+        if not self.is_active:
+            return False
+        if self.organization.requires_identity_verification and not self.is_identity_verified:
+            return False
+        return True
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.verification_status == self.VerificationStatus.VERIFIED:
+            if self.verified_at is None:
+                raise ValidationError("Une adhésion vérifiée doit renseigner verified_at.")
+            if not self.verification_method:
+                raise ValidationError(
+                    "Une adhésion vérifiée doit préciser la méthode de vérification."
+                )
+        if (
+            self.verification_status == self.VerificationStatus.REJECTED
+            and not self.verification_notes.strip()
+        ):
+            raise ValidationError("Un rejet de vérification doit être motivé (verification_notes).")
 
     def __str__(self) -> str:
         return f"{self.user.email} @ {self.organization.name}"

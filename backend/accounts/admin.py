@@ -33,18 +33,39 @@ class BiblioGabonUserAdmin(UserAdmin):
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
-    list_display = ["name", "slug", "organization_type", "status", "contact_email"]
-    list_filter = ["organization_type", "status"]
+    list_display = [
+        "name",
+        "slug",
+        "organization_type",
+        "status",
+        "requires_identity_verification",
+        "contact_email",
+    ]
+    list_filter = ["organization_type", "status", "requires_identity_verification"]
     search_fields = ["name", "slug", "contact_email"]
     prepopulated_fields = {"slug": ("name",)}
 
 
 @admin.register(OrganizationMembership)
 class OrganizationMembershipAdmin(admin.ModelAdmin):
-    list_display = ["user", "organization", "role", "status", "starts_at", "ends_at"]
-    list_filter = ["role", "status", "organization"]
-    search_fields = ["user__email", "user__display_name", "organization__name"]
-    autocomplete_fields = ["user", "organization"]
+    list_display = [
+        "user",
+        "organization",
+        "role",
+        "status",
+        "verification_status",
+        "verified_at",
+        "starts_at",
+        "ends_at",
+    ]
+    list_filter = ["role", "status", "verification_status", "organization"]
+    search_fields = [
+        "user__email",
+        "user__display_name",
+        "organization__name",
+        "proof_reference",
+    ]
+    autocomplete_fields = ["user", "organization", "verified_by"]
 
 
 @admin.register(Entitlement)
