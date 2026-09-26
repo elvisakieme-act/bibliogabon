@@ -8,6 +8,10 @@ maquette-bibliogabon/
 backend/.venv/
 backend/db.sqlite3
 backend/private-media/
+
+# Raw source documents never belong in the repository, wherever they land.
+*.pdf
+*.epub
 backend/.pytest_cache/
 backend/*.egg-info/
 
