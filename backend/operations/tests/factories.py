@@ -2,7 +2,14 @@ from django.utils import timezone
 
 from accounts.models import Entitlement, Organization, User
 from billing.models import CommercialOffer, PaymentTransaction
-from catalog.models import AcademicDomain, Author, Document, DocumentAuthor, RightsAgreement
+from catalog.models import (
+    AcademicDomain,
+    Author,
+    Document,
+    DocumentAuthor,
+    DocumentType,
+    RightsAgreement,
+)
 
 
 def create_user(email="staff@example.ga", *, is_staff=False):
@@ -18,16 +25,15 @@ def create_organization(slug="operations-org"):
 
 
 def create_publishable_document(slug="operations-document"):
-    organization = create_organization(slug=f"owner-{slug}")
-    domain = AcademicDomain.objects.create(name=f"Domain {slug}", slug=f"domain-{slug}")
+    domain = AcademicDomain.objects.create(name=f"Droit {slug}", slug=f"droit-{slug}")
+    doc_type = DocumentType.objects.create(name=f"Article {slug}", slug=f"article-{slug}")
     document = Document.objects.create(
-        title=f"Document {slug}",
+        title="Document",
         slug=slug,
         academic_domain=domain,
-        owner_organization=organization,
+        document_type=doc_type,
         category=Document.Category.OPEN_RESOURCE,
         access_model=Document.AccessModel.FREE,
-        publication_status=Document.PublicationStatus.SUBMITTED,
     )
     author = Author.objects.create(display_name="Author", normalized_name="author")
     DocumentAuthor.objects.create(document=document, author=author, role=DocumentAuthor.Role.AUTHOR)

@@ -1,7 +1,7 @@
 import pytest
 from django.utils import timezone
 
-from catalog.models import AcademicDomain, Author, Document, DocumentAuthor, RightsAgreement
+from catalog.models import AcademicDomain, Author, Document, DocumentAuthor, DocumentType, RightsAgreement
 from catalog.services import document_is_publishable
 
 
@@ -108,10 +108,12 @@ def test_missing_required_rights_field_blocks_publication(field_name, empty_valu
 @pytest.mark.django_db
 def test_document_with_complete_approved_rights_is_publishable():
     domain = AcademicDomain.objects.create(name="Medecine", slug="medecine")
+    doc_type = DocumentType.objects.create(name="Article", slug="article")
     document = Document.objects.create(
         title="Sante publique au Gabon",
         slug="sante-publique-gabon",
         academic_domain=domain,
+        document_type=doc_type,
         category=Document.Category.OPEN_RESOURCE,
         access_model=Document.AccessModel.FREE,
     )

@@ -7,7 +7,14 @@ from api.v1.auth import (
     LogoutView,
     RegisterView,
 )
-from api.v1.catalog import AuthorListView, DocumentDetailView, DocumentListView, DomainListView, SearchView
+from api.v1.catalog import (
+    AuthorListView,
+    DocumentDetailView,
+    DocumentListView,
+    DocumentTypeListView,
+    DomainListView,
+    SearchView,
+)
 from api.v1.reader import ReaderPageView, ReaderSessionCreateView, ReaderSessionDeleteView
 from api.v1.user_library import (
     FavoriteDeleteView,
@@ -41,6 +48,7 @@ urlpatterns = [
         name="catalog-document-detail",
     ),
     path("catalog/domains/", DomainListView.as_view(), name="catalog-domains"),
+    path("catalog/types/", DocumentTypeListView.as_view(), name="catalog-types"),
     path("catalog/authors/", AuthorListView.as_view(), name="catalog-authors"),
     path("search/", SearchView.as_view(), name="search"),
     path("reader/sessions/", ReaderSessionCreateView.as_view(), name="reader-session-create"),

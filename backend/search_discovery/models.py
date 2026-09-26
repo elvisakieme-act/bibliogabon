@@ -19,6 +19,8 @@ class DocumentSearchIndex(models.Model):
     language_code = models.CharField(max_length=12, default="fr")
     publication_year = models.PositiveSmallIntegerField(null=True, blank=True)
     access_model = models.CharField(max_length=24, choices=Document.AccessModel.choices)
+    type_name = models.CharField(max_length=120, blank=True, default="")
+    type_slug = models.SlugField(max_length=160, blank=True, default="")
     domain_name = models.CharField(max_length=160, blank=True)
     domain_slug = models.SlugField(max_length=160, blank=True)
     author_names = models.TextField(blank=True)
@@ -31,6 +33,7 @@ class DocumentSearchIndex(models.Model):
 
     class Meta:
         indexes = [
+            models.Index(fields=["type_slug"], name="discovery_type_slug_idx"),
             models.Index(fields=["domain_slug"], name="discovery_domain_slug_idx"),
             models.Index(fields=["language_code"], name="discovery_language_idx"),
             models.Index(fields=["access_model"], name="discovery_access_idx"),

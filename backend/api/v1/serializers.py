@@ -140,6 +140,19 @@ def _page_count(document) -> int | None:
     return version.page_count if version else None
 
 
+def _document_type_block(document) -> dict | None:
+    if not document.document_type_id:
+        return None
+    document_type = document.document_type
+    return {
+        "id": document_type.pk,
+        "name": document_type.name,
+        "slug": document_type.slug,
+        "icon": document_type.icon,
+        "color": document_type.color,
+    }
+
+
 def _access_block(document, user=None, readable_document_ids: set[int] | None = None) -> dict:
     access_model = document.access_model
     can_read = (
@@ -177,7 +190,10 @@ def serialize_document_metadata(
         "abstract": document.abstract,
         "language_code": document.language_code,
         "publication_year": document.publication_year,
-        "document_type": document.category,
+        # Nature académique du document (cours, thèse, examen…), avec icône et couleur.
+        "document_type": _document_type_block(document),
+        # Provenance / régime de droits (dépôt enseignant, fonds institutionnel…).
+        "category": document.category,
         "access_model": document.access_model,
         "domain": domain,
         "authors": _ordered_authors(document),
@@ -199,7 +215,8 @@ class DocumentMetadataSerializer(serializers.Serializer):
     abstract = serializers.CharField(read_only=True)
     language_code = serializers.CharField(read_only=True)
     publication_year = serializers.IntegerField(read_only=True, allow_null=True)
-    document_type = serializers.CharField(read_only=True)
+    document_type = serializers.DictField(read_only=True, allow_null=True)
+    category = serializers.CharField(read_only=True)
     access_model = serializers.CharField(read_only=True)
     domain = serializers.DictField(read_only=True, allow_null=True)
     authors = serializers.ListField(child=serializers.DictField(), read_only=True)
@@ -215,6 +232,14 @@ class DomainSerializer(serializers.Serializer):
     slug = serializers.CharField(read_only=True)
 
 
+class DocumentTypeSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    slug = serializers.CharField(read_only=True)
+    icon = serializers.CharField(read_only=True)
+    color = serializers.CharField(read_only=True)
+
+
 class AuthorMetadataSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     display_name = serializers.CharField(read_only=True)
@@ -228,6 +253,7 @@ class SearchResultSerializer(serializers.Serializer):
     abstract = serializers.CharField(read_only=True)
     language_code = serializers.CharField(read_only=True)
     publication_year = serializers.IntegerField(read_only=True, allow_null=True)
+    document_type = serializers.DictField(read_only=True, allow_null=True)
     domain = serializers.DictField(read_only=True, allow_null=True)
     authors = serializers.ListField(child=serializers.CharField(), read_only=True)
     access_model = serializers.CharField(read_only=True)
@@ -248,6 +274,13 @@ class DomainPageSerializer(serializers.Serializer):
     next = serializers.URLField(read_only=True, allow_null=True)
     previous = serializers.URLField(read_only=True, allow_null=True)
     results = DomainSerializer(many=True, read_only=True)
+
+
+class DocumentTypePageSerializer(serializers.Serializer):
+    count = serializers.IntegerField(read_only=True)
+    next = serializers.URLField(read_only=True, allow_null=True)
+    previous = serializers.URLField(read_only=True, allow_null=True)
+    results = DocumentTypeSerializer(many=True, read_only=True)
 
 
 class AuthorMetadataPageSerializer(serializers.Serializer):

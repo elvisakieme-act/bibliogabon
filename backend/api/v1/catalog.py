@@ -11,20 +11,21 @@ from api.v1.serializers import (
     AuthorMetadataPageSerializer,
     DocumentMetadataSerializer,
     DocumentMetadataPageSerializer,
+    DocumentTypePageSerializer,
     DomainPageSerializer,
     ErrorResponseSerializer,
     SearchResultPageSerializer,
     document_metadata_prefetches,
     serialize_document_metadata,
 )
-from catalog.models import AcademicDomain, Author, Document
+from catalog.models import AcademicDomain, Author, Document, DocumentType
 from document_reader.services import readable_document_ids_for_user
 from search_discovery.services import search_documents
 
 
 def _published_documents():
     return (
-        Document.objects.select_related("academic_domain", "owner_organization")
+        Document.objects.select_related("academic_domain", "owner_organization", "document_type")
         .prefetch_related(*document_metadata_prefetches())
         .filter(publication_status=Document.PublicationStatus.PUBLISHED)
         .exclude(access_model=Document.AccessModel.PRIVATE)
@@ -88,7 +89,14 @@ class DocumentDetailView(APIView):
                     "abstract": "Introduction au droit public gabonais.",
                     "language_code": "fr",
                     "publication_year": 2026,
-                    "document_type": "open_resource",
+                    "document_type": {
+                        "id": 3,
+                        "name": "Thèse",
+                        "slug": "these",
+                        "icon": "graduation-cap",
+                        "color": "#2563EB",
+                    },
+                    "category": "open_resource",
                     "access_model": "free",
                     "domain": {"id": 1, "name": "Droit", "slug": "droit"},
                     "authors": [],
@@ -159,6 +167,56 @@ class DomainListView(APIView):
         )
 
 
+class DocumentTypeListView(APIView):
+    @extend_schema(
+        tags=["Catalog"],
+        summary="List active document types",
+        description="Types de documents disponibles (cours, thèse, examen…) avec leur icône et couleur, pour alimenter les filtres du frontend.",
+        responses={
+            200: DocumentTypePageSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Document type page",
+                value={
+                    "count": 1,
+                    "next": None,
+                    "previous": None,
+                    "results": [
+                        {
+                            "id": 3,
+                            "name": "Thèse",
+                            "slug": "these",
+                            "icon": "graduation-cap",
+                            "color": "#2563EB",
+                        }
+                    ],
+                },
+                response_only=True,
+                status_codes=["200"],
+            )
+        ],
+    )
+    def get(self, request):
+        types = DocumentType.objects.filter(is_active=True).order_by("display_order", "name", "id")
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(types, request, view=self)
+        return paginator.get_paginated_response(
+            [
+                {
+                    "id": document_type.pk,
+                    "name": document_type.name,
+                    "slug": document_type.slug,
+                    "icon": document_type.icon,
+                    "color": document_type.color,
+                }
+                for document_type in page
+            ]
+        )
+
+
 class AuthorListView(APIView):
     @extend_schema(
         tags=["Catalog"],
@@ -209,6 +267,7 @@ class SearchView(APIView):
         description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
         parameters=[
             OpenApiParameter("q", OpenApiTypes.STR, OpenApiParameter.QUERY),
+            OpenApiParameter("type", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Slug du type de document (cours, these, examen…)."),
             OpenApiParameter("domain", OpenApiTypes.STR, OpenApiParameter.QUERY),
             OpenApiParameter("language", OpenApiTypes.STR, OpenApiParameter.QUERY),
             OpenApiParameter("access", OpenApiTypes.STR, OpenApiParameter.QUERY),
@@ -237,6 +296,7 @@ class SearchView(APIView):
             return error_response("invalid_year", "year must be an integer.", status.HTTP_400_BAD_REQUEST)
         results = search_documents(
             query=request.query_params.get("q", ""),
+            type_slug=request.query_params.get("type", ""),
             domain_slug=request.query_params.get("domain", ""),
             language_code=request.query_params.get("language", ""),
             access_model=request.query_params.get("access", ""),
@@ -251,6 +311,7 @@ class SearchView(APIView):
                 "abstract": result["abstract"],
                 "language_code": result["language_code"],
                 "publication_year": result["publication_year"],
+                "document_type": result["document_type"],
                 "domain": result["academic_domain"],
                 "authors": result["authors"],
                 "access_model": result["access_model"],

@@ -29,6 +29,7 @@ def _metadata_text(*, document: Document, author_names: list[str]) -> str:
     parts = [
         document.title,
         document.abstract,
+        document.document_type.name if document.document_type_id else "",
         document.academic_domain.name if document.academic_domain_id else "",
         *author_names,
     ]
@@ -73,6 +74,7 @@ def rebuild_document_search_index(document: Document) -> DocumentSearchIndex | N
         author_names = _ordered_author_names(document)
         page_text, indexed_page_count = _current_processed_page_text(document)
         domain = document.academic_domain if document.academic_domain_id else None
+        doc_type = document.document_type if document.document_type_id else None
 
         index, _ = DocumentSearchIndex.objects.update_or_create(
             document=document,
@@ -83,6 +85,8 @@ def rebuild_document_search_index(document: Document) -> DocumentSearchIndex | N
                 "language_code": document.language_code,
                 "publication_year": document.publication_year,
                 "access_model": document.access_model,
+                "type_name": doc_type.name if doc_type else "",
+                "type_slug": doc_type.slug if doc_type else "",
                 "domain_name": domain.name if domain else "",
                 "domain_slug": domain.slug if domain else "",
                 "author_names": "\n".join(author_names),
@@ -97,9 +101,9 @@ def rebuild_document_search_index(document: Document) -> DocumentSearchIndex | N
 
 def rebuild_all_document_search_indexes() -> int:
     indexed_count = 0
-    documents = Document.objects.select_related("academic_domain").prefetch_related(
-        "document_authors__author"
-    )
+    documents = Document.objects.select_related(
+        "academic_domain", "document_type"
+    ).prefetch_related("document_authors__author")
     for document in documents:
         if rebuild_document_search_index(document) is not None:
             indexed_count += 1
@@ -132,6 +136,8 @@ def _score_index(index: DocumentSearchIndex, normalized_query: str) -> tuple[int
         score += 100
     if _contains(index.domain_name, normalized_query) or _contains(index.domain_slug, normalized_query):
         score += 50
+    if _contains(index.type_name, normalized_query) or _contains(index.type_slug, normalized_query):
+        score += 40
     if _contains(index.abstract, normalized_query):
         score += 20
 
@@ -149,6 +155,13 @@ def _result_payload(index: DocumentSearchIndex, *, score: int, text_match: bool)
             "slug": index.domain_slug,
         }
 
+    document_type = None
+    if index.type_name or index.type_slug:
+        document_type = {
+            "name": index.type_name,
+            "slug": index.type_slug,
+        }
+
     return {
         "document_id": index.document_id,
         "title": index.title,
@@ -156,6 +169,7 @@ def _result_payload(index: DocumentSearchIndex, *, score: int, text_match: bool)
         "abstract": index.abstract,
         "language_code": index.language_code,
         "publication_year": index.publication_year,
+        "document_type": document_type,
         "academic_domain": academic_domain,
         "authors": index.author_names.splitlines() if index.author_names else [],
         "access_model": index.document.access_model,
@@ -168,6 +182,7 @@ def _result_payload(index: DocumentSearchIndex, *, score: int, text_match: bool)
 def search_documents(
     *,
     query: str = "",
+    type_slug: str = "",
     domain_slug: str = "",
     language_code: str = "",
     access_model: str = "",
@@ -181,6 +196,8 @@ def search_documents(
     )
     indexes = indexes.exclude(document__access_model=Document.AccessModel.PRIVATE)
 
+    if type_slug:
+        indexes = indexes.filter(type_slug=type_slug)
     if domain_slug:
         indexes = indexes.filter(domain_slug=domain_slug)
     if language_code:
@@ -194,6 +211,8 @@ def search_documents(
             Q(title__icontains=normalized_query)
             | Q(abstract__icontains=normalized_query)
             | Q(author_names__icontains=normalized_query)
+            | Q(type_name__icontains=normalized_query)
+            | Q(type_slug__icontains=normalized_query)
             | Q(domain_name__icontains=normalized_query)
             | Q(domain_slug__icontains=normalized_query)
             | Q(metadata_text__icontains=normalized_query)

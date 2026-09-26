@@ -235,6 +235,7 @@ def test_search_documents_returns_safe_payload_and_enforces_limit():
         "language_code",
         "publication_year",
         "academic_domain",
+        "document_type",
         "authors",
         "access_model",
         "indexed_page_count",

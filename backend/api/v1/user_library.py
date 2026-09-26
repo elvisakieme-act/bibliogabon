@@ -30,6 +30,35 @@ from document_reader.services import (
 )
 
 
+_DOCUMENT_EXAMPLE = {
+    "id": 1,
+    "slug": "droit-public",
+    "title": "Droit public",
+    "abstract": "",
+    "language_code": "fr",
+    "publication_year": 2026,
+    "document_type": {
+        "id": 3,
+        "name": "Thèse",
+        "slug": "these",
+        "icon": "graduation-cap",
+        "color": "#2563EB",
+    },
+    "category": "open_resource",
+    "access_model": "free",
+    "domain": None,
+    "authors": [],
+    "owner": None,
+    "page_count": 120,
+    "cover": None,
+    "access": {
+        "can_read": True,
+        "access_model": "free",
+        "reason": "free",
+    },
+}
+
+
 class FavoriteListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -53,7 +82,10 @@ class FavoriteListCreateView(APIView):
     def get(self, request):
         favorites = (
             FavoriteDocument.objects.select_related(
-                "document", "document__academic_domain", "document__owner_organization"
+                "document",
+                "document__academic_domain",
+                "document__owner_organization",
+                "document__document_type",
             )
             .prefetch_related(*document_metadata_prefetches(prefix="document__"))
             .filter(
@@ -102,26 +134,7 @@ class FavoriteListCreateView(APIView):
             OpenApiExample(
                 "Favorite created",
                 value={
-                    "document": {
-                        "id": 1,
-                        "slug": "droit-public",
-                        "title": "Droit public",
-                        "abstract": "",
-                        "language_code": "fr",
-                        "publication_year": 2026,
-                        "document_type": "open_resource",
-                        "access_model": "free",
-                        "domain": None,
-                        "authors": [],
-                        "owner": None,
-                        "page_count": 120,
-                        "cover": None,
-                        "access": {
-                            "can_read": True,
-                            "access_model": "free",
-                            "reason": "free",
-                        },
-                    },
+                    "document": _DOCUMENT_EXAMPLE,
                     "created_at": "2026-07-29T16:00:00Z",
                 },
                 response_only=True,
@@ -185,7 +198,10 @@ class ReadingProgressListView(APIView):
     def get(self, request):
         progress_rows = (
             ReadingProgress.objects.select_related(
-                "document", "document__academic_domain", "document__owner_organization"
+                "document",
+                "document__academic_domain",
+                "document__owner_organization",
+                "document__document_type",
             )
             .prefetch_related(*document_metadata_prefetches(prefix="document__"))
             .filter(
@@ -240,26 +256,7 @@ class ReadingProgressUpdateView(APIView):
             OpenApiExample(
                 "Reading progress updated",
                 value={
-                    "document": {
-                        "id": 1,
-                        "slug": "droit-public",
-                        "title": "Droit public",
-                        "abstract": "",
-                        "language_code": "fr",
-                        "publication_year": 2026,
-                        "document_type": "open_resource",
-                        "access_model": "free",
-                        "domain": None,
-                        "authors": [],
-                        "owner": None,
-                        "page_count": 120,
-                        "cover": None,
-                        "access": {
-                            "can_read": True,
-                            "access_model": "free",
-                            "reason": "free",
-                        },
-                    },
+                    "document": _DOCUMENT_EXAMPLE,
                     "last_page_number": 4,
                     "updated_at": "2026-07-29T16:00:00Z",
                 },

@@ -42,6 +42,7 @@ def search_documents_view(request) -> JsonResponse:
 
     results = search_documents(
         query=query,
+        type_slug=request.GET.get("type", ""),
         domain_slug=request.GET.get("domain", ""),
         language_code=request.GET.get("language", ""),
         access_model=request.GET.get("access", ""),

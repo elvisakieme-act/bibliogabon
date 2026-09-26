@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
 
@@ -26,6 +27,44 @@ class AcademicDomain(models.Model):
     def __str__(self) -> str:
         if self.parent_id:
             return f"{self.parent.name} / {self.name}"
+        return self.name
+
+
+class DocumentType(models.Model):
+    """Nature académique d'un document : cours, article, mémoire, thèse, examen, TD, rapport…
+
+    C'est la source de vérité pour l'icône et la couleur affichées côté frontend.
+    Les administrateurs peuvent ajouter de nouveaux types sans changement de code.
+    """
+
+    name = models.CharField(max_length=120, unique=True)
+    slug = models.SlugField(unique=True)
+    description = models.TextField(blank=True)
+    icon = models.CharField(
+        max_length=60,
+        blank=True,
+        help_text="Nom d'icône ou emoji utilisé par le frontend.",
+    )
+    color = models.CharField(
+        max_length=7,
+        blank=True,
+        validators=[
+            RegexValidator(
+                regex=r"^#[0-9A-Fa-f]{6}$",
+                message="La couleur doit être un code hexadécimal, ex. #2563EB",
+            )
+        ],
+        help_text="Couleur hexadécimale, ex. #2563EB.",
+    )
+    display_order = models.PositiveSmallIntegerField(default=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["display_order", "name"]
+
+    def __str__(self) -> str:
         return self.name
 
 
@@ -102,6 +141,13 @@ class Document(models.Model):
     abstract = models.TextField(blank=True)
     language_code = models.CharField(max_length=12, default="fr")
     publication_year = models.PositiveSmallIntegerField(null=True, blank=True)
+    document_type = models.ForeignKey(
+        DocumentType,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="documents",
+    )
     academic_domain = models.ForeignKey(
         AcademicDomain,
         null=True,
@@ -141,6 +187,20 @@ class Document(models.Model):
     @property
     def entitlement_scope_id(self) -> str:
         return str(self.pk)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.publication_year is not None:
+            current_year = timezone.now().year
+            if self.publication_year < 1900 or self.publication_year > current_year + 1:
+                raise ValidationError(
+                    {
+                        "publication_year": (
+                            f"L'année de publication doit être comprise entre 1900 et {current_year + 1}."
+                        )
+                    }
+                )
 
     def __str__(self) -> str:
         return self.title
@@ -186,6 +246,91 @@ class DocumentAuthor(models.Model):
 
     def __str__(self) -> str:
         return f"{self.author.display_name} - {self.document.title}"
+
+
+class Collection(models.Model):
+    """Regroupement thématique de documents (ex. « Licence Droit — UOB »).
+
+    Une collection peut servir de portée (scope) à un entitlement ou à une offre
+    commerciale : on accorde/vend l'accès à la collection via son identifiant.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PUBLISHED = "published", "Published"
+        ARCHIVED = "archived", "Archived"
+
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(unique=True)
+    description = models.TextField(blank=True)
+    academic_domain = models.ForeignKey(
+        AcademicDomain,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="collections",
+    )
+    owner_organization = models.ForeignKey(
+        "accounts.Organization",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="owned_collections",
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
+    is_active = models.BooleanField(default=True)
+    documents = models.ManyToManyField(
+        Document,
+        through="CollectionItem",
+        related_name="collections",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    @property
+    def entitlement_scope_id(self) -> str:
+        return str(self.pk)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class CollectionItem(models.Model):
+    collection = models.ForeignKey(
+        Collection,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    document = models.ForeignKey(
+        Document,
+        on_delete=models.PROTECT,
+        related_name="collection_items",
+    )
+    position = models.PositiveSmallIntegerField(default=1)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["collection", "document"],
+                name="uniq_document_per_collection",
+            ),
+            models.UniqueConstraint(
+                fields=["collection", "position"],
+                name="uniq_position_per_collection",
+            ),
+        ]
+        ordering = ["collection", "position"]
+
+    def __str__(self) -> str:
+        return f"{self.collection.name} #{self.position}: {self.document.title}"
 
 
 class RightsAgreement(models.Model):
