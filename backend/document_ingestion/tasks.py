@@ -8,13 +8,18 @@ qu'une enveloppe qui gère l'état du job et les réessais.
 
 from __future__ import annotations
 
+import io
 import logging
+import shutil
 
 from celery import shared_task
 from django.conf import settings
 
-from document_ingestion.models import ProcessingJob
-from document_ingestion.pipeline import process_ingest_job
+from document_ingestion.blob_storage import open_stream
+from document_ingestion.models import DocumentAsset, ProcessingJob
+from document_ingestion.pipeline import EMPTY_PAGE_PLACEHOLDER, process_ingest_job
+from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
+from document_processing.services import attach_extracted_text, queue_page_index_record
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +30,8 @@ MAX_RETRIES = 3
 # temps de se resorber.
 RETRY_BASE_DELAY_SECONDS = 30
 RETRY_MAX_DELAY_SECONDS = 600
+# 200 dpi : assez pour Tesseract, sans faire exploser la memoire du worker.
+OCR_RENDER_DPI = 200
 
 
 def runs_inline() -> bool:
@@ -72,3 +79,120 @@ def ingest_source_document(self, job_id: int) -> int:
         raise self.retry(exc=exc, countdown=countdown)
 
     return version.pk
+
+
+# --- OCR ---------------------------------------------------------------------
+
+
+def page_needs_ocr(page: DocumentPage) -> bool:
+    """Une page a besoin d'OCR quand sa couche texte est absente ou trop
+    maigre pour etre credible : un PDF numerise ressort avec zero caractere,
+    un PDF mixte avec quelques artefacts."""
+    text = ExtractedText.objects.filter(page=page).first()
+    if text is None:
+        return True
+    if text.extraction_method == ExtractedText.ExtractionMethod.OCR:
+        return False
+    if text.text.startswith("[Page "):
+        return True
+    threshold = int(getattr(settings, "OCR_MIN_CHARACTERS", 20))
+    return len(text.text.strip()) < threshold
+
+
+def recognise_page(pdf_stream, page_number: int) -> tuple[str, float | None]:
+    """Rend la page en image puis la soumet a Tesseract.
+
+    Renvoie le texte reconnu et une confiance moyenne ramenee sur 0..1, ou
+    une chaine vide si rien n'est lisible.
+    """
+    import pymupdf
+    import pytesseract
+    from PIL import Image
+
+    languages = getattr(settings, "OCR_LANGUAGES", "fra") or "fra"
+    document = pymupdf.open(stream=pdf_stream.read(), filetype="pdf")
+    try:
+        pixmap = document[page_number - 1].get_pixmap(dpi=OCR_RENDER_DPI)
+        image = Image.open(io.BytesIO(pixmap.tobytes("png")))
+    finally:
+        document.close()
+
+    data = pytesseract.image_to_data(
+        image, lang=languages, output_type=pytesseract.Output.DICT
+    )
+    words = [
+        word
+        for word, confidence in zip(data["text"], data["conf"])
+        if word.strip() and int(confidence) >= 0
+    ]
+    confidences = [int(c) for c in data["conf"] if int(c) >= 0]
+    if not words:
+        return "", None
+
+    text = pytesseract.image_to_string(image, lang=languages)
+    mean_confidence = sum(confidences) / len(confidences) / 100 if confidences else None
+    return text, mean_confidence
+
+
+@shared_task(bind=True, max_retries=MAX_RETRIES, acks_late=True)
+def ocr_page(self, page_id: int) -> bool:
+    """Reconnait le texte d'une page depourvue de couche texte.
+
+    Renvoie True si la page a bien ete reconnue. Une page illisible garde
+    son texte de remplacement — visible plutot que silencieusement vide —
+    et son enregistrement d'index passe en echec, pour qu'une passe
+    qualite puisse la retrouver.
+    """
+    page = DocumentPage.objects.select_related("version").get(pk=page_id)
+
+    if not page_needs_ocr(page):
+        logger.debug("Page %s : couche texte suffisante, OCR inutile.", page_id)
+        return False
+
+    if shutil.which("tesseract") is None:
+        logger.warning(
+            "Page %s : binaire tesseract introuvable, OCR ignore. "
+            "Installez tesseract-ocr et le pack de langue correspondant.",
+            page_id,
+        )
+        return False
+
+    source = (
+        DocumentAsset.objects.filter(
+            version=page.version, asset_type=DocumentAsset.AssetType.SOURCE_PDF
+        )
+        .order_by("id")
+        .first()
+    )
+    if source is None:
+        logger.warning("Page %s : aucun fichier source, OCR impossible.", page_id)
+        _fail_index_record(page, "no_source_asset", "Aucun fichier source pour cette page.")
+        return False
+
+    with open_stream(source.storage_key) as handle:
+        text, confidence = recognise_page(handle, page.page_number)
+
+    if not text.strip():
+        logger.info("Page %s : aucun texte reconnu par l'OCR.", page_id)
+        _fail_index_record(page, "ocr_empty", "L'OCR n'a reconnu aucun texte sur cette page.")
+        return False
+
+    attach_extracted_text(
+        page=page,
+        text=text,
+        language_code=page.version.document.language_code or "fr",
+        extraction_method=ExtractedText.ExtractionMethod.OCR,
+        confidence=round(confidence, 3) if confidence is not None else None,
+    )
+    queue_page_index_record(page=page)
+    return True
+
+
+def _fail_index_record(page: DocumentPage, error_code: str, message: str) -> None:
+    record = SearchIndexRecord.objects.filter(page=page).first()
+    if record is None:
+        return
+    record.status = SearchIndexRecord.Status.FAILED
+    record.error_code = error_code
+    record.error_message = message
+    record.save(update_fields=["status", "error_code", "error_message", "updated_at"])

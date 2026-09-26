@@ -170,12 +170,12 @@ backend/
 **Interfaces:**
 - Produces `ocr_page(page_id)`.
 
-- [ ] Add a small fixture PDF of three pages, one of them image-only. `.gitignore` blocks `*.pdf`, so add a negated rule for this path only, and keep the file under a few hundred kilobytes.
-- [ ] Write failing tests: a page whose text layer is shorter than `OCR_MIN_CHARACTERS` is routed to OCR; OCR output is stored with `extraction_method=ocr` and a confidence in 0..1; a page OCR cannot read keeps a placeholder and a `failed` index record; re-running the task on an already-OCR'd page changes nothing.
-- [ ] Implement the task using pytesseract with `OCR_LANGUAGES`, rendering the page through PyMuPDF before recognition.
-- [ ] Skip gracefully with a clear log line when the tesseract binary is absent, so a contributor without it can still run the suite.
-- [ ] Run `pytest document_processing/tests -q`.
-- [ ] Commit `feat: OCR pages with no text layer`.
+- [x] Add a small fixture PDF of three pages, one of them image-only. `.gitignore` blocks `*.pdf`, so add a negated rule for this path only, and keep the file under a few hundred kilobytes.
+- [x] Write failing tests: a page whose text layer is shorter than `OCR_MIN_CHARACTERS` is routed to OCR; OCR output is stored with `extraction_method=ocr` and a confidence in 0..1; a page OCR cannot read keeps a placeholder and a `failed` index record; re-running the task on an already-OCR'd page changes nothing.
+- [x] Implement the task using pytesseract with `OCR_LANGUAGES`, rendering the page through PyMuPDF before recognition.
+- [x] Skip gracefully with a clear log line when the tesseract binary is absent, so a contributor without it can still run the suite.
+- [x] Run `pytest document_processing/tests -q`.
+- [x] Commit `feat: OCR pages with no text layer`.
 
 ---
 

@@ -12,6 +12,9 @@ backend/private-media/
 # Raw source documents never belong in the repository, wherever they land.
 *.pdf
 *.epub
+# Sole exception: a 36 KB synthetic fixture with no real content, needed to
+# test the ingestion pipeline end to end.
+!backend/document_ingestion/tests/fixtures/sample-3-pages.pdf
 backend/.pytest_cache/
 backend/*.egg-info/
 
