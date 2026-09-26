@@ -11,6 +11,8 @@ from config.env import (
     env_int,
     env_list,
     validate_django_env,
+    validate_document_storage_backend,
+    validate_production_pipeline_settings,
     validate_production_settings,
 )
 from config.logconfig import build_logging_config
@@ -121,6 +123,34 @@ validate_production_settings(
     session_cookie_secure=SESSION_COOKIE_SECURE,
     csrf_cookie_secure=CSRF_COOKIE_SECURE,
 )
+# --- Pilier d'ingestion : file de traitement et stockage objet ---------------
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "").strip()
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "").strip() or CELERY_BROKER_URL
+# En developpement et en test, les taches s'executent en ligne : la suite
+# tourne sans broker.
+CELERY_TASK_ALWAYS_EAGER = env_bool(
+    "CELERY_TASK_ALWAYS_EAGER",
+    default=DJANGO_ENV != "production",
+)
+CELERY_TASK_EAGER_PROPAGATES = CELERY_TASK_ALWAYS_EAGER
+
+DOCUMENT_STORAGE_BACKEND = validate_document_storage_backend(
+    os.getenv("DOCUMENT_STORAGE_BACKEND", "filesystem")
+)
+DOCUMENT_STORAGE_ENDPOINT_URL = os.getenv("DOCUMENT_STORAGE_ENDPOINT_URL", "").strip()
+DOCUMENT_STORAGE_ACCESS_KEY = os.getenv("DOCUMENT_STORAGE_ACCESS_KEY", "").strip()
+DOCUMENT_STORAGE_SECRET_KEY = os.getenv("DOCUMENT_STORAGE_SECRET_KEY", "").strip()
+
+DOCUMENT_PAGE_IMAGE_WIDTH = env_int("DOCUMENT_PAGE_IMAGE_WIDTH", 1240)
+OCR_LANGUAGES = os.getenv("OCR_LANGUAGES", "").strip() or "fra"
+OCR_MIN_CHARACTERS = env_int("OCR_MIN_CHARACTERS", 20)
+
+validate_production_pipeline_settings(
+    django_env=DJANGO_ENV,
+    celery_broker_url=CELERY_BROKER_URL,
+    document_storage_backend=DOCUMENT_STORAGE_BACKEND,
+)
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGGING = build_logging_config(os.getenv("DJANGO_LOG_LEVEL", "INFO"))
 

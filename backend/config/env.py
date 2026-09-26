@@ -16,6 +16,7 @@ DEVELOPMENT_SECRET_KEYS = {
     DEFAULT_DEVELOPMENT_SECRET_KEY,
 }
 LOCAL_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
+VALID_DOCUMENT_STORAGE_BACKENDS = {"filesystem", "s3"}
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -90,3 +91,26 @@ def validate_production_settings(
         raise ImproperlyConfigured("DJANGO_SESSION_COOKIE_SECURE must be True in production")
     if not csrf_cookie_secure:
         raise ImproperlyConfigured("DJANGO_CSRF_COOKIE_SECURE must be True in production")
+
+
+def validate_document_storage_backend(value: str) -> str:
+    normalized = value.strip().lower()
+    if normalized not in VALID_DOCUMENT_STORAGE_BACKENDS:
+        raise ImproperlyConfigured("DOCUMENT_STORAGE_BACKEND must be filesystem or s3")
+    return normalized
+
+
+def validate_production_pipeline_settings(
+    *,
+    django_env: str,
+    celery_broker_url: str,
+    document_storage_backend: str,
+) -> None:
+    """Le pilier d'ingestion ne peut pas tourner en production sans broker ni
+    stockage objet : on echoue au demarrage plutot qu'au premier document."""
+    if django_env != "production":
+        return
+    if not celery_broker_url.strip():
+        raise ImproperlyConfigured("CELERY_BROKER_URL is required in production")
+    if document_storage_backend != "s3":
+        raise ImproperlyConfigured("DOCUMENT_STORAGE_BACKEND must be s3 in production")

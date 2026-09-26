@@ -116,6 +116,9 @@ def test_validate_production_settings_accepts_hardened_values():
 
 
 SETTINGS_ENVIRONMENT_NAMES = [
+    "CELERY_BROKER_URL",
+    "CELERY_RESULT_BACKEND",
+    "CELERY_TASK_ALWAYS_EAGER",
     "DATABASE_URL",
     "DJANGO_ALLOWED_HOSTS",
     "DJANGO_CSRF_TRUSTED_ORIGINS",
@@ -125,6 +128,11 @@ SETTINGS_ENVIRONMENT_NAMES = [
     "DJANGO_SECRET_KEY",
     "DJANGO_SECURE_SSL_REDIRECT",
     "DJANGO_SESSION_COOKIE_SECURE",
+    "DOCUMENT_PAGE_IMAGE_WIDTH",
+    "DOCUMENT_STORAGE_BACKEND",
+    "DOCUMENT_STORAGE_ENDPOINT_URL",
+    "OCR_LANGUAGES",
+    "OCR_MIN_CHARACTERS",
 ]
 
 
@@ -185,6 +193,8 @@ def import_production_settings(**environment):
             "DJANGO_SESSION_COOKIE_SECURE": "True",
             "DJANGO_CSRF_COOKIE_SECURE": "True",
             "DATABASE_URL": "postgres://bibliogabon:secret@localhost:5432/bibliogabon",
+            "CELERY_BROKER_URL": "redis://localhost:6379/0",
+            "DOCUMENT_STORAGE_BACKEND": "s3",
             **environment,
         }
     )
@@ -216,3 +226,74 @@ def test_production_settings_import_rejects_non_https_csrf_trusted_origin():
 
     assert result.returncode != 0
     assert "DJANGO_CSRF_TRUSTED_ORIGINS must use HTTPS in production" in result.stderr
+
+
+def test_production_settings_import_rejects_missing_celery_broker():
+    result = import_production_settings(CELERY_BROKER_URL="")
+
+    assert result.returncode != 0
+    assert "CELERY_BROKER_URL is required in production" in result.stderr
+
+
+def test_production_settings_import_rejects_filesystem_document_storage():
+    result = import_production_settings(DOCUMENT_STORAGE_BACKEND="filesystem")
+
+    assert result.returncode != 0
+    assert "DOCUMENT_STORAGE_BACKEND must be s3 in production" in result.stderr
+
+
+def test_production_settings_import_rejects_unknown_document_storage_backend():
+    result = import_production_settings(DOCUMENT_STORAGE_BACKEND="dropbox")
+
+    assert result.returncode != 0
+    assert "DOCUMENT_STORAGE_BACKEND must be" in result.stderr
+
+
+def import_development_settings_value(expression, **environment):
+    env = os.environ.copy()
+    for name in SETTINGS_ENVIRONMENT_NAMES:
+        env.pop(name, None)
+    env.update(environment)
+    return subprocess.run(
+        [sys.executable, "-c", f"from config.settings import *; print({expression})"],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_development_defaults_run_tasks_inline_without_a_broker():
+    result = import_development_settings_value("CELERY_TASK_ALWAYS_EAGER")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "True"
+
+
+def test_development_defaults_to_filesystem_document_storage():
+    result = import_development_settings_value("DOCUMENT_STORAGE_BACKEND")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "filesystem"
+
+
+def test_pipeline_tuning_values_come_from_the_environment():
+    result = import_development_settings_value(
+        "(DOCUMENT_PAGE_IMAGE_WIDTH, OCR_LANGUAGES, OCR_MIN_CHARACTERS)",
+        DOCUMENT_PAGE_IMAGE_WIDTH="900",
+        OCR_LANGUAGES="fra+eng",
+        OCR_MIN_CHARACTERS="40",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "(900, 'fra+eng', 40)"
+
+
+def test_pipeline_tuning_values_have_safe_defaults():
+    result = import_development_settings_value(
+        "(DOCUMENT_PAGE_IMAGE_WIDTH, OCR_LANGUAGES, OCR_MIN_CHARACTERS)"
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "(1240, 'fra', 20)"

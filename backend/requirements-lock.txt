@@ -1,36 +1,74 @@
-# Exact versions known to work together, generated from the local .venv via
-# `pip freeze`. Regenerate after changing dependencies in pyproject.toml:
-#   .\.venv\Scripts\python.exe -m pip install -e ".[dev]" --upgrade
-#   .\.venv\Scripts\python.exe -m pip freeze | findstr /v "Editable" > requirements-lock.txt
+# Exact versions known to work together: the dependency closure of
+# pyproject.toml, pinned to the versions the test suite was verified against.
+# Regenerate after changing dependencies in pyproject.toml:
+#   python -m pip install -e ".[dev]" --upgrade
+#   python -m pip install --dry-run --ignore-installed --report report.json -e ".[dev]"
+# then pin each package from report.json to its installed version.
 # Install with:
-#   .\.venv\Scripts\python.exe -m pip install -r requirements-lock.txt
-#   .\.venv\Scripts\python.exe -m pip install -e . --no-deps
+#   python -m pip install -r requirements-lock.txt
+#   python -m pip install -e . --no-deps
+amqp==5.4.0
 asgiref==3.12.1
 attrs==26.1.0
-colorama==0.4.6
+billiard==4.3.0
+boto3==1.43.36
+botocore==1.43.36
+celery==5.6.3
+certifi==2026.6.17
+cffi==2.0.0
+charset-normalizer==3.4.7
+click==8.4.2
+click-didyoumean==0.3.1
+click-plugins==1.1.1.2
+click-repl==0.4.0
+cryptography==50.0.1
 dj-database-url==2.3.0
 Django==5.2.16
+django-storages==1.14.6
 djangorestframework==3.17.1
 djangorestframework_simplejwt==5.5.1
-drf-spectacular-sidecar==2026.7.1
 drf-spectacular==0.30.0
+drf-spectacular-sidecar==2026.7.1
+idna==3.18
 inflection==0.5.1
 iniconfig==2.3.0
-jsonschema-specifications==2025.9.1
+jmespath==1.1.0
 jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+kombu==5.6.2
+MarkupSafe==3.0.3
+moto==5.2.3
 packaging==26.2
+pillow==12.2.0
 pluggy==1.6.0
-psycopg-binary==3.3.4
+prompt_toolkit==3.0.52
 psycopg==3.3.4
+psycopg-binary==3.3.4
+py-partiql-parser==0.6.3
+pycparser==3.0
 Pygments==2.20.0
 PyJWT==2.13.0
+pymupdf==1.28.2
 pypdf==6.16.1
-pytest-django==4.12.0
+pytesseract==0.3.13
 pytest==8.4.2
+pytest-django==4.12.0
+python-dateutil==2.9.0.post0
 PyYAML==6.0.3
+redis==6.4.0
 referencing==0.37.0
+requests==2.34.2
+responses==0.26.3
 rpds-py==2026.6.3
+s3transfer==0.19.0
+six==1.17.0
 sqlparse==0.5.5
 typing_extensions==4.16.0
 tzdata==2026.3
+tzlocal==5.4.4
 uritemplate==4.2.0
+urllib3==2.5.0
+vine==5.1.0
+wcwidth==0.8.1
+Werkzeug==3.1.8
+xmltodict==1.0.4

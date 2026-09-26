@@ -10,6 +10,12 @@
 - Confirm secure cookie and SSL redirect variables are enabled.
 - Confirm `DATABASE_URL` points to the production PostgreSQL database.
 - Confirm private document storage credentials are configured outside Git.
+- Confirm `CELERY_BROKER_URL` points to the production Redis instance; the
+  application refuses to start in production without it.
+- Confirm `DOCUMENT_STORAGE_BACKEND=s3` with endpoint and credentials set;
+  production refuses the filesystem backend.
+- Confirm at least one Celery worker is running, and that the host has
+  `tesseract-ocr` and `tesseract-ocr-fra` installed for OCR.
 
 ## Verification Commands
 
