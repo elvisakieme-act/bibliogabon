@@ -14,21 +14,25 @@ remplacées par un texte de remplacement — c'est là qu'interviendra l'OCR
 from __future__ import annotations
 
 import hashlib
+import logging
 
 from django.db import transaction
 from django.utils import timezone
 
-from document_ingestion.blob_storage import open_stream, save_stream
-from document_ingestion.models import DocumentVersion, ProcessingJob
+from document_ingestion.blob_storage import get_document_storage, open_stream, save_stream
+from document_ingestion.exceptions import VersionAlreadyIngested
+from document_ingestion.models import DocumentAsset, DocumentVersion, ProcessingJob
 from document_ingestion.services import register_private_upload
 from document_ingestion.storage import build_private_storage_key
-from document_processing.models import DocumentPage
+from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
 from document_processing.services import (
     attach_extracted_text,
     create_page_records,
     queue_page_index_record,
 )
 from search_discovery.services import rebuild_document_search_index
+
+logger = logging.getLogger(__name__)
 
 EMPTY_PAGE_PLACEHOLDER = "[Page {n} : aucun texte extractible — OCR requis]"
 CHUNK_SIZE = 1024 * 1024
@@ -121,6 +125,52 @@ def process_ingest_job(job: ProcessingJob) -> DocumentVersion:
         raise
 
 
+def _existing_ingested_version(document, version_label: str):
+    """Renvoie la version deja peuplee pour ce libelle, s'il y en a une."""
+    version = DocumentVersion.objects.filter(
+        document=document, version_label=version_label
+    ).first()
+    if version is None:
+        return None
+    if DocumentPage.objects.filter(version=version).exists():
+        return version
+    return None
+
+
+def _clear_version_content(version) -> None:
+    """Vide une version de tout ce qu'une ingestion precedente y a depose.
+
+    Les objets stockes partent avec les lignes : une version ne represente
+    qu'un seul fichier source, donc conserver l'ancien laisserait deux
+    sources contradictoires en base et un fichier prive orphelin que plus
+    rien ne reference. L'ordre suit les dependances, le tout dans une
+    transaction pour qu'un echec ne laisse pas une version a moitie videe.
+    """
+    storage = get_document_storage()
+    storage_keys = list(
+        DocumentAsset.objects.filter(version=version).values_list("storage_key", flat=True)
+    )
+
+    SearchIndexRecord.objects.filter(page__version=version).delete()
+    ExtractedText.objects.filter(page__version=version).delete()
+    DocumentPage.objects.filter(version=version).delete()
+    DocumentAsset.objects.filter(version=version).delete()
+    ProcessingJob.objects.filter(version=version).delete()
+
+    # Apres le commit seulement : un rollback ne doit pas laisser la base
+    # pointer vers des objets qu'on aurait deja supprimes du stockage.
+    transaction.on_commit(lambda: _delete_stored_objects(storage, storage_keys))
+
+
+def _delete_stored_objects(storage, storage_keys) -> None:
+    for storage_key in storage_keys:
+        try:
+            if storage.exists(storage_key):
+                storage.delete(storage_key)
+        except Exception:  # le nettoyage ne doit jamais casser une ingestion
+            logger.warning("Objet prive non supprime : %s", storage_key, exc_info=True)
+
+
 def ingest_document_file(
     *,
     document,
@@ -129,6 +179,7 @@ def ingest_document_file(
     mime_type: str = "application/pdf",
     uploaded_by=None,
     version_label: str = "v1",
+    replace: bool = False,
 ) -> DocumentVersion:
     """Point d'entrée haut niveau : stocke le fichier, enregistre la version et
     l'asset, puis lance le traitement. Renvoie la version traitée.
@@ -143,6 +194,13 @@ def ingest_document_file(
     """
     if not fileobj.seekable():
         raise ValueError("Le flux source doit être repositionnable (seekable).")
+
+    existing = _existing_ingested_version(document, version_label)
+    if existing is not None:
+        if not replace:
+            raise VersionAlreadyIngested(existing)
+        with transaction.atomic():
+            _clear_version_content(existing)
 
     fileobj.seek(0)
     checksum, byte_size = _checksum_and_size(fileobj)

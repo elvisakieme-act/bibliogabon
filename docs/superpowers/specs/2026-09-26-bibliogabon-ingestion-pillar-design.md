@@ -95,7 +95,14 @@ A shared `normalize_extracted_text(text) -> str` strips control characters, repa
 
 - a new `version_label` always creates a new version;
 - an existing label with `replace=False` (default) raises a typed `VersionAlreadyIngested` carrying the existing version, so a caller can decide;
-- `replace=True` deletes the previous pages, texts, index records and page-image assets for that version inside one transaction, then re-ingests.
+- `replace=True` deletes the previous pages, texts, index records, **every asset of that version including the
+  source file, its stored object, and the stale processing job** inside one transaction, then re-ingests. A
+  version represents one source file: keeping the previous one would record two contradictory sources and leak
+  a private object nothing references. Stored objects are removed on commit, so a rollback never leaves the
+  database pointing at deleted files.
+- `PageAccessLog.page` becomes nullable with `SET_NULL`. Under `PROTECT` a document that had been read could
+  not be re-ingested. The log already denormalises document, page number, user and timestamp, so the audit
+  trail and the analytics aggregates survive the page row.
 
 `seed_demo` stops fabricating page records. It seeds catalog metadata only and prints the `ingest_file` command to run for real content, so demo data can never again block ingestion.
 

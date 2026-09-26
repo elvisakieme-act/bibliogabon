@@ -24,8 +24,6 @@ from catalog.models import (
     DocumentType,
     RightsAgreement,
 )
-from document_ingestion.models import DocumentVersion
-from document_processing.models import DocumentPage, ExtractedText
 from search_discovery.services import rebuild_document_search_index
 
 PASSWORD = "demo1234"
@@ -245,7 +243,9 @@ class Command(BaseCommand):
                 },
             )
 
-            self._seed_pages(document, npages, keywords, now)
+            # Aucune page fabriquee : de fausses pages occupaient la version
+            # v1 et faisaient echouer toute ingestion reelle du meme document.
+            # Le contenu vient desormais de `ingest_file`, et lui seul.
             rebuild_document_search_index(document)
 
         # --- Une collection thématique ---
@@ -309,6 +309,22 @@ class Command(BaseCommand):
         self.stdout.write("Comptes de démo (mot de passe : demo1234) :")
         self.stdout.write("  - Enseignants : levis.andongui@bibliogabon.ga, mpiga.jess@bibliogabon.ga, elvis.oyono@bibliogabon.ga, ulrich.essone@bibliogabon.ga …")
         self.stdout.write("  - Apprenants  : sarah.moussavou@example.ga (UOB vérifié + accès global), yannick.boulingui@example.ga (UOB non vérifié)")
+        self.stdout.write("")
+        self.stdout.write(
+            "Les documents n'ont encore aucune page : le catalogue est peuplé, "
+            "pas le contenu."
+        )
+        first = Document.objects.order_by("id").first()
+        example_id = first.pk if first else 1
+        self.stdout.write(
+            "Pour ingérer un vrai PDF et le rendre lisible et cherchable :"
+        )
+        self.stdout.write(
+            f"  python manage.py ingest_file {example_id} /chemin/vers/fichier.pdf"
+        )
+        self.stdout.write(
+            "  (ajoutez --replace pour remplacer le contenu d'une version existante)"
+        )
 
     # ------------------------------------------------------------------ helpers
 
@@ -321,33 +337,3 @@ class Command(BaseCommand):
             user.set_password(PASSWORD)
             user.save(update_fields=["password"])
         return user
-
-    def _seed_pages(self, document: Document, npages: int, keywords: list[str], now) -> DocumentVersion:
-        version, created = DocumentVersion.objects.get_or_create(
-            document=document,
-            version_label="v1",
-            defaults={
-                "status": DocumentVersion.Status.PROCESSED,
-                "is_current": True,
-                "page_count": npages,
-                "detected_format": "pdf",
-                "processed_at": now,
-                "processing_summary": "Contenu de démonstration.",
-            },
-        )
-        if not created:
-            return version
-        for i in range(1, npages + 1):
-            page = DocumentPage.objects.create(
-                version=version, page_number=i, status=DocumentPage.Status.PROCESSED
-            )
-            text = (
-                f"{document.title} — page {i}.\n"
-                f"Domaine : {document.academic_domain.name}.\n"
-                f"Mots-clés : {', '.join(keywords)}.\n\n"
-                "Ceci est un contenu de démonstration destiné à tester le lecteur "
-                "sécurisé et la recherche plein-texte de BiblioGabon. "
-                "Le texte réel sera produit par le pipeline d'ingestion à partir du PDF d'origine."
-            )
-            ExtractedText.objects.create(page=page, text=text, language_code="fr")
-        return version

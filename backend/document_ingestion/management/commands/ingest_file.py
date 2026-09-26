@@ -17,9 +17,18 @@ class Command(BaseCommand):
         parser.add_argument("document_id", type=int, help="Identifiant du document cible.")
         parser.add_argument("pdf_path", type=str, help="Chemin du fichier PDF à ingérer.")
         parser.add_argument("--version-label", default="v1", help="Libellé de version (défaut : v1).")
+        parser.add_argument(
+            "--replace",
+            action="store_true",
+            help=(
+                "Remplace le contenu d'une version déjà ingérée : pages, textes, "
+                "index et fichier source précédents sont supprimés."
+            ),
+        )
 
     def handle(self, *args, **options):
         from catalog.models import Document
+        from document_ingestion.exceptions import VersionAlreadyIngested
         from document_ingestion.pipeline import ingest_document_file
 
         path = Path(options["pdf_path"])
@@ -31,14 +40,23 @@ class Command(BaseCommand):
         except Document.DoesNotExist as exc:
             raise CommandError(f"Aucun document avec l'id {options['document_id']}.") from exc
 
-        with path.open("rb") as handle:
-            version = ingest_document_file(
-                document=document,
-                fileobj=handle,
-                original_filename=path.name,
-                uploaded_by=None,
-                version_label=options["version_label"],
-            )
+        try:
+            with path.open("rb") as handle:
+                version = ingest_document_file(
+                    document=document,
+                    fileobj=handle,
+                    original_filename=path.name,
+                    uploaded_by=None,
+                    version_label=options["version_label"],
+                    replace=options["replace"],
+                )
+        except VersionAlreadyIngested as exc:
+            raise CommandError(
+                f"{exc}\n"
+                f"  • pour publier une nouvelle version : "
+                f"--version-label v2\n"
+                f"  • pour écraser celle-ci : --replace"
+            ) from exc
         self.stdout.write(
             self.style.SUCCESS(
                 f"Ingéré : « {document.title} » → version {version.version_label}, "

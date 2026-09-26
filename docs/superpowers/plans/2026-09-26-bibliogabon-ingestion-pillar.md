@@ -146,12 +146,17 @@ backend/
 - Produces `VersionAlreadyIngested`.
 - Produces `ingest_document_file(..., replace: bool = False)`.
 
-- [ ] Write failing tests reproducing the recorded production failure: ingesting twice into `v1` raises `VersionAlreadyIngested` carrying the existing version, instead of `Existing page records conflict with requested page_count`; `replace=True` converges to exactly one set of pages, texts, index records and page assets; a new label creates a second version and leaves the first intact.
-- [ ] Implement the typed exception and the transactional replace path.
-- [ ] Add `--replace` to `ingest_file` and surface the conflict as a readable `CommandError`.
-- [ ] Write a failing test asserting `seed_demo` creates zero `DocumentPage` rows; then strip page fabrication from the command and have it print the `ingest_file` invocation instead.
-- [ ] Run `pytest document_ingestion/tests -q`.
-- [ ] Commit `fix: make re-ingestion explicit instead of failing on collision`.
+- [x] Write failing tests reproducing the recorded production failure: ingesting twice into `v1` raises `VersionAlreadyIngested` carrying the existing version, instead of `Existing page records conflict with requested page_count`; `replace=True` converges to exactly one set of pages, texts, index records and page assets; a new label creates a second version and leaves the first intact.
+- [x] Implement the typed exception and the transactional replace path. Replacement also removes the previous
+      source asset, its stored object and the stale job: a version represents one source file, so keeping the
+      old one would leave two contradictory sources and an orphan private object nothing references.
+- [x] Make `PageAccessLog.page` nullable with `SET_NULL`. It was `PROTECT`, so a document that had been read
+      could not be re-ingested at all — found by running the real command, not by the unit tests. The log keeps
+      document, page number, user and timestamp, so the audit trail survives the page it pointed at.
+- [x] Add `--replace` to `ingest_file` and surface the conflict as a readable `CommandError`.
+- [x] Write a failing test asserting `seed_demo` creates zero `DocumentPage` rows; then strip page fabrication from the command and have it print the `ingest_file` invocation instead.
+- [x] Run `pytest document_ingestion/tests -q`.
+- [x] Commit `fix: make re-ingestion explicit instead of failing on collision`.
 
 ---
 

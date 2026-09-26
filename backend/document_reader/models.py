@@ -92,9 +92,16 @@ class PageAccessLog(models.Model):
         on_delete=models.CASCADE,
         related_name="page_access_logs",
     )
+    # Le journal d'acces est une trace d'audit : il survit a la page.
+    # Remplacer le contenu d'une version supprime ses pages, ce que PROTECT
+    # interdisait — un document deja lu devenait impossible a corriger. Tout
+    # ce dont l'audit et les agregats ont besoin (document, numero de page,
+    # utilisateur, horodatage) est deja denormalise ici.
     page = models.ForeignKey(
         "document_processing.DocumentPage",
-        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name="access_logs",
     )
     user = models.ForeignKey(
