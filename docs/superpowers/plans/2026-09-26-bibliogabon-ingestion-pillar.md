@@ -68,14 +68,14 @@ backend/
 - Produces settings `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_TASK_ALWAYS_EAGER`, `DOCUMENT_STORAGE_BACKEND`, `DOCUMENT_STORAGE_ENDPOINT_URL`, `DOCUMENT_PAGE_IMAGE_WIDTH`, `OCR_LANGUAGES`, `OCR_MIN_CHARACTERS`.
 - Extends `validate_production_settings()` with broker and storage-backend checks.
 
-- [ ] Write failing tests: production rejects a missing `CELERY_BROKER_URL`, and rejects `DOCUMENT_STORAGE_BACKEND=filesystem`; development keeps working with neither set.
-- [ ] Add `celery`, `redis`, `boto3`, `django-storages[s3]`, `pymupdf`, `pytesseract` to `pyproject.toml`; add `moto` to the dev extra.
-- [ ] Regenerate `requirements-lock.txt` and confirm `pip install -r requirements-lock.txt` resolves.
-- [ ] Add the new settings with safe development defaults (`filesystem`, eager tasks).
-- [ ] Document every new variable in `.env.example`.
-- [ ] Note in the deployment checklist that production needs a broker, an S3 endpoint, and `tesseract-ocr-fra` on the host.
-- [ ] Run `pytest config/tests -q`, `manage.py check`.
-- [ ] Commit `chore: add ingestion pillar dependencies and settings`.
+- [x] Write failing tests: production rejects a missing `CELERY_BROKER_URL`, and rejects `DOCUMENT_STORAGE_BACKEND=filesystem`; development keeps working with neither set.
+- [x] Add `celery`, `redis`, `boto3`, `django-storages[s3]`, `pymupdf`, `pytesseract` to `pyproject.toml`; add `moto` to the dev extra.
+- [x] Regenerate `requirements-lock.txt` and confirm `pip install -r requirements-lock.txt` resolves.
+- [x] Add the new settings with safe development defaults (`filesystem`, eager tasks).
+- [x] Document every new variable in `.env.example`.
+- [x] Note in the deployment checklist that production needs a broker, an S3 endpoint, and `tesseract-ocr-fra` on the host.
+- [x] Run `pytest config/tests -q`, `manage.py check`.
+- [x] Commit `chore: add ingestion pillar dependencies and settings`.
 
 ---
 
