@@ -77,6 +77,15 @@ class DocumentAsset(models.Model):
         INTERNAL = "internal", "Internal"
 
     version = models.ForeignKey(DocumentVersion, on_delete=models.CASCADE, related_name="assets")
+    # Renseigne pour les derives propres a une page (image de page).
+    # Les fichiers source valent pour la version entiere et le laissent nul.
+    page = models.ForeignKey(
+        "document_processing.DocumentPage",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="assets",
+    )
     asset_type = models.CharField(max_length=24, choices=AssetType.choices)
     storage_bucket = models.CharField(max_length=160)
     storage_key = models.CharField(max_length=500)
@@ -99,9 +108,20 @@ class DocumentAsset(models.Model):
 
     class Meta:
         constraints = [
+            # Idempotence des fichiers de version : un meme contenu ne peut
+            # etre enregistre deux fois pour un meme type.
             models.UniqueConstraint(
                 fields=["version", "asset_type", "checksum_sha256"],
+                condition=models.Q(page__isnull=True),
                 name="uniq_asset_checksum_per_version_type",
+            ),
+            # Les derives de page echappent a cette regle : deux pages
+            # identiques produisent le meme checksum et doivent pourtant
+            # garder chacune leur image.
+            models.UniqueConstraint(
+                fields=["page", "asset_type"],
+                condition=models.Q(page__isnull=False),
+                name="uniq_asset_per_page_and_type",
             ),
             models.CheckConstraint(
                 condition=~models.Q(storage_key__contains="://")
@@ -115,6 +135,8 @@ class DocumentAsset(models.Model):
     def clean(self):
         if storage_key_is_public_reference(self.storage_key):
             raise ValidationError("Storage key must be a private object key, not a public reference")
+        if self.page_id and self.page.version_id != self.version_id:
+            raise ValidationError("Asset page must belong to the same document version")
         source_types = {
             self.AssetType.SOURCE_RAW,
             self.AssetType.SOURCE_PDF,

@@ -182,17 +182,19 @@ backend/
 ### Task 7: Page Image Rendering
 
 **Files:**
-- Modify: `backend/document_ingestion/tasks.py`, `backend/document_ingestion/models.py` if an asset type is missing
+- Modify: `backend/document_ingestion/tasks.py`, `backend/document_ingestion/models.py`
+  (the asset type existed; the missing piece was a link from an asset to its page, plus a unique
+  constraint that refused two identical pages)
 - Create: `backend/document_processing/tests/test_page_images.py`
 
 **Interfaces:**
 - Produces `render_page_image(page_id)`.
 
-- [ ] Write failing tests: rendering a page creates one private `DocumentAsset` of type `page_image` linked to its page; the stored object is a WebP at `DOCUMENT_PAGE_IMAGE_WIDTH`; re-running skips when an asset with the same checksum exists; the asset is never exposed through any catalog, search or reader payload.
-- [ ] Implement rendering with PyMuPDF, writing through `save_stream`.
-- [ ] Add a regression test asserting no reader or catalog response contains a `page_image` key, a storage key or a URL.
-- [ ] Run `pytest document_processing/tests document_reader/tests api/v1/tests -q`.
-- [ ] Commit `feat: render private page images`.
+- [x] Write failing tests: rendering a page creates one private `DocumentAsset` of type `page_image` linked to its page; the stored object is a WebP at `DOCUMENT_PAGE_IMAGE_WIDTH`; re-running skips when an asset with the same checksum exists; the asset is never exposed through any catalog, search or reader payload.
+- [x] Implement rendering with PyMuPDF, writing through `save_stream`.
+- [x] Add a regression test asserting no reader or catalog response contains a `page_image` key, a storage key or a URL.
+- [x] Run `pytest document_processing/tests document_reader/tests api/v1/tests -q`.
+- [x] Commit `feat: render private page images`.
 
 ---
 

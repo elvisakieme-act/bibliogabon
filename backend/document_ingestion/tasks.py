@@ -8,6 +8,7 @@ qu'une enveloppe qui gère l'état du job et les réessais.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import logging
 import shutil
@@ -15,7 +16,7 @@ import shutil
 from celery import shared_task
 from django.conf import settings
 
-from document_ingestion.blob_storage import open_stream
+from document_ingestion.blob_storage import open_stream, save_stream
 from document_ingestion.models import DocumentAsset, ProcessingJob
 from document_ingestion.pipeline import EMPTY_PAGE_PLACEHOLDER, process_ingest_job
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
@@ -196,3 +197,87 @@ def _fail_index_record(page: DocumentPage, error_code: str, message: str) -> Non
     record.error_code = error_code
     record.error_message = message
     record.save(update_fields=["status", "error_code", "error_message", "updated_at"])
+
+
+# --- Rendu des pages en images privees ---------------------------------------
+
+
+def page_image_storage_key(page: DocumentPage) -> str:
+    """Cle privee deterministe, alignee sur celle du fichier source."""
+    prefix = getattr(settings, "DOCUMENT_STORAGE_KEY_PREFIX", "documents")
+    return (
+        f"{prefix}/{page.version.document_id}/versions/"
+        f"{page.version.version_label}/pages/{page.page_number:04d}.webp"
+    )
+
+
+def render_page_to_webp(pdf_stream, page_number: int, width: int) -> bytes:
+    """Rend une page en WebP a la largeur demandee."""
+    import pymupdf
+    from PIL import Image
+
+    document = pymupdf.open(stream=pdf_stream.read(), filetype="pdf")
+    try:
+        page = document[page_number - 1]
+        zoom = width / page.rect.width if page.rect.width else 1
+        pixmap = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom))
+        image = Image.open(io.BytesIO(pixmap.tobytes("png")))
+    finally:
+        document.close()
+
+    buffer = io.BytesIO()
+    image.save(buffer, format="WEBP", quality=80, method=4)
+    return buffer.getvalue()
+
+
+@shared_task(bind=True, max_retries=MAX_RETRIES, acks_late=True)
+def render_page_image(self, page_id: int) -> bool:
+    """Produit l'image privee d'une page.
+
+    Le rendu est un derive d'un fichier prive : il reste prive lui aussi et
+    n'est servi qu'a travers une session de lecture autorisee. Rejouable :
+    une image au contenu identique est conservee telle quelle.
+    """
+    page = DocumentPage.objects.select_related("version").get(pk=page_id)
+    width = int(getattr(settings, "DOCUMENT_PAGE_IMAGE_WIDTH", 1240))
+
+    source = (
+        DocumentAsset.objects.filter(
+            version=page.version, asset_type=DocumentAsset.AssetType.SOURCE_PDF
+        )
+        .order_by("id")
+        .first()
+    )
+    if source is None:
+        logger.warning("Page %s : aucun fichier source, rendu impossible.", page_id)
+        return False
+
+    with open_stream(source.storage_key) as handle:
+        payload = render_page_to_webp(handle, page.page_number, width)
+
+    checksum = hashlib.sha256(payload).hexdigest()
+    existing = DocumentAsset.objects.filter(
+        page=page, asset_type=DocumentAsset.AssetType.PAGE_IMAGE
+    ).first()
+    if existing is not None and existing.checksum_sha256 == checksum:
+        logger.debug("Page %s : image inchangee, rien a reecrire.", page_id)
+        return False
+
+    storage_key = page_image_storage_key(page)
+    save_stream(storage_key, io.BytesIO(payload))
+
+    defaults = {
+        "version": page.version,
+        "storage_bucket": getattr(settings, "DOCUMENT_STORAGE_BUCKET", ""),
+        "storage_key": storage_key,
+        "mime_type": "image/webp",
+        "byte_size": len(payload),
+        "checksum_sha256": checksum,
+        "visibility": DocumentAsset.Visibility.PRIVATE,
+    }
+    DocumentAsset.objects.update_or_create(
+        page=page,
+        asset_type=DocumentAsset.AssetType.PAGE_IMAGE,
+        defaults=defaults,
+    )
+    return True
