@@ -115,9 +115,50 @@ Two readiness gates, not one: `missing_deposit_requirements` (declaration comple
 
 Upload is the only multipart endpoint, a deliberate exception to the JSON-only public contract. Bounds are checked before storage is touched, and the file reaches `ingest_document_file` as a `TemporaryUploadedFile` above 2.5 MB rather than passing through memory.
 
+### Back-office screens (`/gestion`)
+
+The first lazily loaded area: `lazyRouteComponent` per route, and
+`src/tests/staff-bundle.test.ts` asserts the reader entry chunk contains no
+staff module **and** no `react-hook-form`. That test only trips on a reachable
+usage — rolldown shakes an unused import away, which is why the mutation check
+in it matters.
+
+`RequireRole` mirrors `accounts.permissions.has_back_office_access` and refuses
+with a message rather than a redirect: sending an already-authenticated reader
+to `/connexion` loops. Both guards read the return target from the router
+non-reactively — read reactively, it nested into itself
+(`/connexion?next=/connexion?next=…`) until React gave up.
+
+Staff forms use `react-hook-form` (D013), confined to `/gestion`.
+`features/staff/applyApiErrors.ts` maps the error envelope onto fields via
+`setError`, focuses only the first, routes an error on a field the form does
+not own into the form-level message — `setError` on an unknown field is
+silently swallowed — and never leaks a non-`ApiError` exception string.
+
+Three parity guards live in `api/staff/v1/tests/`, all reading the frontend
+files without running TypeScript, all failing rather than skipping when a path
+is wrong:
+
+- `test_frontend_enum_parity` — every `TextChoices` value appears in the
+  matching TS list. A value missing there is simply unselectable, in silence.
+- `test_frontend_type_parity` — every `types.ts` interface equals the real
+  payload, in both directions. Screen tests use stubs; this is what stops a
+  stub from lying.
+- `test_openapi_staff` — the two schemas stay on their own URL perimeters.
+
+Enum values the screen does not know degrade visibly: an unknown publication
+status or completeness code renders raw rather than vanishing. A row with no
+badge would read as "no state", and a checklist that drops a code would tell a
+depositor nothing is missing while submission gets refused.
+
+Upload bounds come from `/api/staff/v1/` — the server announces
+`upload.max_bytes` and `accepted_mime_types`. A build-time copy would drift
+from the real configuration. The screen checks them before opening a request
+and still renders the server's 413/415, since a proxy can be stricter.
+
 ### Frontend
 
-TanStack Router routes declared centrally in `src/router.tsx` (French URL segments: `/connexion`, `/recherche`, `/lecture/...`, `/bibliotheque`). Layers: `src/api/` (typed fetch wrappers over `apiRequest`, which unwraps the error envelope into `ApiError`), `src/features/<domain>/hooks.ts` (TanStack Query hooks), `src/routes/` (pages), `src/components/` (presentational). Auth state lives in `src/auth/AuthProvider.tsx` with JWT access/refresh in `localStorage` via `tokenStore`; a 401 dispatches `UNAUTHORIZED_EVENT` so the provider can clear the session, and `guards.tsx` redirects to `/connexion?next=...`. Import alias `@/` → `src/`.
+TanStack Router routes declared centrally in `src/router.tsx` (French URL segments: `/connexion`, `/recherche`, `/lecture/...`, `/bibliotheque`). Layers: `src/api/` (typed fetch wrappers over `apiRequest`, which unwraps the error envelope into `ApiError`), `src/features/<domain>/hooks.ts` (TanStack Query hooks), `src/routes/` (pages), `src/components/` (presentational). Auth state lives in `src/auth/` — `AuthProvider.tsx` holds the provider, `authContext.ts` the context and `useAuth.ts` the hook. They are three files on purpose: a module exporting both a component and a value breaks hot-reload granularity, and `npm run lint` is silent so a new mix shows up immediately. JWT access/refresh live in `localStorage` via `tokenStore`; a 401 dispatches `UNAUTHORIZED_EVENT` so the provider can clear the session, and `guards.tsx` redirects to `/connexion?next=...`. Import alias `@/` → `src/`.
 
 ## Conventions and invariants
 

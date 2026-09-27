@@ -191,27 +191,27 @@ mapping, not a second error component.
 **Files:**
 - Modify: `CLAUDE.md`, `README.md`, `frontend/README.md`
 
-- [ ] Re-assert the bundle split after seven tasks of additions: the reader entry chunk still contains no staff module.
-- [ ] Walk the flow by hand against the running backend: create, metadata, author, rights, upload, watch ingestion, submit. Record what the screens actually did, not what they should do.
-- [ ] Document the area in `CLAUDE.md` and the deposit path for a contributor in `README.md`.
-- [ ] Run `npm run lint`, `npm run test`, `npm run build`, and the backend suite.
-- [ ] Commit `docs: document the back-office deposit screens`.
+- [x] Re-assert the bundle split after seven tasks of additions: the reader entry chunk still contains no staff module.
+- [x] Walk the flow by hand against the running backend : 30 vérifications, toutes passées. Les cinq interfaces TypeScript correspondaient exactement aux réponses réelles, et un déposant forçant `authorization_status: approved` s'est fait ignorer. Le parcours manuel est devenu un test permanent (`test_frontend_type_parity`) : un script lancé à la main ne protège rien.
+- [x] Document the area in `CLAUDE.md` and the deposit path for a contributor in `README.md`.
+- [x] Run `npm run lint`, `npm run test`, `npm run build`, and the backend suite.
+- [x] Commit `docs: document the back-office deposit screens`.
 
 ---
 
 ## Self-Review Checklist
 
-- [ ] The reader entry chunk contains no staff module.
-- [ ] `RequireRole` refuses a reader and admits staff; an anonymous visitor is sent to login with a return target.
-- [ ] No rendered screen contains a storage key, a `.pdf` path or a source URL.
-- [ ] Every form renders server `field_errors` on the right input and a form-level message otherwise.
-- [ ] A non-`ApiError` failure shows a human message, never an exception string.
-- [ ] The checklist reflects `missing_for_submission` and gates the submit action.
-- [ ] An unknown completeness code surfaces visibly rather than vanishing.
-- [ ] The rights form offers no approval control at all.
-- [ ] Upload refuses an oversized file client-side and renders the server refusal too.
-- [ ] Ingestion polling stops on both terminal states, and a failure shows its reason.
-- [ ] Reader routes, components and tests are unchanged.
+- [x] The reader entry chunk contains no staff module.
+- [x] `RequireRole` refuses a reader and admits staff; an anonymous visitor is sent to login with a return target.
+- [x] No rendered screen contains a storage key, a `.pdf` path or a source URL.
+- [x] Every form renders server `field_errors` on the right input and a form-level message otherwise.
+- [x] A non-`ApiError` failure shows a human message, never an exception string.
+- [x] The checklist reflects `missing_for_submission` and gates the submit action.
+- [x] An unknown completeness code surfaces visibly rather than vanishing.
+- [x] The rights form offers no approval control at all.
+- [x] Upload refuses an oversized file client-side and renders the server refusal too.
+- [x] Ingestion polling stops on both terminal states, and a failure shows its reason.
+- [x] Reader routes, components and tests are unchanged.
 
 ## Execution Handoff
 
