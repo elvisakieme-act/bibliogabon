@@ -7,7 +7,7 @@ import {
   removeFavorite,
   updateReadingProgress
 } from "@/api/library";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 
 function requireAccessToken(access?: string | null) {
   if (!access) throw new Error("Authentication is required.");

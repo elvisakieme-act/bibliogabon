@@ -2,14 +2,8 @@ import { Heart } from "lucide-react";
 
 import type { DocumentMetadata } from "@/api/types";
 import { DocumentCover } from "@/components/catalog/DocumentCover";
+import { documentReadLabel } from "@/components/catalog/documentLabels";
 import { DomainBadge } from "@/components/catalog/DomainBadge";
-
-export function documentReadLabel(document: DocumentMetadata) {
-  if (document.access.can_read) return "Lire";
-  if (document.access.reason === "authentication_required") return "Connexion requise";
-  if (document.access.reason === "entitlement_required") return "Acces requis";
-  return "Indisponible";
-}
 
 interface FavoriteControl {
   isFavorite: boolean;

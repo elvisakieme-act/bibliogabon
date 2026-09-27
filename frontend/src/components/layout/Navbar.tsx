@@ -1,7 +1,7 @@
 import { LogOut, Menu, Search, User } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 import { Logo } from "@/components/brand/Logo";
 
 const NAV_ITEMS = [

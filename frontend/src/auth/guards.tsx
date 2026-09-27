@@ -1,7 +1,7 @@
 import { Navigate, useRouter } from "@tanstack/react-router";
 
 import type { AccountType } from "@/api/types";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 import { BACK_OFFICE_ACCOUNT_TYPES } from "@/auth/roles";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 
 import { ApiError } from "@/api/client";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 import { ReaderControls } from "@/components/reader/ReaderControls";
 import { ReaderPage } from "@/components/reader/ReaderPage";
 import { SiteLayout } from "@/components/layout/SiteLayout";

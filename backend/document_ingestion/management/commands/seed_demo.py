@@ -304,7 +304,6 @@ class Command(BaseCommand):
             authors[email], _ = Author.objects.get_or_create(
                 display_name=name,
                 defaults={
-                    "normalized_name": name.lower(),
                     "author_type": Author.AuthorType.PERSON,
                     "linked_user": teachers[email],
                     "affiliation": "Université Omar Bongo",

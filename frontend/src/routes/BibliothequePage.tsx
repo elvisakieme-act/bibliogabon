@@ -1,7 +1,7 @@
 import { Heart } from "lucide-react";
 
 import type { FavoriteItem, ReadingProgressItem } from "@/api/types";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 import { RequireAuth } from "@/auth/guards";
 import { DocumentCard } from "@/components/catalog/DocumentCard";
 import { SiteLayout } from "@/components/layout/SiteLayout";

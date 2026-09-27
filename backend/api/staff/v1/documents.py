@@ -94,10 +94,8 @@ class StaffDocumentListView(StaffAPIView):
                 author, _ = Author.objects.get_or_create(
                     linked_user=request.user,
                     defaults={
+                        # `normalized_name` est derive par le modele.
                         "display_name": request.user.display_name or request.user.email,
-                        "normalized_name": (
-                            request.user.display_name or request.user.email
-                        ).lower(),
                     },
                 )
                 DocumentAuthor.objects.create(

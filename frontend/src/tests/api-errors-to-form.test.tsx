@@ -5,7 +5,8 @@ import { useForm } from "react-hook-form";
 import { describe, expect, it } from "vitest";
 
 import { ApiError } from "@/api/client";
-import { FieldErrors, fieldErrorProps } from "@/components/ui/FieldErrors";
+import { FieldErrors } from "@/components/ui/FieldErrors";
+import { fieldErrorProps } from "@/components/ui/fieldErrors";
 import { applyApiErrors, toFieldErrors } from "@/features/staff/applyApiErrors";
 
 interface DemoValues {

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { getCurrentUser, updateCurrentUser } from "@/api/auth";
 import { ApiError } from "@/api/client";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 import { tokenStore } from "@/auth/tokenStore";
 import { RequireAuth } from "@/auth/guards";
 import { SiteLayout } from "@/components/layout/SiteLayout";

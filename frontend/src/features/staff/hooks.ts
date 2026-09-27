@@ -15,7 +15,7 @@ import {
   updateStaffDocument
 } from "@/api/staff";
 import type { RightsDecision, RightsDeclaration, StaffDocumentFilters } from "@/api/types";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 
 /**
  * Le jeton entre dans la cle de cache : deux comptes n'ont pas le meme

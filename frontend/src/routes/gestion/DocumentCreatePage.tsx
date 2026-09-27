@@ -4,7 +4,8 @@ import { useForm } from "react-hook-form";
 
 import type { StaffDocument } from "@/api/types";
 import { ACCESS_MODEL_OPTIONS, CATEGORY_OPTIONS } from "@/components/staff/options";
-import { FieldErrors, fieldErrorProps } from "@/components/ui/FieldErrors";
+import { FieldErrors } from "@/components/ui/FieldErrors";
+import { fieldErrorProps } from "@/components/ui/fieldErrors";
 import { applyApiErrors, toFieldErrors } from "@/features/staff/applyApiErrors";
 import { useCreateStaffDocument } from "@/features/staff/hooks";
 

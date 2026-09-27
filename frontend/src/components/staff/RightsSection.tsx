@@ -7,7 +7,8 @@ import {
   WITHDRAWAL_RULE_OPTIONS,
   authorizationStatusLabel
 } from "@/components/staff/rightsOptions";
-import { FieldErrors, fieldErrorProps } from "@/components/ui/FieldErrors";
+import { FieldErrors } from "@/components/ui/FieldErrors";
+import { fieldErrorProps } from "@/components/ui/fieldErrors";
 import { applyApiErrors, toFieldErrors } from "@/features/staff/applyApiErrors";
 import { useDeclareDocumentRights } from "@/features/staff/hooks";
 

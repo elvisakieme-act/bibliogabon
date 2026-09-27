@@ -1,20 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getCurrentUser, logout as logoutRequest } from "@/api/auth";
 import { UNAUTHORIZED_EVENT } from "@/api/client";
 import type { ApiUser, AuthTokens } from "@/api/types";
+import { AuthContext, type AuthContextValue } from "@/auth/authContext";
 import { tokenStore } from "@/auth/tokenStore";
-
-interface AuthContextValue {
-  user: ApiUser | null;
-  tokens: AuthTokens | null;
-  isHydrating: boolean;
-  setSession(session: { user: ApiUser; tokens: AuthTokens }): void;
-  clearSession(): void;
-  logout(): Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<ApiUser | null>(null);
@@ -80,12 +70,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 }

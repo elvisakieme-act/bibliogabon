@@ -6,15 +6,7 @@ import { SiteLayout } from "@/components/layout/SiteLayout";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDocument } from "@/features/catalog/hooks";
-
-export function documentDetailReadLabel(
-  document: NonNullable<ReturnType<typeof useDocument>["data"]>
-) {
-  if (document.access.can_read) return "Lire maintenant";
-  if (document.access.reason === "authentication_required") return "Se connecter pour lire";
-  if (document.access.reason === "entitlement_required") return "Acces requis";
-  return "Indisponible";
-}
+import { documentDetailReadLabel } from "@/routes/documentDetailLabels";
 
 export function DocumentDetailPage() {
   const { id } = useParams({ from: "/documents/$id" });

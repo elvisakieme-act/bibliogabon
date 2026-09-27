@@ -12,7 +12,8 @@ vi.mock("@/api/auth", () => ({
 
 import { getCurrentUser, updateCurrentUser } from "@/api/auth";
 import { ApiError } from "@/api/client";
-import { AuthProvider, useAuth } from "@/auth/AuthProvider";
+import { AuthProvider } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 import { tokenStore } from "@/auth/tokenStore";
 import { createAppRouter } from "@/router";
 

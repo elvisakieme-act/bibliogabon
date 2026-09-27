@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { registerIndividual } from "@/api/auth";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 import { ApiError } from "@/api/client";
-import { FieldErrors, fieldErrorProps } from "@/components/ui/FieldErrors";
+import { FieldErrors } from "@/components/ui/FieldErrors";
+import { fieldErrorProps } from "@/components/ui/fieldErrors";
 import { Logo } from "@/components/brand/Logo";
 
 export function InscriptionPage() {

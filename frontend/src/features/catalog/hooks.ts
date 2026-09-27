@@ -7,7 +7,7 @@ import {
   listTypes,
   searchDocuments
 } from "@/api/catalog";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 
 export function useDocuments(params: Record<string, string | number | undefined>) {
   const { tokens } = useAuth();

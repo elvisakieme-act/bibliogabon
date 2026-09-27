@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import unicodedata
+
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
@@ -68,6 +70,16 @@ class DocumentType(models.Model):
         return self.name
 
 
+def normalize_author_name(display_name: str) -> str:
+    """Forme de tri d'un nom d'auteur : minuscules, sans accents, espaces
+    normalisés. Déterministe, et sans hypothèse sur la structure du nom."""
+    folded = unicodedata.normalize("NFKD", display_name or "")
+    without_accents = "".join(
+        character for character in folded if not unicodedata.combining(character)
+    )
+    return " ".join(without_accents.lower().split())
+
+
 class Author(models.Model):
     class AuthorType(models.TextChoices):
         PERSON = "person", "Person"
@@ -100,6 +112,29 @@ class Author(models.Model):
 
     def __str__(self) -> str:
         return self.display_name
+
+    def save(self, *args, **kwargs):
+        """`normalized_name` est dérivé, jamais écrit à la main.
+
+        Il l'était, et deux conventions coexistaient : les tests écrivaient
+        « nze aline » (nom de famille d'abord), le seed et l'API staff
+        écrivaient `display_name.lower()`, soit « aline nze ». Comme ce champ
+        pilote `Meta.ordering`, la liste d'auteurs se retrouvait triée de deux
+        façons selon l'origine de la ligne.
+
+        La dérivation est délibérément littérale : minuscules, accents
+        dépliés, espaces normalisés. Elle ne devine pas la structure du nom.
+        Trier par nom de famille, comme le veut l'usage académique, demande de
+        savoir lequel l'est — impossible sur « Université Omar Bongo » — et
+        donc un champ `sort_name` distinct, qui est une décision produit.
+
+        Limite connue : `bulk_create` et `QuerySet.update` ne passent pas par
+        ici. Aucun chemin de production ne les emprunte pour un auteur, et un
+        test le vérifie ; un import en masse devra appeler
+        `normalize_author_name` lui-même.
+        """
+        self.normalized_name = normalize_author_name(self.display_name)
+        super().save(*args, **kwargs)
 
 
 class Document(models.Model):

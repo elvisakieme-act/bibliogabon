@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { closeReaderSession, createReaderSession, getReaderPage } from "@/api/reader";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 
 export function useCreateReaderSession() {
   const { tokens } = useAuth();

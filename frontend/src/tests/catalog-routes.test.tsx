@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SearchResult } from "@/api/types";
 import { DocumentCard } from "@/components/catalog/DocumentCard";
 import { SearchResultCard } from "@/components/catalog/SearchResultCard";
-import { documentDetailReadLabel } from "@/routes/DocumentDetailPage";
+import { documentDetailReadLabel } from "@/routes/documentDetailLabels";
 import { createAppRouter } from "@/router";
 import type { DocumentMetadata } from "@/api/types";
 

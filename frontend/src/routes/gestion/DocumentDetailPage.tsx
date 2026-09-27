@@ -13,7 +13,8 @@ import { ACCESS_MODEL_OPTIONS, CATEGORY_OPTIONS } from "@/components/staff/optio
 import { RightsSection } from "@/components/staff/RightsSection";
 import { SourceUpload } from "@/components/staff/SourceUpload";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { FieldErrors, fieldErrorProps } from "@/components/ui/FieldErrors";
+import { FieldErrors } from "@/components/ui/FieldErrors";
+import { fieldErrorProps } from "@/components/ui/fieldErrors";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDocumentTypes, useDomains } from "@/features/catalog/hooks";
 import { applyApiErrors, toFieldErrors } from "@/features/staff/applyApiErrors";

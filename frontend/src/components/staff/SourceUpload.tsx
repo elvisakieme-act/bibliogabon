@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { ApiError } from "@/api/client";
 import { apiUpload } from "@/api/upload";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/auth/useAuth";
 
 function humanBytes(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${Math.round(bytes / (1024 * 1024))} Mo`;
