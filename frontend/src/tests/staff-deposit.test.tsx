@@ -45,6 +45,7 @@ function staffDocument(overrides: Partial<StaffDocument> = {}): StaffDocument {
 }
 
 interface Handlers {
+  index?: () => Response;
   create?: (body: unknown) => Response;
   detail?: () => Response;
   patch?: (body: unknown) => Response;
@@ -98,6 +99,19 @@ function stubApi(handlers: Handlers = {}) {
         return (
           handlers.create?.(body) ??
           new Response(JSON.stringify(staffDocument()), { status: 201 })
+        );
+      }
+      if (url.pathname === "/api/staff/v1/") {
+        return (
+          handlers.index?.() ??
+          new Response(
+            JSON.stringify({
+              name: "BiblioGABON staff API",
+              version: "v1",
+              schema: "/api/staff/v1/schema/",
+              upload: { max_bytes: 209715200, accepted_mime_types: ["application/pdf"] }
+            })
+          )
         );
       }
       if (url.pathname === "/api/staff/v1/authors/") {
@@ -475,5 +489,24 @@ describe("section des droits", () => {
     expect(screen.queryByRole("button", { name: /rejeter/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/reference d'audit/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/decision/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("robustesse de la fiche", () => {
+  it("reste utilisable si le serveur n'annonce pas ses bornes de depot", async () => {
+    // Un serveur plus ancien, ou une reponse tronquee par un intermediaire,
+    // ne doit pas faire tomber la fiche entiere : lire `upload.max_bytes`
+    // sans garde levait un TypeError et l'ecran devenait blanc.
+    stubApi({
+      index: () =>
+        new Response(
+          JSON.stringify({ name: "BiblioGABON staff API", version: "v1", schema: "/s/" })
+        )
+    });
+    renderAt("/gestion/documents/77");
+
+    expect(await screen.findByLabelText(/^Titre/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/fichier source/i)).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Traitement/ })).toBeInTheDocument();
   });
 });

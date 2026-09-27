@@ -176,12 +176,13 @@ mapping, not a second error component.
 **Files:**
 - Create: `frontend/src/components/staff/SourceUpload.tsx`, `.../IngestionStatus.tsx`
 - Create: `frontend/src/tests/staff-ingestion.test.tsx`
+- Modify: `backend/api/staff/v1/views.py` — l'index staff annonce les bornes de dépôt, pour que l'écran les vérifie avant d'envoyer sans les recopier depuis la configuration.
 
-- [ ] Write failing tests: choosing a file over the configured limit is refused before any request; the server's 413 and 415 refusals render legibly; a successful upload shows the version and page count.
-- [ ] Write failing tests for polling: it runs while the state is `in_progress`, stops on `ready`, stops on `failed`, and a failed job shows its reason with a re-upload action. This is the only place a user waits on a worker, so an endless spinner is a defect, not a cosmetic issue.
-- [ ] Implement both components on `apiUpload` and a polled query.
-- [ ] Run `npm run test`.
-- [ ] Commit `feat: add source upload and ingestion feedback`.
+- [x] Write failing tests: choosing a file over the configured limit is refused before any request; the server's 413 and 415 refusals render legibly; a successful upload shows the version and page count.
+- [x] Write failing tests for polling: it runs while the state is `in_progress`, stops on `ready`, stops on `failed`, and a failed job shows its reason with a re-upload action. This is the only place a user waits on a worker, so an endless spinner is a defect, not a cosmetic issue.
+- [x] Implement both components on `apiUpload` and a polled query.
+- [x] Run `npm run test`.
+- [x] Commit `feat: add source upload and ingestion feedback`.
 
 ---
 

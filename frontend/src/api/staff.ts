@@ -5,6 +5,7 @@ import type {
   RightsDeclaration,
   StaffAuthorProfile,
   StaffDocument,
+  StaffIndex,
   StaffDocumentFilters,
   StaffIngestionStatus
 } from "@/api/types";
@@ -51,6 +52,15 @@ export function listStaffDocuments({
     `${BASE}/documents/${staffDocumentsQueryString(filters)}`,
     { token, signal }
   );
+}
+
+/**
+ * Ce que le serveur accepte en depot. Les bornes viennent de sa
+ * configuration, jamais d'une variable de build : recopiees cote client,
+ * elles derivaient de la realite sans que rien ne le signale.
+ */
+export function getStaffIndex(token: string, signal?: AbortSignal) {
+  return apiRequest<StaffIndex>(`${BASE}/`, { token, signal });
 }
 
 /**

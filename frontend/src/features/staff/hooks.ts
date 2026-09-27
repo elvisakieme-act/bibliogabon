@@ -6,6 +6,7 @@ import {
   decideDocumentRights,
   declareDocumentRights,
   getDocumentIngestion,
+  getStaffIndex,
   getStaffDocument,
   listStaffDocuments,
   removeDocumentAuthor,
@@ -33,6 +34,17 @@ export function useStaffDocuments(filters: StaffDocumentFilters) {
     queryKey: ["staff", "documents", filters, token],
     queryFn: ({ signal }) => listStaffDocuments({ token: token as string, filters, signal }),
     enabled: Boolean(token)
+  });
+}
+
+export function useStaffIndex() {
+  const token = useStaffToken();
+  return useQuery({
+    queryKey: ["staff", "index", token],
+    queryFn: ({ signal }) => getStaffIndex(token as string, signal),
+    enabled: Boolean(token),
+    // La configuration de depot ne change pas en cours de session.
+    staleTime: Infinity
   });
 }
 

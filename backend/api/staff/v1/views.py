@@ -7,6 +7,7 @@ donc séparé, documenté dans son propre schéma, et fermé aux lecteurs.
 
 from __future__ import annotations
 
+from django.conf import settings
 from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -39,5 +40,13 @@ class StaffIndexView(StaffAPIView):
                 "name": "BiblioGABON staff API",
                 "version": "v1",
                 "schema": request.build_absolute_uri("schema/"),
+                # L'écran de dépôt refuse un fichier hors bornes avant d'ouvrir
+                # une requête, ce qui demande qu'il connaisse ces bornes. Les
+                # recopier côté client les ferait dériver de la configuration
+                # réelle : le serveur les annonce donc lui-même.
+                "upload": {
+                    "max_bytes": int(settings.DOCUMENT_UPLOAD_MAX_BYTES),
+                    "accepted_mime_types": list(settings.DOCUMENT_UPLOAD_ACCEPTED_MIME_TYPES),
+                },
             }
         )

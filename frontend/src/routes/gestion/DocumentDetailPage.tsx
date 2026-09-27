@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -7,8 +8,10 @@ import type { StaffDocument } from "@/api/types";
 import { AuthorsSection } from "@/components/staff/AuthorsSection";
 import { CompletenessChecklist } from "@/components/staff/CompletenessChecklist";
 import { DocumentStateBadge } from "@/components/staff/DocumentStateBadge";
+import { IngestionStatus } from "@/components/staff/IngestionStatus";
 import { ACCESS_MODEL_OPTIONS, CATEGORY_OPTIONS } from "@/components/staff/options";
 import { RightsSection } from "@/components/staff/RightsSection";
+import { SourceUpload } from "@/components/staff/SourceUpload";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldErrors, fieldErrorProps } from "@/components/ui/FieldErrors";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -16,6 +19,7 @@ import { useDocumentTypes, useDomains } from "@/features/catalog/hooks";
 import { applyApiErrors, toFieldErrors } from "@/features/staff/applyApiErrors";
 import {
   useStaffDocument,
+  useStaffIndex,
   useSubmitStaffDocument,
   useUpdateStaffDocument
 } from "@/features/staff/hooks";
@@ -52,6 +56,8 @@ function DocumentDetail({
   documentId: number;
 }) {
   const submit = useSubmitStaffDocument(documentId);
+  const index = useStaffIndex();
+  const queryClient = useQueryClient();
   const missing = document.missing_for_submission;
 
   return (
@@ -68,6 +74,22 @@ function DocumentDetail({
       <AuthorsSection document={document} documentId={documentId} />
 
       <RightsSection document={document} documentId={documentId} />
+
+      {index.data?.upload?.max_bytes ? (
+        <SourceUpload
+          documentId={documentId}
+          maxBytes={index.data.upload.max_bytes}
+          acceptedMimeTypes={index.data.upload.accepted_mime_types ?? []}
+          onUploaded={() => {
+            // Le suivi doit repartir sur l'etat du nouveau depot, pas sur
+            // celui du precedent.
+            queryClient.invalidateQueries({ queryKey: ["staff", "ingestion", documentId] });
+            queryClient.invalidateQueries({ queryKey: ["staff", "document", documentId] });
+          }}
+        />
+      ) : null}
+
+      <IngestionStatus documentId={documentId} />
 
       <section className="space-y-2">
         <button

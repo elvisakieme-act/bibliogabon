@@ -90,3 +90,27 @@ def test_the_staff_schema_contains_no_public_path(api):
 
     stray = [path for path in response.json()["paths"] if not path.startswith("/api/staff/v1/")]
     assert stray == [], stray
+
+
+@pytest.mark.django_db
+def test_the_index_announces_the_upload_bounds(settings):
+    """L'écran refuse un fichier hors bornes avant d'ouvrir une requête, ce
+    qui demande qu'il connaisse les bornes. Les recopier côté client les
+    ferait dériver de la configuration réelle."""
+    settings.DOCUMENT_UPLOAD_MAX_BYTES = 12345
+    settings.DOCUMENT_UPLOAD_ACCEPTED_MIME_TYPES = ["application/pdf", "application/epub+zip"]
+    client = APIClient()
+    client.force_authenticate(
+        user=User.objects.create_user(
+            email="index@bibliogabon.ga",
+            password="passphrase",
+            account_type=User.AccountType.CONTENT_ADMIN,
+        )
+    )
+
+    payload = client.get(reverse("api-staff-v1:index")).json()
+
+    assert payload["upload"] == {
+        "max_bytes": 12345,
+        "accepted_mime_types": ["application/pdf", "application/epub+zip"],
+    }

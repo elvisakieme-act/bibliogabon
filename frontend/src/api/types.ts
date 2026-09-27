@@ -132,6 +132,16 @@ export interface StaffAuthor {
   position: number;
 }
 
+export interface StaffIndex {
+  name: string;
+  version: string;
+  schema: string;
+  upload: {
+    max_bytes: number;
+    accepted_mime_types: string[];
+  };
+}
+
 export interface StaffAuthorProfile {
   id: number;
   display_name: string;
