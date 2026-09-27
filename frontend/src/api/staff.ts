@@ -1,13 +1,17 @@
 import { apiRequest } from "@/api/client";
 import type {
   PaginatedResponse,
+  ReviewDecision,
   RightsDecision,
   RightsDeclaration,
+  StaffAuditEvent,
   StaffAuthorProfile,
   StaffDocument,
   StaffIndex,
   StaffDocumentFilters,
-  StaffIngestionStatus
+  StaffIngestionStatus,
+  StaffReview,
+  StaffReviewFilters
 } from "@/api/types";
 
 /**
@@ -162,6 +166,78 @@ export function decideDocumentRights(
     method: "POST",
     token,
     body: payload
+  });
+}
+
+export function listStaffReviews({
+  token,
+  filters,
+  signal
+}: {
+  token: string;
+  filters?: StaffReviewFilters;
+  signal?: AbortSignal;
+}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters ?? {})) {
+    if (value === undefined || value === null || value === "") continue;
+    params.set(key, String(value));
+  }
+  const query = params.toString();
+  return apiRequest<PaginatedResponse<StaffReview>>(
+    `${BASE}/reviews/${query ? `?${query}` : ""}`,
+    { token, signal }
+  );
+}
+
+export function getStaffReview(reviewId: number, token: string, signal?: AbortSignal) {
+  return apiRequest<StaffReview>(`${BASE}/reviews/${reviewId}/`, { token, signal });
+}
+
+export function openStaffReview(documentId: number, token: string) {
+  return apiRequest<StaffReview>(`${BASE}/reviews/`, {
+    method: "POST",
+    token,
+    body: { document: documentId }
+  });
+}
+
+export function assignStaffReview(reviewId: number, token: string) {
+  return apiRequest<StaffReview>(`${BASE}/reviews/${reviewId}/assign/`, {
+    method: "POST",
+    token,
+    body: {}
+  });
+}
+
+export function decideStaffReview(reviewId: number, payload: ReviewDecision, token: string) {
+  return apiRequest<StaffReview>(`${BASE}/reviews/${reviewId}/decision/`, {
+    method: "POST",
+    token,
+    body: payload
+  });
+}
+
+export function withdrawStaffDocument(documentId: number, reason: string, token: string) {
+  return apiRequest<StaffDocument>(documentPath(documentId, "withdraw/"), {
+    method: "POST",
+    token,
+    body: { reason }
+  });
+}
+
+export function archiveStaffDocument(documentId: number, reason: string, token: string) {
+  return apiRequest<StaffDocument>(documentPath(documentId, "archive/"), {
+    method: "POST",
+    token,
+    body: { reason }
+  });
+}
+
+export function getDocumentAudit(documentId: number, token: string, signal?: AbortSignal) {
+  return apiRequest<PaginatedResponse<StaffAuditEvent>>(documentPath(documentId, "audit/"), {
+    token,
+    signal
   });
 }
 

@@ -210,6 +210,47 @@ export interface StaffIngestionStatus {
   } | null;
 }
 
+export interface StaffPerson {
+  id: number;
+  display_name: string;
+}
+
+export type ReviewStatus = "open" | "approved" | "rejected" | "cancelled";
+
+export interface StaffReview {
+  id: number;
+  status: ReviewStatus;
+  document: StaffDocument;
+  opened_by: StaffPerson | null;
+  reviewer: StaffPerson | null;
+  decided_by: StaffPerson | null;
+  decision_reason: string;
+  internal_notes: string;
+  opened_at: string;
+  decided_at: string | null;
+}
+
+export interface StaffAuditEvent {
+  id: number;
+  event_type: string;
+  summary: string;
+  created_at: string;
+  actor: StaffPerson | null;
+  // Filtre par liste blanche cote serveur : aucun champ n'est garanti present.
+  metadata: Record<string, unknown>;
+}
+
+export interface StaffReviewFilters {
+  status?: ReviewStatus;
+  assigned?: "me" | "none" | "any";
+  page?: number;
+}
+
+export interface ReviewDecision {
+  decision: "approved" | "rejected" | "cancelled";
+  reason?: string;
+}
+
 export interface StaffDocumentFilters {
   status?: string;
   domain?: string;

@@ -5,7 +5,8 @@ import { RequireRole } from "@/auth/guards";
 
 const NAVIGATION = [
   { to: "/gestion", label: "Tableau de bord", exact: true },
-  { to: "/gestion/documents", label: "Documents", exact: false }
+  { to: "/gestion/documents", label: "Documents", exact: false },
+  { to: "/gestion/revues", label: "Revue", exact: false }
 ] as const;
 
 export function GestionLayout() {

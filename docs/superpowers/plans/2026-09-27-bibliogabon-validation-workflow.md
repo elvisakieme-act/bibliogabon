@@ -90,12 +90,12 @@ Design: `docs/superpowers/specs/2026-09-27-bibliogabon-validation-workflow-desig
 **Interfaces:**
 - Produces `/gestion/revues`.
 
-- [ ] Write failing tests: the queue renders each waiting document with what still blocks its publication, filters by state and by assignment, and renders loading, empty and refused states distinctly.
-- [ ] Write a failing test that a teacher-author sees the area refuse the queue rather than an empty list — hiding a link is a courtesy, and the screen must render a server refusal.
-- [ ] Write a failing test that no rendered row contains a storage key, a `.pdf` path or a `://`.
-- [ ] Implement the page and its hooks.
-- [ ] Run `npm run test`.
-- [ ] Commit `feat: add the review queue screen`.
+- [x] Write failing tests: the queue renders each waiting document with what still blocks its publication, filters by state and by assignment, and renders loading, empty and refused states distinctly.
+- [x] Write a failing test that a teacher-author sees the area refuse the queue rather than an empty list — hiding a link is a courtesy, and the screen must render a server refusal.
+- [x] Write a failing test that no rendered row contains a storage key, a `.pdf` path or a `://`.
+- [x] Implement the page and its hooks.
+- [x] Run `npm run test`.
+- [x] Commit `feat: add the review queue screen`.
 
 ---
 
@@ -108,12 +108,12 @@ Design: `docs/superpowers/specs/2026-09-27-bibliogabon-validation-workflow-desig
 **Interfaces:**
 - Produces `/gestion/revues/$reviewId`.
 
-- [ ] Write failing tests: the screen shows the rights status, the ingestion state and the page count; the approve control is disabled while `missing_for_publication` is non-empty **and the screen states which requirement blocks it**, rather than only greying a button.
-- [ ] Write failing tests: a rejection cannot be submitted without a reason; a server refusal lands on the right field; assigning oneself updates the screen.
-- [ ] Write a failing test that the screen offers no rights-approval control: D014 made `RightsAgreement.authorization_status` the single representation of that gate, and a second control here would be a second answer to one question.
-- [ ] Implement with `react-hook-form` and `applyApiErrors`, as slice 2 established.
-- [ ] Run `npm run test`.
-- [ ] Commit `feat: add the review decision screen`.
+- [x] Write failing tests: the screen shows the rights status, the ingestion state and the page count; the approve control is disabled while `missing_for_publication` is non-empty **and the screen states which requirement blocks it**, rather than only greying a button.
+- [x] Write failing tests: a rejection cannot be submitted without a reason; a server refusal lands on the right field; assigning oneself updates the screen.
+- [x] Write a failing test that the screen offers no rights-approval control: D014 made `RightsAgreement.authorization_status` the single representation of that gate, and a second control here would be a second answer to one question.
+- [x] Implement with `react-hook-form` and `applyApiErrors`, as slice 2 established.
+- [x] Run `npm run test`.
+- [x] Commit `feat: add the review decision screen`.
 
 ---
 

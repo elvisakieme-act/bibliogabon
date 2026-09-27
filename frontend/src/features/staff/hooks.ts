@@ -2,19 +2,33 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   addDocumentAuthor,
+  archiveStaffDocument,
+  assignStaffReview,
   createStaffDocument,
   decideDocumentRights,
+  decideStaffReview,
   declareDocumentRights,
+  getDocumentAudit,
   getDocumentIngestion,
   getStaffIndex,
+  getStaffReview,
+  listStaffReviews,
+  openStaffReview,
   getStaffDocument,
   listStaffDocuments,
   removeDocumentAuthor,
   searchStaffAuthors,
   submitStaffDocument,
-  updateStaffDocument
+  updateStaffDocument,
+  withdrawStaffDocument
 } from "@/api/staff";
-import type { RightsDecision, RightsDeclaration, StaffDocumentFilters } from "@/api/types";
+import type {
+  ReviewDecision,
+  RightsDecision,
+  RightsDeclaration,
+  StaffDocumentFilters,
+  StaffReviewFilters
+} from "@/api/types";
 import { useAuth } from "@/auth/useAuth";
 
 /**
@@ -144,6 +158,93 @@ export function useDeclareDocumentRights(documentId: number) {
 export function useDecideDocumentRights(documentId: number) {
   return useStaffMutation(
     (payload: RightsDecision, token) => decideDocumentRights(documentId, payload, token),
+    { documentId }
+  );
+}
+
+// --- Revue de publication ---------------------------------------------------
+
+export function useStaffReviews(filters: StaffReviewFilters) {
+  const token = useStaffToken();
+  return useQuery({
+    queryKey: ["staff", "reviews", filters, token],
+    queryFn: ({ signal }) => listStaffReviews({ token: token as string, filters, signal }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useStaffReview(reviewId: number) {
+  const token = useStaffToken();
+  return useQuery({
+    queryKey: ["staff", "review", reviewId, token],
+    queryFn: ({ signal }) => getStaffReview(reviewId, token as string, signal),
+    enabled: Boolean(token) && Number.isFinite(reviewId)
+  });
+}
+
+export function useDocumentAudit(documentId: number) {
+  const token = useStaffToken();
+  return useQuery({
+    queryKey: ["staff", "audit", documentId, token],
+    queryFn: ({ signal }) => getDocumentAudit(documentId, token as string, signal),
+    enabled: Boolean(token) && Number.isFinite(documentId)
+  });
+}
+
+/**
+ * Les mutations de revue invalident aussi la file : une decision prise sur un
+ * dossier doit le faire disparaitre de la liste au retour, sinon un relecteur
+ * rouvre ce qu'il vient de traiter.
+ */
+function useReviewMutation<TVariables, TResult>(
+  run: (variables: TVariables, token: string) => Promise<TResult>,
+  { reviewId, documentId }: { reviewId?: number; documentId?: number } = {}
+) {
+  const token = useStaffToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (variables: TVariables) => run(variables, token as string),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["staff", "reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["staff", "documents"] });
+      if (reviewId !== undefined) {
+        queryClient.invalidateQueries({ queryKey: ["staff", "review", reviewId] });
+      }
+      if (documentId !== undefined) {
+        queryClient.invalidateQueries({ queryKey: ["staff", "document", documentId] });
+        queryClient.invalidateQueries({ queryKey: ["staff", "audit", documentId] });
+      }
+    }
+  });
+}
+
+export function useOpenStaffReview() {
+  return useReviewMutation((documentId: number, token) => openStaffReview(documentId, token));
+}
+
+export function useAssignStaffReview(reviewId: number) {
+  return useReviewMutation((_: void, token) => assignStaffReview(reviewId, token), {
+    reviewId
+  });
+}
+
+export function useDecideStaffReview(reviewId: number, documentId?: number) {
+  return useReviewMutation(
+    (payload: ReviewDecision, token) => decideStaffReview(reviewId, payload, token),
+    { reviewId, documentId }
+  );
+}
+
+export function useWithdrawStaffDocument(documentId: number) {
+  return useReviewMutation(
+    (reason: string, token) => withdrawStaffDocument(documentId, reason, token),
+    { documentId }
+  );
+}
+
+export function useArchiveStaffDocument(documentId: number) {
+  return useReviewMutation(
+    (reason: string, token) => archiveStaffDocument(documentId, reason, token),
     { documentId }
   );
 }

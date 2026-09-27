@@ -107,6 +107,19 @@ const gestionIndexRoute = createRoute({
   path: "/",
   component: lazyRouteComponent(() => import("@/routes/gestion/DashboardPage"), "DashboardPage")
 });
+const gestionReviewsRoute = createRoute({
+  getParentRoute: () => gestionRoute,
+  path: "revues",
+  component: lazyRouteComponent(() => import("@/routes/gestion/ReviewsPage"), "ReviewsPage")
+});
+const gestionReviewDetailRoute = createRoute({
+  getParentRoute: () => gestionRoute,
+  path: "revues/$reviewId",
+  component: lazyRouteComponent(
+    () => import("@/routes/gestion/ReviewDetailPage"),
+    "ReviewDetailPage"
+  )
+});
 const gestionDocumentCreateRoute = createRoute({
   getParentRoute: () => gestionRoute,
   // Statique avant dynamique : « nouveau » ne doit jamais etre lu comme un
@@ -147,7 +160,9 @@ const routeTree = rootRoute.addChildren([
     gestionIndexRoute,
     gestionDocumentsRoute,
     gestionDocumentCreateRoute,
-    gestionDocumentDetailRoute
+    gestionDocumentDetailRoute,
+    gestionReviewsRoute,
+    gestionReviewDetailRoute
   ])
 ]);
 
