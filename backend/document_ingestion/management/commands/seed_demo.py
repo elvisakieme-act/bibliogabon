@@ -165,42 +165,68 @@ AGREEMENT_BY_CATEGORY = {
 }
 
 
+# Les documents mis en avant par la collection de demonstration.
+COLLECTION_ITEMS = [
+    "intro-droit-public-gabonais",
+    "algorithmes-structures-donnees",
+    "examen-droit-constitutionnel-2024",
+]
+
+
 class Command(BaseCommand):
     help = "Crée un jeu de données de démonstration (ré-exécutable). Développement uniquement."
 
     @transaction.atomic
     def handle(self, *args, **options):
         now = timezone.now()
+        people = self._seed_people()
+        organizations = self._seed_organizations()
+        self._seed_memberships(people, organizations["uob"], now)
+        taxonomy = self._seed_taxonomy()
+        authors = self._seed_authors(people["teachers"])
+        documents = self._seed_documents(taxonomy, authors, now)
+        self._seed_collection(documents, taxonomy, organizations["uob"])
+        self._seed_commercial_offer()
+        self._seed_demo_entitlements(people["learners"][0], organizations["uob"], now)
+        self._report()
 
-        # --- Utilisateurs ---
-        teachers: dict[str, User] = {}
-        for email, name in TEACHERS:
-            teachers[email] = self._get_user(email, name, User.AccountType.TEACHER_AUTHOR)
+    # ------------------------------------------------------------------ phases
+
+    def _seed_people(self) -> dict:
+        teachers = {
+            email: self._get_user(email, name, User.AccountType.TEACHER_AUTHOR)
+            for email, name in TEACHERS
+        }
         learners = [
             self._get_user(email, name, User.AccountType.INDIVIDUAL) for email, name in LEARNERS
         ]
-        org_admin = self._get_user(
-            ORG_ADMIN[0], ORG_ADMIN[1], User.AccountType.ORGANIZATION_ADMIN
-        )
         staff = self._get_user(
             "demo.staff@bibliogabon.ga",
             "Démo Staff",
             User.AccountType.PLATFORM_STAFF,
             is_staff=True,
         )
-        # Moderateur de contenu : la tranche depot a besoin d'un relecteur
-        # dont le perimetre s'arrete au contenu, sans la facturation.
+        # Modérateur de contenu : la tranche dépôt a besoin d'un relecteur
+        # dont le périmètre s'arrête au contenu, sans la facturation.
         self._get_user(
             "demo.moderation@bibliogabon.ga",
             "Démo Modération",
             User.AccountType.CONTENT_ADMIN,
             is_staff=True,
         )
+        return {
+            "teachers": teachers,
+            "learners": learners,
+            "org_admin": self._get_user(
+                ORG_ADMIN[0], ORG_ADMIN[1], User.AccountType.ORGANIZATION_ADMIN
+            ),
+            "staff": staff,
+        }
 
-        # --- Organisations ---
-        orgs: dict[str, Organization] = {}
+    def _seed_organizations(self) -> dict[str, Organization]:
+        organizations: dict[str, Organization] = {}
         for name, slug, org_type, requires in ORGANIZATIONS:
-            orgs[slug], _ = Organization.objects.get_or_create(
+            organizations[slug], _ = Organization.objects.get_or_create(
                 slug=slug,
                 defaults={
                     "name": name,
@@ -209,9 +235,12 @@ class Command(BaseCommand):
                     "requires_identity_verification": requires,
                 },
             )
+        return organizations
 
-        uob = orgs["uob"]
-        # Un membre vérifié, un membre non vérifié (pour démontrer la barrière), un admin d'organisation.
+    def _seed_memberships(self, people: dict, uob: Organization, now) -> None:
+        """Un membre vérifié, un membre non vérifié — pour démontrer la
+        barrière d'identité — et un administrateur d'organisation."""
+        learners, staff = people["learners"], people["staff"]
         OrganizationMembership.objects.get_or_create(
             organization=uob,
             user=learners[0],
@@ -236,7 +265,7 @@ class Command(BaseCommand):
         )
         OrganizationMembership.objects.get_or_create(
             organization=uob,
-            user=org_admin,
+            user=people["org_admin"],
             defaults={
                 "role": OrganizationMembership.Role.ADMIN,
                 "status": OrganizationMembership.Status.ACTIVE,
@@ -247,7 +276,7 @@ class Command(BaseCommand):
             },
         )
 
-        # --- Domaines & types ---
+    def _seed_taxonomy(self) -> dict[str, dict]:
         domains: dict[str, AcademicDomain] = {}
         for name, slug in DOMAINS:
             domains[slug], _ = AcademicDomain.objects.get_or_create(
@@ -265,8 +294,11 @@ class Command(BaseCommand):
                     "is_active": True,
                 },
             )
+        return {"domains": domains, "types": types}
 
-        # --- Auteurs (rattachés aux comptes enseignants) ---
+    def _seed_authors(self, teachers: dict[str, User]) -> dict[str, Author]:
+        """Les auteurs sont rattachés aux comptes enseignants : c'est ce lien
+        qui donne à un enseignant la vue sur ses propres dépôts."""
         authors: dict[str, Author] = {}
         for email, name in TEACHERS:
             authors[email], _ = Author.objects.get_or_create(
@@ -278,8 +310,9 @@ class Command(BaseCommand):
                     "affiliation": "Université Omar Bongo",
                 },
             )
+        return authors
 
-        # --- Documents ---
+    def _seed_documents(self, taxonomy: dict, authors: dict[str, Author], now) -> dict:
         documents: dict[str, Document] = {}
         for (
             title,
@@ -293,15 +326,15 @@ class Command(BaseCommand):
             _npages,
             _keywords,
         ) in DOCUMENTS:
-            document, created = Document.objects.get_or_create(
+            document, _ = Document.objects.get_or_create(
                 slug=slug,
                 defaults={
                     "title": title,
                     "abstract": f"Document de démonstration : {title}.",
                     "language_code": "fr",
                     "publication_year": year,
-                    "document_type": types[type_slug],
-                    "academic_domain": domains[domain_slug],
+                    "document_type": taxonomy["types"][type_slug],
+                    "academic_domain": taxonomy["domains"][domain_slug],
                     "category": category,
                     "access_model": access_model,
                     "publication_status": Document.PublicationStatus.PUBLISHED,
@@ -309,58 +342,56 @@ class Command(BaseCommand):
                 },
             )
             documents[slug] = document
-
             for position, email in enumerate(author_emails, start=1):
                 DocumentAuthor.objects.get_or_create(
                     document=document,
                     author=authors[email],
                     defaults={"role": DocumentAuthor.Role.AUTHOR, "position": position},
                 )
+            self._seed_rights_agreement(document, category, access_model, author_emails, now)
 
-            holder = dict(TEACHERS).get(author_emails[0], "BiblioGabon")
-            RightsAgreement.objects.get_or_create(
-                document=document,
-                defaults={
-                    "rights_holder_name": holder,
-                    "agreement_type": AGREEMENT_BY_CATEGORY[category],
-                    "authorization_status": RightsAgreement.AuthorizationStatus.APPROVED,
-                    "authorization_date": now.date(),
-                    "access_model": access_model,
-                    "withdrawal_rule": RightsAgreement.WithdrawalRule.AUTHOR_REQUEST,
-                    "reviewer_decision": "Approuvé pour publication (démonstration).",
-                    "audit_reference": f"BG-DEMO-{slug}",
-                },
-            )
-
-            # Aucune page fabriquee : de fausses pages occupaient la version
-            # v1 et faisaient echouer toute ingestion reelle du meme document.
-            # Le contenu vient desormais de `ingest_file`, et lui seul.
+            # Aucune page fabriquée : de fausses pages occupaient la version
+            # v1 et faisaient échouer toute ingestion réelle du même document.
+            # Le contenu vient désormais de `ingest_file`, et lui seul.
             rebuild_document_search_index(document)
+        return documents
 
-        # --- Une collection thématique ---
+    def _seed_rights_agreement(self, document, category, access_model, author_emails, now):
+        RightsAgreement.objects.get_or_create(
+            document=document,
+            defaults={
+                "rights_holder_name": dict(TEACHERS).get(author_emails[0], "BiblioGabon"),
+                "agreement_type": AGREEMENT_BY_CATEGORY[category],
+                "authorization_status": RightsAgreement.AuthorizationStatus.APPROVED,
+                "authorization_date": now.date(),
+                "access_model": access_model,
+                "withdrawal_rule": RightsAgreement.WithdrawalRule.AUTHOR_REQUEST,
+                "reviewer_decision": "Approuvé pour publication (démonstration).",
+                "audit_reference": f"BG-DEMO-{document.slug}",
+            },
+        )
+
+    def _seed_collection(self, documents: dict, taxonomy: dict, uob: Organization) -> None:
         collection, _ = Collection.objects.get_or_create(
             slug="fondamentaux-uob",
             defaults={
                 "name": "Fondamentaux — UOB",
-                "description": "Sélection de documents fondamentaux pour les étudiants de l'UOB.",
-                "academic_domain": domains["droit"],
+                "description": (
+                    "Sélection de documents fondamentaux pour les étudiants de l'UOB."
+                ),
+                "academic_domain": taxonomy["domains"]["droit"],
                 "owner_organization": uob,
                 "status": Collection.Status.PUBLISHED,
             },
         )
-        for position, slug in enumerate(
-            [
-                "intro-droit-public-gabonais",
-                "algorithmes-structures-donnees",
-                "examen-droit-constitutionnel-2024",
-            ],
-            start=1,
-        ):
+        for position, slug in enumerate(COLLECTION_ITEMS, start=1):
             CollectionItem.objects.get_or_create(
-                collection=collection, document=documents[slug], defaults={"position": position}
+                collection=collection,
+                document=documents[slug],
+                defaults={"position": position},
             )
 
-        # --- Offre commerciale + droits d'accès de test ---
+    def _seed_commercial_offer(self) -> None:
         CommercialOffer.objects.get_or_create(
             slug="abonnement-mensuel-individuel",
             defaults={
@@ -373,15 +404,17 @@ class Command(BaseCommand):
                 "scope_type": Entitlement.ScopeType.GLOBAL,
             },
         )
-        # Droit individuel accordé au premier apprenant (accède à tout, y compris payant).
+
+    def _seed_demo_entitlements(self, learner: User, uob: Organization, now) -> None:
+        """Les deux voies d'accès aux documents restreints : un droit nominatif,
+        et un quota d'organisation qui ne porte que sur les membres vérifiés."""
         Entitlement.objects.get_or_create(
-            user=learners[0],
+            user=learner,
             source=Entitlement.Source.ADMIN_GRANT,
             access_right=Entitlement.AccessRight.READ,
             scope_type=Entitlement.ScopeType.GLOBAL,
             defaults={"starts_at": now, "note": "Accès de démonstration."},
         )
-        # Quota d'organisation : les membres UOB *vérifiés* accèdent aux documents restreints.
         Entitlement.objects.get_or_create(
             organization=uob,
             source=Entitlement.Source.ORGANIZATION_QUOTA,
@@ -390,6 +423,7 @@ class Command(BaseCommand):
             defaults={"starts_at": now, "note": "Quota UOB de démonstration."},
         )
 
+    def _report(self) -> None:
         self.stdout.write(
             self.style.SUCCESS(
                 "Seed terminé : "
@@ -401,25 +435,28 @@ class Command(BaseCommand):
                 f"{Collection.objects.count()} collection(s)."
             )
         )
-        self.stdout.write("Comptes de démo (mot de passe : demo1234) :")
+        self.stdout.write(f"Comptes de démo (mot de passe : {PASSWORD}) :")
         self.stdout.write(
-            "  - Enseignants : levis.andongui@bibliogabon.ga, mpiga.jess@bibliogabon.ga, elvis.oyono@bibliogabon.ga, ulrich.essone@bibliogabon.ga …"
+            "  - Enseignants : "
+            + ", ".join(email for email, _ in TEACHERS[:4])
+            + (" …" if len(TEACHERS) > 4 else "")
         )
         self.stdout.write(
-            "  - Apprenants  : sarah.moussavou@example.ga (UOB vérifié + accès global), yannick.boulingui@example.ga (UOB non vérifié)"
+            "  - Apprenants  : sarah.moussavou@example.ga (UOB vérifié + accès global), "
+            "yannick.boulingui@example.ga (UOB non vérifié)"
         )
         self.stdout.write(
-            "  - Back-office : demo.staff@bibliogabon.ga (super admin), demo.moderation@bibliogabon.ga (modération contenu, sans facturation)"
+            "  - Back-office : demo.staff@bibliogabon.ga (super admin), "
+            "demo.moderation@bibliogabon.ga (modération contenu, sans facturation)"
         )
         self.stdout.write("")
         self.stdout.write(
             "Les documents n'ont encore aucune page : le catalogue est peuplé, pas le contenu."
         )
         first = Document.objects.order_by("id").first()
-        example_id = first.pk if first else 1
         self.stdout.write("Pour ingérer un vrai PDF et le rendre lisible et cherchable :")
         self.stdout.write(
-            f"  python manage.py ingest_file {example_id} /chemin/vers/fichier.pdf"
+            f"  python manage.py ingest_file {first.pk if first else 1} /chemin/vers/fichier.pdf"
         )
         self.stdout.write(
             "  (ajoutez --replace pour remplacer le contenu d'une version existante)"

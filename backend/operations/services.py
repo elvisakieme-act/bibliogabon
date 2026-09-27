@@ -70,6 +70,28 @@ def open_publication_review(
         return review
 
 
+def _apply_publication_decision(document, decision: str, at) -> str:
+    """Porte la decision sur le document et nomme l'evenement d'audit.
+    Une annulation ne touche pas au document : elle ferme la revue en
+    laissant la publication dans l'etat ou elle l'a trouvee."""
+    if decision == PublicationReview.Status.APPROVED:
+        document.publication_status = Document.PublicationStatus.PUBLISHED
+        document.published_at = at
+        # Republier apres un retrait doit effacer la date de retrait, sinon
+        # le document reste marque comme retire tout en etant lisible.
+        document.withdrawn_at = None
+        document.save(
+            update_fields=["publication_status", "published_at", "withdrawn_at", "updated_at"]
+        )
+        return "publication_review_approved"
+    if decision == PublicationReview.Status.REJECTED:
+        document.publication_status = Document.PublicationStatus.REJECTED
+        document.published_at = None
+        document.save(update_fields=["publication_status", "published_at", "updated_at"])
+        return "publication_review_rejected"
+    return "publication_review_cancelled"
+
+
 def record_publication_decision(
     *, review, decision: str, actor=None, reason: str = "", at=None
 ) -> PublicationReview:
@@ -111,27 +133,7 @@ def record_publication_decision(
             ]
         )
 
-        if decision == PublicationReview.Status.APPROVED:
-            document.publication_status = Document.PublicationStatus.PUBLISHED
-            document.published_at = at
-            document.withdrawn_at = None
-            document.save(
-                update_fields=[
-                    "publication_status",
-                    "published_at",
-                    "withdrawn_at",
-                    "updated_at",
-                ]
-            )
-            event_type = "publication_review_approved"
-        elif decision == PublicationReview.Status.REJECTED:
-            document.publication_status = Document.PublicationStatus.REJECTED
-            document.published_at = None
-            document.save(update_fields=["publication_status", "published_at", "updated_at"])
-            event_type = "publication_review_rejected"
-        else:
-            event_type = "publication_review_cancelled"
-
+        event_type = _apply_publication_decision(document, decision, at)
         record_audit_event(
             actor=actor,
             event_type=event_type,

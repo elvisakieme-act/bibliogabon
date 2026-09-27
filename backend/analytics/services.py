@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from contextlib import contextmanager
 from datetime import datetime, time
 
 from django.db import transaction
@@ -20,33 +21,136 @@ def _day_bounds(day):
     return start, start + timezone.timedelta(days=1)
 
 
-def _single_active_organization_for_user_at(user, at):
-    organization_ids = list(
-        OrganizationMembership.objects.filter(
-            user=user,
-            status=OrganizationMembership.Status.ACTIVE,
-            starts_at__lte=at,
-            organization__status=Organization.Status.ACTIVE,
-        )
-        .filter(Q(ends_at__isnull=True) | Q(ends_at__gt=at))
-        .values_list("organization_id", flat=True)
-        .distinct()
-    )
+def _membership_windows(user_ids) -> dict[int, list[tuple]]:
+    """Charge en une seule requete les fenetres d'adhesion des utilisateurs
+    concernes. L'attribution interrogeait la base par activite : deux
+    requetes chacune, soit 100 000 requetes pour une journee a 50 000 pages
+    lues, et trente fois cela pour un rapport mensuel."""
+    windows: dict[int, list[tuple]] = defaultdict(list)
+    rows = OrganizationMembership.objects.filter(
+        user_id__in=[user_id for user_id in user_ids if user_id is not None],
+        status=OrganizationMembership.Status.ACTIVE,
+        organization__status=Organization.Status.ACTIVE,
+    ).values_list("user_id", "organization_id", "starts_at", "ends_at")
+    for user_id, organization_id, starts_at, ends_at in rows:
+        windows[user_id].append((organization_id, starts_at, ends_at))
+    return windows
+
+
+def _single_organization_id_at(windows, user_id, at):
+    """Une activite n'est attribuee que si son auteur appartenait a une
+    seule organisation a cet instant precis. L'instant compte : une
+    adhesion qui commence ou se termine en cours de journee ne vaut pas
+    pour le reste de la journee."""
+    organization_ids = {
+        organization_id
+        for organization_id, starts_at, ends_at in windows.get(user_id, ())
+        if starts_at <= at and (ends_at is None or ends_at > at)
+    }
     if len(organization_ids) != 1:
         return None
-    return Organization.objects.get(pk=organization_ids[0])
+    return next(iter(organization_ids))
 
 
-def _dimension_for_activity(*, user, document, at):
-    organization = _single_active_organization_for_user_at(user, at)
-    if organization is None:
-        return None
-    return (
-        organization.pk,
-        document.pk,
-        document.academic_domain_id,
-        document.access_model,
+# Les quatre dimensions d'un agregat, plus l'instant qui decide de
+# l'attribution. Lues en tuples : instancier les modeles ne servirait a rien.
+_ACTIVITY_DIMENSIONS = (
+    "user_id",
+    "document_id",
+    "document__academic_domain_id",
+    "document__access_model",
+)
+
+
+def _count_activity(rows, windows, counters, counter_name):
+    for user_id, document_id, domain_id, access_model, at in rows:
+        organization_id = _single_organization_id_at(windows, user_id, at)
+        if organization_id is None:
+            continue
+        counters[(organization_id, document_id, domain_id, access_model)][counter_name] += 1
+
+
+def _activity_counters(start, end):
+    """Compte les sessions et les pages lues d'une journee, par dimension.
+    N'ecrit rien : la lecture est separee de la persistance."""
+    sessions = list(
+        ReaderSession.objects.filter(started_at__gte=start, started_at__lt=end).values_list(
+            *_ACTIVITY_DIMENSIONS, "started_at"
+        )
     )
+    page_logs = list(
+        PageAccessLog.objects.filter(accessed_at__gte=start, accessed_at__lt=end).values_list(
+            *_ACTIVITY_DIMENSIONS, "accessed_at"
+        )
+    )
+    windows = _membership_windows({row[0] for row in sessions} | {row[0] for row in page_logs})
+    counters = defaultdict(lambda: {"reader_session_count": 0, "page_view_count": 0})
+    _count_activity(sessions, windows, counters, "reader_session_count")
+    _count_activity(page_logs, windows, counters, "page_view_count")
+    return counters
+
+
+def _persist_daily_aggregates(day, counters) -> list[DailyUsageAggregate]:
+    """Remplace l'etat du jour. Les lignes dont la dimension a disparu sont
+    supprimees : une activite devenue ambigue ne doit pas laisser derriere
+    elle une attribution que le recalcul ne produit plus."""
+    aggregates = []
+    with transaction.atomic():
+        current_keys = set(counters)
+        stale_ids = [
+            existing.pk
+            for existing in DailyUsageAggregate.objects.filter(date=day).only(
+                "pk", "organization_id", "document_id", "academic_domain_id", "access_model"
+            )
+            if (
+                existing.organization_id,
+                existing.document_id,
+                existing.academic_domain_id,
+                existing.access_model,
+            )
+            not in current_keys
+        ]
+        if stale_ids:
+            DailyUsageAggregate.objects.filter(pk__in=stale_ids).delete()
+
+        for (
+            organization_id,
+            document_id,
+            domain_id,
+            access_model,
+        ), values in counters.items():
+            aggregate, _ = DailyUsageAggregate.objects.update_or_create(
+                date=day,
+                organization_id=organization_id,
+                document_id=document_id,
+                academic_domain_id=domain_id,
+                access_model=access_model,
+                defaults={
+                    "reader_session_count": values["reader_session_count"],
+                    "page_view_count": values["page_view_count"],
+                    "distinct_document_count": 1,
+                },
+            )
+            aggregates.append(aggregate)
+    return aggregates
+
+
+@contextmanager
+def _analytics_run(run):
+    """Un run enregistre son propre sort. Sans ce passage oblige, une
+    exception laisserait la ligne en RUNNING indefiniment, et rien ne
+    distinguerait un calcul en cours d'un calcul mort."""
+    try:
+        yield run
+    except Exception as exc:
+        run.status = AnalyticsRun.Status.FAILED
+        run.finished_at = timezone.now()
+        run.error_message = str(exc)
+        run.save(update_fields=["status", "finished_at", "error_message"])
+        raise
+    run.status = AnalyticsRun.Status.SUCCEEDED
+    run.finished_at = timezone.now()
+    run.save(update_fields=["status", "finished_at", "metadata"])
 
 
 def build_daily_usage_aggregate(day) -> list[DailyUsageAggregate]:
@@ -57,87 +161,8 @@ def build_daily_usage_aggregate(day) -> list[DailyUsageAggregate]:
         period_end=day,
         metadata={"date": day.isoformat()},
     )
-    counters = defaultdict(lambda: {"reader_session_count": 0, "page_view_count": 0})
-
-    try:
-        sessions = ReaderSession.objects.filter(
-            started_at__gte=start, started_at__lt=end
-        ).select_related(
-            "user",
-            "document",
-            "document__academic_domain",
-        )
-        for session in sessions:
-            key = _dimension_for_activity(
-                user=session.user, document=session.document, at=session.started_at
-            )
-            if key is not None:
-                counters[key]["reader_session_count"] += 1
-
-        page_logs = PageAccessLog.objects.filter(
-            accessed_at__gte=start, accessed_at__lt=end
-        ).select_related(
-            "user",
-            "document",
-            "document__academic_domain",
-        )
-        for log in page_logs:
-            key = _dimension_for_activity(
-                user=log.user, document=log.document, at=log.accessed_at
-            )
-            if key is not None:
-                counters[key]["page_view_count"] += 1
-
-        aggregates = []
-        with transaction.atomic():
-            current_keys = set(counters.keys())
-            existing_aggregates = DailyUsageAggregate.objects.filter(date=day).only(
-                "pk",
-                "organization_id",
-                "document_id",
-                "academic_domain_id",
-                "access_model",
-            )
-            for existing in existing_aggregates:
-                existing_key = (
-                    existing.organization_id,
-                    existing.document_id,
-                    existing.academic_domain_id,
-                    existing.access_model,
-                )
-                if existing_key not in current_keys:
-                    existing.delete()
-
-            for (
-                organization_id,
-                document_id,
-                domain_id,
-                access_model,
-            ), values in counters.items():
-                aggregate, _ = DailyUsageAggregate.objects.update_or_create(
-                    date=day,
-                    organization_id=organization_id,
-                    document_id=document_id,
-                    academic_domain_id=domain_id,
-                    access_model=access_model,
-                    defaults={
-                        "reader_session_count": values["reader_session_count"],
-                        "page_view_count": values["page_view_count"],
-                        "distinct_document_count": 1,
-                    },
-                )
-                aggregates.append(aggregate)
-
-        run.status = AnalyticsRun.Status.SUCCEEDED
-        run.finished_at = timezone.now()
-        run.save(update_fields=["status", "finished_at"])
-        return aggregates
-    except Exception as exc:
-        run.status = AnalyticsRun.Status.FAILED
-        run.finished_at = timezone.now()
-        run.error_message = str(exc)
-        run.save(update_fields=["status", "finished_at", "error_message"])
-        raise
+    with _analytics_run(run):
+        return _persist_daily_aggregates(day, _activity_counters(start, end))
 
 
 def _period_bounds(period_start, period_end):
@@ -247,105 +272,127 @@ def _usage_by_access_model(aggregates):
     ]
 
 
-def _build_institution_metrics(organization, period_start, period_end):
-    start, end = _period_bounds(period_start, period_end)
+def _access_metrics(organization, start, end):
+    """Qui avait le droit d'acceder, et combien de sieges etaient ouverts.
+    Ne compte que des agregats : aucun identifiant de lecteur ne sort d'ici."""
     overlapping = Q(starts_at__lt=end) & (Q(ends_at__isnull=True) | Q(ends_at__gt=start))
+    # Une adhesion « active » se mesure a la fin de la periode, pas sur un
+    # chevauchement : un rapport annonce un effectif, pas un cumul de passages.
     active_at_period_end = Q(starts_at__lt=end) & (
         Q(ends_at__isnull=True) | Q(ends_at__gte=end)
     )
-    usage_aggregates = DailyUsageAggregate.objects.filter(
-        organization=organization,
-        date__gte=period_start,
-        date__lte=period_end,
-    ).select_related("document", "academic_domain")
-    usage_totals = usage_aggregates.aggregate(
-        reader_session_count=Sum("reader_session_count"),
-        page_view_count=Sum("page_view_count"),
-        distinct_document_count=Count("document_id", distinct=True),
-    )
-    active_memberships = OrganizationMembership.objects.filter(
-        organization=organization,
-        status=OrganizationMembership.Status.ACTIVE,
-    ).filter(active_at_period_end)
-    active_entitlements = Entitlement.objects.filter(
-        organization=organization,
-        starts_at__lt=end,
-        revoked_at__isnull=True,
-    ).filter(Q(ends_at__isnull=True) | Q(ends_at__gt=start))
-    expired_entitlements = Entitlement.objects.filter(
-        organization=organization,
-        revoked_at__isnull=True,
-        ends_at__gte=start,
-        ends_at__lt=end,
-    )
-    revoked_entitlements = Entitlement.objects.filter(
-        organization=organization,
-        revoked_at__gte=start,
-        revoked_at__lt=end,
-    )
-    active_subscriptions = Subscription.objects.filter(
-        organization=organization,
-        status=Subscription.Status.ACTIVE,
-    ).filter(overlapping)
     active_quotas = OrganizationQuota.objects.filter(
         organization=organization,
         status=OrganizationQuota.Status.ACTIVE,
     ).filter(overlapping)
-    succeeded_payments = PaymentTransaction.objects.filter(
+    return {
+        "active_member_count": OrganizationMembership.objects.filter(
+            organization=organization,
+            status=OrganizationMembership.Status.ACTIVE,
+        )
+        .filter(active_at_period_end)
+        .count(),
+        "entitlements": {
+            # « actif » et « expire » se recouvrent volontairement : un droit
+            # qui s'est eteint en cours de periode a bien ete actif pendant.
+            "active": Entitlement.objects.filter(
+                organization=organization,
+                starts_at__lt=end,
+                revoked_at__isnull=True,
+            )
+            .filter(Q(ends_at__isnull=True) | Q(ends_at__gt=start))
+            .count(),
+            "expired": Entitlement.objects.filter(
+                organization=organization,
+                revoked_at__isnull=True,
+                ends_at__gte=start,
+                ends_at__lt=end,
+            ).count(),
+            "revoked": Entitlement.objects.filter(
+                organization=organization,
+                revoked_at__gte=start,
+                revoked_at__lt=end,
+            ).count(),
+        },
+        "quotas": {
+            "active_count": active_quotas.count(),
+            "seat_limit_total": _sum_amount(active_quotas, "seat_limit"),
+        },
+        "subscriptions": {
+            "active_count": Subscription.objects.filter(
+                organization=organization,
+                status=Subscription.Status.ACTIVE,
+            )
+            .filter(overlapping)
+            .count(),
+        },
+    }
+
+
+def _commercial_metrics(organization, start, end):
+    """Ce qui a ete encaisse et ce qui a echoue, sur la periode. Un paiement
+    compte a la date de son sort, pas a celle de sa creation."""
+    succeeded = PaymentTransaction.objects.filter(
         organization=organization,
         status=PaymentTransaction.Status.SUCCEEDED,
         succeeded_at__gte=start,
         succeeded_at__lt=end,
     )
-    failed_payments = PaymentTransaction.objects.filter(
+    failed = PaymentTransaction.objects.filter(
         organization=organization,
         status=PaymentTransaction.Status.FAILED,
         failed_at__gte=start,
         failed_at__lt=end,
     )
-    support_tickets = SupportTicket.objects.filter(organization=organization)
-
     return {
-        "access": {
-            "active_member_count": active_memberships.count(),
-            "entitlements": {
-                "active": active_entitlements.count(),
-                "expired": expired_entitlements.count(),
-                "revoked": revoked_entitlements.count(),
-            },
-            "quotas": {
-                "active_count": active_quotas.count(),
-                "seat_limit_total": _sum_amount(active_quotas, "seat_limit"),
-            },
-            "subscriptions": {
-                "active_count": active_subscriptions.count(),
-            },
+        "payments": {
+            "succeeded_count": succeeded.count(),
+            "succeeded_amount_xaf": _sum_amount(succeeded, "amount_xaf"),
+            "failed_count": failed.count(),
+            "failed_amount_xaf": _sum_amount(failed, "amount_xaf"),
         },
-        "commercial": {
-            "payments": {
-                "succeeded_count": succeeded_payments.count(),
-                "succeeded_amount_xaf": _sum_amount(succeeded_payments, "amount_xaf"),
-                "failed_count": failed_payments.count(),
-                "failed_amount_xaf": _sum_amount(failed_payments, "amount_xaf"),
-            },
-        },
-        "support": {
-            "opened_count": support_tickets.filter(
-                opened_at__gte=start, opened_at__lt=end
-            ).count(),
-            "resolved_count": support_tickets.filter(
-                resolved_at__gte=start, resolved_at__lt=end
-            ).count(),
-        },
-        "usage": {
-            "reader_session_count": usage_totals["reader_session_count"] or 0,
-            "page_view_count": usage_totals["page_view_count"] or 0,
-            "distinct_document_count": usage_totals["distinct_document_count"] or 0,
-            "by_day": _usage_by_day(usage_aggregates),
-            "by_domain": _usage_by_domain(usage_aggregates),
-            "by_document": _usage_by_document(usage_aggregates),
-            "by_access_model": _usage_by_access_model(usage_aggregates),
-        },
+    }
+
+
+def _support_metrics(organization, start, end):
+    tickets = SupportTicket.objects.filter(organization=organization)
+    return {
+        "opened_count": tickets.filter(opened_at__gte=start, opened_at__lt=end).count(),
+        "resolved_count": tickets.filter(resolved_at__gte=start, resolved_at__lt=end).count(),
+    }
+
+
+def _usage_metrics(organization, period_start, period_end):
+    """La lecture, uniquement par agregats deja anonymises : le rapport part
+    de DailyUsageAggregate et jamais de PageAccessLog, qui nomme le lecteur."""
+    aggregates = DailyUsageAggregate.objects.filter(
+        organization=organization,
+        date__gte=period_start,
+        date__lte=period_end,
+    ).select_related("document", "academic_domain")
+    totals = aggregates.aggregate(
+        reader_session_count=Sum("reader_session_count"),
+        page_view_count=Sum("page_view_count"),
+        distinct_document_count=Count("document_id", distinct=True),
+    )
+    return {
+        "reader_session_count": totals["reader_session_count"] or 0,
+        "page_view_count": totals["page_view_count"] or 0,
+        "distinct_document_count": totals["distinct_document_count"] or 0,
+        "by_day": _usage_by_day(aggregates),
+        "by_domain": _usage_by_domain(aggregates),
+        "by_document": _usage_by_document(aggregates),
+        "by_access_model": _usage_by_access_model(aggregates),
+    }
+
+
+def _build_institution_metrics(organization, period_start, period_end):
+    start, end = _period_bounds(period_start, period_end)
+    return {
+        "access": _access_metrics(organization, start, end),
+        "commercial": _commercial_metrics(organization, start, end),
+        "support": _support_metrics(organization, start, end),
+        "usage": _usage_metrics(organization, period_start, period_end),
     }
 
 
@@ -359,20 +406,19 @@ def generate_institution_report(organization, period_start, period_end, generate
         period_end=period_end,
         metadata={"organization_id": organization.pk},
     )
-    try:
+    with _analytics_run(run):
         current_day = period_start
         while current_day <= period_end:
             build_daily_usage_aggregate(current_day)
             current_day = current_day + timezone.timedelta(days=1)
 
-        metrics = _build_institution_metrics(organization, period_start, period_end)
         report, _ = InstitutionReport.objects.update_or_create(
             organization=organization,
             period_start=period_start,
             period_end=period_end,
             defaults={
                 "status": InstitutionReport.Status.GENERATED,
-                "metrics": metrics,
+                "metrics": _build_institution_metrics(organization, period_start, period_end),
                 "generated_by": generated_by,
                 "generated_at": timezone.now(),
             },
@@ -389,17 +435,8 @@ def generate_institution_report(organization, period_start, period_end, generate
                 "report_id": report.pk,
             },
         )
-        run.status = AnalyticsRun.Status.SUCCEEDED
-        run.finished_at = timezone.now()
         run.metadata = {"organization_id": organization.pk, "report_id": report.pk}
-        run.save(update_fields=["status", "finished_at", "metadata"])
         return report
-    except Exception as exc:
-        run.status = AnalyticsRun.Status.FAILED
-        run.finished_at = timezone.now()
-        run.error_message = str(exc)
-        run.save(update_fields=["status", "finished_at", "error_message"])
-        raise
 
 
 def serialize_institution_report(report):

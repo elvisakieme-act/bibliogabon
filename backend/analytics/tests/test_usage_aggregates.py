@@ -90,3 +90,38 @@ def test_daily_usage_aggregate_excludes_ambiguous_multi_organization_activity():
 
     assert aggregates == []
     assert DailyUsageAggregate.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_attribution_follows_the_instant_of_the_activity_not_the_day():
+    """Une adhesion qui commence en cours de journee n'attribue que ce qui
+    suit. Resoudre l'organisation une fois par utilisateur, plutot qu'une
+    fois par activite, aurait attribue la journee entiere."""
+    morning = timezone.make_aware(timezone.datetime(2026, 3, 10, 8, 0, 0))
+    joined_at = timezone.make_aware(timezone.datetime(2026, 3, 10, 12, 0, 0))
+    afternoon = timezone.make_aware(timezone.datetime(2026, 3, 10, 16, 0, 0))
+
+    user = create_user(email="mi-journee@example.ga")
+    organization = create_organization(slug="mi-journee")
+    create_active_membership(user, organization, starts_at=joined_at)
+    document = create_document(slug="mi-journee-doc")
+    create_reader_activity(user=user, document=document, started_at=morning, page_views=3)
+    create_reader_activity(user=user, document=document, started_at=afternoon, page_views=2)
+
+    aggregates = build_daily_usage_aggregate(morning.date())
+
+    assert len(aggregates) == 1
+    aggregate = aggregates[0]
+    assert aggregate.organization == organization
+    assert aggregate.reader_session_count == 1, "la session du matin precede l'adhesion"
+    assert aggregate.page_view_count == 2, "seules les pages de l'apres-midi comptent"
+
+
+@pytest.mark.django_db
+def test_an_anonymous_session_is_attributed_to_no_organization():
+    at = timezone.make_aware(timezone.datetime(2026, 3, 11, 9, 0, 0))
+    document = create_document(slug="anonyme-doc")
+    create_reader_activity(user=None, document=document, started_at=at, page_views=2)
+
+    assert build_daily_usage_aggregate(at.date()) == []
+    assert DailyUsageAggregate.objects.count() == 0
