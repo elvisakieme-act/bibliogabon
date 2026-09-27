@@ -5,10 +5,12 @@ import { useForm } from "react-hook-form";
 
 import { ApiError } from "@/api/client";
 import type { StaffDocument } from "@/api/types";
+import { AuditTrail } from "@/components/staff/AuditTrail";
 import { AuthorsSection } from "@/components/staff/AuthorsSection";
 import { CompletenessChecklist } from "@/components/staff/CompletenessChecklist";
 import { DocumentStateBadge } from "@/components/staff/DocumentStateBadge";
 import { IngestionStatus } from "@/components/staff/IngestionStatus";
+import { LifecycleActions } from "@/components/staff/LifecycleActions";
 import { ACCESS_MODEL_OPTIONS, CATEGORY_OPTIONS } from "@/components/staff/options";
 import { RightsSection } from "@/components/staff/RightsSection";
 import { SourceUpload } from "@/components/staff/SourceUpload";
@@ -91,6 +93,10 @@ function DocumentDetail({
       ) : null}
 
       <IngestionStatus documentId={documentId} />
+
+      <LifecycleActions document={document} documentId={documentId} />
+
+      <AuditTrail documentId={documentId} />
 
       <section className="space-y-2">
         <button

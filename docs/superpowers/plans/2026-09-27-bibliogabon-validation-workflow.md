@@ -124,12 +124,12 @@ Design: `docs/superpowers/specs/2026-09-27-bibliogabon-validation-workflow-desig
 - Create: `frontend/src/components/staff/LifecycleActions.tsx`, `frontend/src/components/staff/AuditTrail.tsx`
 - Modify: `frontend/src/tests/staff-deposit.test.tsx`
 
-- [ ] Write failing tests: the withdrawal action demands a reason and is absent for a state where it makes no sense; archiving likewise; the audit trail renders who, what, when and why in order.
-- [ ] Write a failing test that the audit trail renders an event whose metadata the server filtered, without assuming any field is present.
-- [ ] Write a failing test that no part of the trail contains a storage key, a `.pdf` path or a `://`.
-- [ ] Implement both components.
-- [ ] Run `npm run test`, `npm run lint`, `npm run build`.
-- [ ] Commit `feat: add lifecycle actions and the audit trail to the document screen`.
+- [x] Write failing tests: the withdrawal action demands a reason and is absent for a state where it makes no sense; archiving likewise; the audit trail renders who, what, when and why in order.
+- [x] Write a failing test that the audit trail renders an event whose metadata the server filtered, without assuming any field is present.
+- [x] Write a failing test that no part of the trail contains a storage key, a `.pdf` path or a `://`.
+- [x] Implement both components.
+- [x] Run `npm run test`, `npm run lint`, `npm run build`.
+- [x] Commit `feat: add lifecycle actions and the audit trail to the document screen`.
 
 ---
 

@@ -46,6 +46,9 @@ function staffDocument(overrides: Partial<StaffDocument> = {}): StaffDocument {
 
 interface Handlers {
   index?: () => Response;
+  audit?: () => Response;
+  withdraw?: (body: unknown) => Response;
+  archive?: (body: unknown) => Response;
   create?: (body: unknown) => Response;
   detail?: () => Response;
   patch?: (body: unknown) => Response;
@@ -112,6 +115,24 @@ function stubApi(handlers: Handlers = {}) {
               upload: { max_bytes: 209715200, accepted_mime_types: ["application/pdf"] }
             })
           )
+        );
+      }
+      if (url.pathname === "/api/staff/v1/documents/77/audit/") {
+        return (
+          handlers.audit?.() ??
+          new Response(JSON.stringify({ count: 0, next: null, previous: null, results: [] }))
+        );
+      }
+      if (url.pathname === "/api/staff/v1/documents/77/withdraw/") {
+        return (
+          handlers.withdraw?.(body) ??
+          new Response(JSON.stringify(staffDocument({ publication_status: "withdrawn" })))
+        );
+      }
+      if (url.pathname === "/api/staff/v1/documents/77/archive/") {
+        return (
+          handlers.archive?.(body) ??
+          new Response(JSON.stringify(staffDocument({ publication_status: "archived" })))
         );
       }
       if (url.pathname === "/api/staff/v1/authors/") {
@@ -508,5 +529,164 @@ describe("robustesse de la fiche", () => {
     expect(await screen.findByLabelText(/^Titre/)).toBeInTheDocument();
     expect(screen.queryByLabelText(/fichier source/i)).not.toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: /Traitement/ })).toBeInTheDocument();
+  });
+});
+
+describe("fin de vie du document", () => {
+  it("n'offre pas le retrait sur un brouillon", async () => {
+    // Retirer ce qui n'a jamais paru n'a pas de sens ; proposer le geste
+    // ferait croire qu'il produit quelque chose.
+    stubApi();
+    renderAt("/gestion/documents/77");
+    await screen.findByLabelText(/^Titre/);
+
+    expect(screen.queryByRole("button", { name: /retirer/i })).not.toBeInTheDocument();
+  });
+
+  it("exige un motif pour retirer un document publié", async () => {
+    const { bodies } = stubApi({
+      detail: () =>
+        new Response(JSON.stringify(staffDocument({ publication_status: "published" })))
+    });
+    renderAt("/gestion/documents/77");
+
+    await userEvent.click(await screen.findByRole("button", { name: /retirer du public/i }));
+    await userEvent.click(screen.getByRole("button", { name: /confirmer le retrait/i }));
+
+    expect(await screen.findByText(/motif est obligatoire/i)).toBeInTheDocument();
+    expect(bodies.some((body) => typeof body === "object" && body && "reason" in body)).toBe(
+      false
+    );
+  });
+
+  it("retire avec le motif saisi", async () => {
+    const { bodies } = stubApi({
+      detail: () =>
+        new Response(JSON.stringify(staffDocument({ publication_status: "published" })))
+    });
+    renderAt("/gestion/documents/77");
+
+    await userEvent.click(await screen.findByRole("button", { name: /retirer du public/i }));
+    await userEvent.type(
+      screen.getByLabelText(/Motif du retrait/i),
+      "Licence invalidée par l'éditeur."
+    );
+    await userEvent.click(screen.getByRole("button", { name: /confirmer le retrait/i }));
+
+    await waitFor(() => {
+      expect(bodies.at(-1)).toMatchObject({ reason: "Licence invalidée par l'éditeur." });
+    });
+  });
+
+  it("rend le refus serveur d'un retrait interdit par la catégorie", async () => {
+    stubApi({
+      detail: () =>
+        new Response(
+          JSON.stringify(
+            staffDocument({ publication_status: "published", category: "institutional_fund" })
+          )
+        ),
+      withdraw: () =>
+        new Response(
+          JSON.stringify({
+            error: {
+              code: "permission_denied",
+              message: "Vous ne pouvez pas retirer ce document.",
+              field_errors: {}
+            }
+          }),
+          { status: 403, headers: { "Content-Type": "application/json" } }
+        )
+    });
+    renderAt("/gestion/documents/77");
+
+    await userEvent.click(await screen.findByRole("button", { name: /retirer du public/i }));
+    await userEvent.type(screen.getByLabelText(/Motif du retrait/i), "Motif suffisant.");
+    await userEvent.click(screen.getByRole("button", { name: /confirmer le retrait/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/ne pouvez pas retirer/);
+  });
+});
+
+describe("journal d'audit", () => {
+  function event(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 1,
+      event_type: "document_withdrawn",
+      summary: "Withdraw: Algebre lineaire",
+      created_at: "2026-09-27T12:00:00Z",
+      actor: { id: 7, display_name: "Moderation" },
+      metadata: { reason: "Licence invalidée." },
+      ...overrides
+    };
+  }
+
+  it("rend qui, quoi, quand et pourquoi", async () => {
+    stubApi({
+      audit: () =>
+        new Response(
+          JSON.stringify({ count: 1, next: null, previous: null, results: [event()] })
+        )
+    });
+    renderAt("/gestion/documents/77");
+
+    const trail = await screen.findByRole("list", { name: /journal/i });
+    expect(within(trail).getByText(/Moderation/)).toBeInTheDocument();
+    expect(within(trail).getByText(/Retrait/i)).toBeInTheDocument();
+    expect(within(trail).getByText(/Licence invalidée/)).toBeInTheDocument();
+  });
+
+  it("ne suppose aucun champ présent dans les métadonnées filtrées", async () => {
+    // Le serveur filtre `metadata` par liste blanche : un événement peut
+    // arriver sans motif, et l'écran ne doit pas tomber pour autant.
+    stubApi({
+      audit: () =>
+        new Response(
+          JSON.stringify({
+            count: 1,
+            next: null,
+            previous: null,
+            results: [event({ metadata: {}, actor: null })]
+          })
+        )
+    });
+    renderAt("/gestion/documents/77");
+
+    const trail = await screen.findByRole("list", { name: /journal/i });
+    expect(within(trail).getByText(/Système/i)).toBeInTheDocument();
+  });
+
+  it("affiche un type d'événement inconnu tel quel plutôt que de le masquer", async () => {
+    stubApi({
+      audit: () =>
+        new Response(
+          JSON.stringify({
+            count: 1,
+            next: null,
+            previous: null,
+            results: [event({ event_type: "evenement_inedit" })]
+          })
+        )
+    });
+    renderAt("/gestion/documents/77");
+
+    const trail = await screen.findByRole("list", { name: /journal/i });
+    expect(within(trail).getByText("evenement_inedit")).toBeInTheDocument();
+  });
+
+  it("n'affiche ni clé de stockage ni URL dans le journal", async () => {
+    stubApi({
+      audit: () =>
+        new Response(
+          JSON.stringify({ count: 1, next: null, previous: null, results: [event()] })
+        )
+    });
+    renderAt("/gestion/documents/77");
+    const trail = await screen.findByRole("list", { name: /journal/i });
+
+    const rendered = trail.textContent ?? "";
+    expect(rendered).not.toMatch(/\.pdf/i);
+    expect(rendered).not.toMatch(/:\/\//);
+    expect(rendered.toLowerCase()).not.toContain("storage");
   });
 });
