@@ -12,6 +12,8 @@
 | D008 | 2026-09-27 | Give the Content Admin its own account type, distinct from Platform Staff | Its remit is bounded — metadata, rights, status, publication — while Platform Staff carries configuration, billing and sensitive operations; collapsing them handed a moderator billing power | `AccountType.CONTENT_ADMIN`; existing platform_staff accounts keep their meaning, promotion is deliberate | Tech |
 | D009 | 2026-09-27 | Sponsor Partner is an organization admin of a sponsor organization, not a fifth account type | Its capabilities are those of an organization admin; a distinct type would duplicate the organization-scoped logic | The distinction lives on `Organization.organization_type`, where it already existed | Product/Tech |
 | D010 | 2026-09-27 | Administrative authority comes from roles alone; a Django model permission grants nothing | Letting a permission confer moderator actions would make the whole role matrix bypassable by assigning one | Admin permission methods derive from the predicates; a test locks the bypass shut | Tech |
+| D011 | 2026-09-27 | Build a real production back-office; Django Admin becomes a developer and operations surface only | §8.2 describes a product back-office, but the operations, frontend and API specs each deferred it, so it was never planned. Django Admin exposes storage keys and raw JSON and has no task-oriented flow — depositing one document there means five model forms and a shell command | Phase 1 closes in four slices instead of one: staff API and deposit, deposit screens, validation workflow, organizations and support | Product/Tech |
+| D012 | 2026-09-27 | Put the staff API in its own namespace `/api/staff/v1/` with its own schema | The public contract promises never to reveal whether an unpublished document exists; the staff API exists to show them. One schema would document internal endpoints publicly and couple their versions | Two schemas, two version lifetimes; the staff API reuses the existing services unchanged | Tech |
 
 ## Decision Process
 
@@ -27,6 +29,7 @@ Each decision should include:
 ## Open Decision Areas
 
 - Which S3-compatible provider hosts private documents in production (see D007).
+- Whether the publication workflow drives all ten `PublicationStatus` states or collapses to the five named in §8.2 (settled by back-office slice 3).
 - Exact B2B pricing tiers and quotas.
 - Exact B2C pass durations and FCFA prices.
 - First content categories to prioritize by academic domain.
