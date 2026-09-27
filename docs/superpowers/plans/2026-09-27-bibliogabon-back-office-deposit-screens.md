@@ -68,12 +68,12 @@ frontend/src/
 - Produces `RequireRole`.
 - Produces the `/gestion` route tree, lazily loaded.
 
-- [ ] Write failing tests: `RequireRole` renders its children for a content admin and a teacher, refuses an individual account with a plain message rather than a redirect, and sends an anonymous visitor to `/connexion` with a return target.
-- [ ] Write a failing test asserting the built entry chunk contains no staff module. Run `vite build` and inspect the manifest — without this, the split regresses silently the first time someone adds a static import to the staff area.
-- [ ] Implement `RequireRole` reading `account_type` from the hydrated user.
-- [ ] Register the `/gestion` routes with lazily loaded components.
-- [ ] Run `npm run test` and `npm run build`.
-- [ ] Commit `feat: add the lazily loaded back-office area`.
+- [x] Write failing tests: `RequireRole` renders its children for a content admin and a teacher, refuses an individual account with a plain message rather than a redirect, and sends an anonymous visitor to `/connexion` with a return target.
+- [x] Write a failing test asserting the built entry chunk contains no staff module. Run `vite build` and inspect the manifest — without this, the split regresses silently the first time someone adds a static import to the staff area.
+- [x] Implement `RequireRole` reading `account_type` from the hydrated user.
+- [x] Register the `/gestion` routes with lazily loaded components.
+- [x] Run `npm run test` and `npm run build`.
+- [x] Commit `feat: add the lazily loaded back-office area`.
 
 ---
 
@@ -88,12 +88,12 @@ frontend/src/
 - Produces typed calls for documents, authors, rights, source and ingestion.
 - Produces `apiUpload(path, file, { token, onProgress, signal })`.
 
-- [ ] Write failing tests: each call hits the right `/api/staff/v1/` path with the bearer token; an error envelope becomes an `ApiError` carrying `field_errors`; `apiUpload` sends `FormData` and **does not** set `Content-Type`, since the browser must write the multipart boundary.
-- [ ] Write a failing test that `apiUpload` reports progress and rejects with `ApiError` on a 413.
-- [ ] Implement, reusing `apiRequest` for everything but upload.
-- [ ] Implement `apiUpload` on `XMLHttpRequest`, with a comment saying why: `fetch` cannot observe upload progress in a browser, and this is the one place the product needs it.
-- [ ] Run `npm run test`.
-- [ ] Commit `feat: add the staff API client`.
+- [x] Write failing tests: each call hits the right `/api/staff/v1/` path with the bearer token; an error envelope becomes an `ApiError` carrying `field_errors`; `apiUpload` sends `FormData` and **does not** set `Content-Type`, since the browser must write the multipart boundary.
+- [x] Write a failing test that `apiUpload` reports progress and rejects with `ApiError` on a 413.
+- [x] Implement, reusing `apiRequest` for everything but upload.
+- [x] Implement `apiUpload` on `XMLHttpRequest`, with a comment saying why: `fetch` cannot observe upload progress in a browser, and this is the one place the product needs it.
+- [x] Run `npm run test`.
+- [x] Commit `feat: add the staff API client`.
 
 ---
 
