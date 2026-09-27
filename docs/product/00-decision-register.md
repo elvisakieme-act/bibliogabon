@@ -29,6 +29,13 @@ Each decision should include:
 
 ## Open Decision Areas
 
+Le suivi détaillé, avec la dette et les reports assumés, vit dans
+`docs/product/02-phase-1-closure-register.md`. La phase 1 ne se clôt qu'avec
+sa section « À traiter » vide.
+
+- Who may create an author, and how duplicates are resolved — the contributor registry is shared by the whole catalogue (see B1).
+- Whether authors sort by surname, as scholarly usage expects, which would need a distinct `sort_name` field (see B2).
+
 - Which S3-compatible provider hosts private documents in production (see D007).
 - Whether the publication workflow drives all ten `PublicationStatus` states or collapses to the five named in §8.2 (settled by back-office slice 3).
 - Exact B2B pricing tiers and quotas.
