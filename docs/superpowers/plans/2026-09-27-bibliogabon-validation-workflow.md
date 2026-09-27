@@ -65,19 +65,19 @@ Design: `docs/superpowers/specs/2026-09-27-bibliogabon-validation-workflow-desig
 ### Task 3: Withdrawal, Archiving And Audit Endpoints
 
 **Files:**
-- Modify: `backend/api/staff/v1/documents.py` or create `backend/api/staff/v1/lifecycle.py`
+- Create: `backend/api/staff/v1/lifecycle.py` — un module séparé plutôt qu'un ajout à `documents.py`, qui dépasse déjà la lecture confortable
 - Create: `backend/api/staff/v1/tests/test_lifecycle.py`
 - Modify: `backend/api/staff/v1/urls.py`
 
 **Interfaces:**
 - Produces `POST /documents/<id>/withdraw/`, `POST /documents/<id>/archive/`, `GET /documents/<id>/audit/`.
 
-- [ ] Write failing tests: a teacher-author withdraws their voluntary deposit but is refused on an institutional fund — the contract-bound categories, where a unilateral withdrawal would breach a contract; a content admin may do both.
-- [ ] Write failing tests: a withdrawal without a reason is refused; the audit endpoint lists events in order with actor, type, summary and date.
-- [ ] Write a failing test that the audit endpoint filters `metadata` through an allow-list, using a deliberately poisoned event containing a storage key. A privacy rule that depends on every future writer being careful is not a rule.
-- [ ] Implement, reusing `can_withdraw_document` rather than restating the category rule.
-- [ ] Run `python -m pytest api/staff/v1 -q`.
-- [ ] Commit `feat: expose withdrawal, archiving and the audit trail`.
+- [x] Write failing tests: a teacher-author withdraws their voluntary deposit but is refused on an institutional fund — the contract-bound categories, where a unilateral withdrawal would breach a contract; a content admin may do both.
+- [x] Write failing tests: a withdrawal without a reason is refused; the audit endpoint lists events in order with actor, type, summary and date.
+- [x] Write a failing test that the audit endpoint filters `metadata` through an allow-list, using a deliberately poisoned event containing a storage key. A privacy rule that depends on every future writer being careful is not a rule.
+- [x] Implement, reusing `can_withdraw_document` rather than restating the category rule.
+- [x] Run `python -m pytest api/staff/v1 -q`.
+- [x] Commit `feat: expose withdrawal, archiving and the audit trail`.
 
 ---
 

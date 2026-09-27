@@ -13,6 +13,11 @@ from api.staff.v1.documents import (
     StaffDocumentListView,
     StaffDocumentSubmitView,
 )
+from api.staff.v1.lifecycle import (
+    DocumentArchiveView,
+    DocumentAuditView,
+    DocumentWithdrawView,
+)
 from api.staff.v1.reviews import (
     ReviewAssignView,
     ReviewDecisionView,
@@ -68,6 +73,21 @@ urlpatterns = [
         "documents/<int:document_id>/ingestion/",
         DocumentIngestionView.as_view(),
         name="document-ingestion",
+    ),
+    path(
+        "documents/<int:document_id>/withdraw/",
+        DocumentWithdrawView.as_view(),
+        name="document-withdraw",
+    ),
+    path(
+        "documents/<int:document_id>/archive/",
+        DocumentArchiveView.as_view(),
+        name="document-archive",
+    ),
+    path(
+        "documents/<int:document_id>/audit/",
+        DocumentAuditView.as_view(),
+        name="document-audit",
     ),
     path(
         "documents/<int:document_id>/rights/",
