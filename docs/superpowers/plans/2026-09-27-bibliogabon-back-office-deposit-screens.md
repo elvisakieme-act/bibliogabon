@@ -15,7 +15,7 @@ Slice 2 of 4 of `docs/superpowers/specs/2026-09-27-bibliogabon-back-office-desig
 - A reader must never download the staff bundle. The area is lazily loaded and a test asserts it.
 - No screen renders a storage key, a `.pdf` path or a URL to a source file — the API rule, enforced again where a template could reintroduce it.
 - The UI hides what a role cannot do, but hiding is a courtesy: every screen must render a server refusal rather than assume it cannot happen.
-- Forms stay hand-rolled with `useState`, matching the existing auth pages. No form library.
+- Staff forms use `react-hook-form` (D013), confined to `/gestion`. Server `field_errors` reach inputs through `setError`; per-field accessibility comes from the shared `components/ui/FieldErrors`. The reader's auth forms are not migrated.
 - The reader routes, their components and their tests are untouched.
 - Do not build the review workflow, organizations, support, bulk deposit or notifications.
 - Use TDD: write the failing test, run it red for the expected reason, implement, run green, then commit.
@@ -37,7 +37,6 @@ frontend/src/
   components/staff/
     DocumentStateBadge.tsx
     CompletenessChecklist.tsx
-    FieldError.tsx
     SourceUpload.tsx
     IngestionStatus.tsx
   routes/gestion/
@@ -46,11 +45,12 @@ frontend/src/
     DocumentsPage.tsx
     DocumentCreatePage.tsx
     DocumentDetailPage.tsx
-  hooks/useFieldErrors.ts
+  features/staff/applyApiErrors.ts
   tests/
     staff-guard.test.tsx
     staff-bundle.test.ts
     staff-deposit.test.tsx
+    api-errors-to-form.test.tsx
     staff-documents.test.tsx
     staff-ingestion.test.tsx
 ```
@@ -97,18 +97,25 @@ frontend/src/
 
 ---
 
-### Task 3: Field Error Mapping
+### Task 3: Server Refusals Onto Form Fields
+
+Installs `react-hook-form` (D013) and bridges it to the API error envelope.
+`components/ui/FieldErrors` already exists and already carries the
+accessibility contract (`fieldErrorId`, `fieldErrorProps`); this task adds the
+mapping, not a second error component.
 
 **Files:**
-- Create: `frontend/src/hooks/useFieldErrors.ts`, `frontend/src/components/staff/FieldError.tsx`
-- Create: `frontend/src/tests/field-errors.test.tsx`
+- Create: `frontend/src/features/staff/applyApiErrors.ts`
+- Create: `frontend/src/tests/api-errors-to-form.test.tsx`
+- Modify: `frontend/package.json` (add `react-hook-form`)
 
 **Interfaces:**
-- Produces `useFieldErrors()` returning `{ formError, errorFor, capture, reset }`.
+- Produces `applyApiErrors(error, setError) => string`, returning the form-level message.
 
-- [ ] Write failing tests: an `ApiError` with `field_errors` lands each message on its field; an error with only a message becomes a form-level message; a non-`ApiError` becomes a generic form-level message rather than leaking an exception string to the user; `reset` clears everything.
-- [ ] Implement the hook and a small `FieldError` component.
-- [ ] Run `npm run test`.
+- [ ] Write failing tests: an `ApiError` with `field_errors` calls `setError` for each named field; a field the form does not own does not vanish silently but joins the form-level message; an error with only a message becomes a form-level message; a non-`ApiError` becomes a generic message rather than leaking an exception string to the user; submitting again clears the previous refusal.
+- [ ] Write a failing test on a throwaway form: after a refusal, the offending input carries `aria-invalid` and an `aria-describedby` that resolves to the visible message, and focus moves to the first field in error.
+- [ ] Install `react-hook-form`, implement the mapping.
+- [ ] Run `npm run test` and `npm run format:check`.
 - [ ] Commit `feat: map API field errors onto form inputs`.
 
 ---

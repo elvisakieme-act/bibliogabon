@@ -47,9 +47,11 @@ One genuine addition: `apiUpload`, because `apiRequest` JSON-stringifies its bod
 
 ### Forms
 
-Hand-rolled with `useState`, matching the existing auth pages. No form library: it would be a new dependency for one area, and the pattern already in the codebase works at this size.
+`react-hook-form`, confined to the staff area (D013). The reader's two auth pages keep their `useState` forms; they are not worth a migration.
 
-The reusable part is not state management but error mapping. `field_errors` from the API envelope must land on the right input, so a small `useFieldErrors` helper turns one server refusal into per-field messages plus a form-level message. That is specific to our envelope and is what a library would not give us.
+The reason is not state management, which `useState` handles fine at this size. It is everything a server refusal needs around it: which field failed, whether the user has touched it yet, `aria-invalid` and `aria-describedby` on the input, and moving focus to the first error. Hand-rolled, that is re-implemented once per form, and the deposit area has five — metadata, authors, rights, upload, draft creation. Drift between them is a matter of time, and it is the accessibility wiring that drifts first, because nothing fails visibly when it is missing.
+
+`field_errors` from the API envelope map onto inputs through `setError`, so one server refusal lands on the right inputs plus a form-level message without bespoke state. The shared `components/ui/FieldErrors` — already used by the reader's forms — provides `fieldErrorProps` so the accessibility contract is written once and is identical on both sides of the application.
 
 Deposit is a detail page with progressive sections, not one long form. Creating a draft asks for the minimum; the document page then fills metadata, authors, rights and the file in separate small forms. This keeps each form short, lets a teacher save early, and lines up with what the API already returns: `missing_for_submission` drives a visible checklist, so the screen never has to restate the completeness rules.
 
