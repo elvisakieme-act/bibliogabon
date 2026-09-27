@@ -155,12 +155,16 @@ backend/
 - Produces `POST /api/staff/v1/documents/{id}/source/` accepting `multipart/form-data`.
 - Produces settings `DOCUMENT_UPLOAD_MAX_BYTES` and `DOCUMENT_UPLOAD_ACCEPTED_MIME_TYPES`.
 
-- [ ] Write failing tests: uploading the three-page fixture stores it privately and returns the version and its state, never a storage key; the response body contains no `storage`, no `.pdf` path and no URL; a file above the limit is refused with a typed error; an unaccepted MIME type is refused; a second upload to a populated version returns the `VersionAlreadyIngested` conflict as HTTP 409 with a code, and `?replace=true` succeeds.
-- [ ] Write a failing test proving the file is not read into memory: upload a file larger than `FILE_UPLOAD_MAX_MEMORY_SIZE` and assert Django handed a `TemporaryUploadedFile` to the service. Both uploaded-file classes are seekable, which `ingest_document_file` requires.
-- [ ] Implement the view with `parser_classes = [MultiPartParser]`. This is a deliberate exception to the JSON-only rule of the public contract, and the docstring must say so: a file cannot travel as JSON without base64 inflating it by a third.
-- [ ] Enforce the limits before touching storage, so a refused upload writes nothing.
-- [ ] Run `pytest api/staff document_ingestion/tests -q`.
-- [ ] Commit `feat: accept document uploads through the staff API`.
+- [x] Write failing tests: uploading the three-page fixture stores it privately and returns the version and its state, never a storage key; the response body contains no `storage`, no `.pdf` path and no URL; a file above the limit is refused with a typed error; an unaccepted MIME type is refused; a second upload to a populated version returns the `VersionAlreadyIngested` conflict as HTTP 409 with a code, and `?replace=true` succeeds.
+- [x] Write a failing test proving the file is not read into memory: upload a file larger than `FILE_UPLOAD_MAX_MEMORY_SIZE` and assert Django handed a `TemporaryUploadedFile` to the service. Both uploaded-file classes are seekable, which `ingest_document_file` requires.
+- [x] Implement the view with `parser_classes = [MultiPartParser]`. This is a deliberate exception to the JSON-only rule of the public contract, and the docstring must say so: a file cannot travel as JSON without base64 inflating it by a third.
+- [x] Enforce the limits before touching storage, asserted by a test that the storage directory stays empty
+      after a refusal — checking the absence of a database row would not have proved the file was not written.
+- [x] Lock the source of a document past the deposit stage: a teacher cannot replace what has already been
+      reviewed and published, a moderator can. The published content was validated; correcting it is a
+      moderation act.
+- [x] Run `pytest api/staff document_ingestion/tests -q`.
+- [x] Commit `feat: accept document uploads through the staff API`.
 
 ---
 

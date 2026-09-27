@@ -147,6 +147,12 @@ DOCUMENT_PAGE_IMAGE_WIDTH = env_int("DOCUMENT_PAGE_IMAGE_WIDTH", 1240)
 OCR_LANGUAGES = os.getenv("OCR_LANGUAGES", "").strip() or "fra"
 OCR_MIN_CHARACTERS = env_int("OCR_MIN_CHARACTERS", 20)
 
+# Dépôt : bornes vérifiées avant toute écriture en stockage.
+DOCUMENT_UPLOAD_MAX_BYTES = env_int("DOCUMENT_UPLOAD_MAX_BYTES", 200 * 1024 * 1024)
+DOCUMENT_UPLOAD_ACCEPTED_MIME_TYPES = env_list(
+    "DOCUMENT_UPLOAD_ACCEPTED_MIME_TYPES", default="application/pdf"
+)
+
 validate_production_pipeline_settings(
     django_env=DJANGO_ENV,
     celery_broker_url=CELERY_BROKER_URL,
