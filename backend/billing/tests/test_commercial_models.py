@@ -21,7 +21,9 @@ def create_organization(slug="billing-org"):
     return Organization.objects.create(name=f"Organisation {slug}", slug=slug)
 
 
-def create_offer(slug="monthly-pass", offer_type=None, scope_type=Entitlement.ScopeType.GLOBAL, scope_id=""):
+def create_offer(
+    slug="monthly-pass", offer_type=None, scope_type=Entitlement.ScopeType.GLOBAL, scope_id=""
+):
     return CommercialOffer.objects.create(
         name=f"Offer {slug}",
         slug=slug,
@@ -155,7 +157,9 @@ def test_payment_transaction_requires_unique_idempotency_key():
 
 @pytest.mark.django_db
 def test_organization_quota_stores_contract_capacity():
-    offer = create_offer(slug="institution-license", offer_type=CommercialOffer.OfferType.ORGANIZATION)
+    offer = create_offer(
+        slug="institution-license", offer_type=CommercialOffer.OfferType.ORGANIZATION
+    )
     organization = create_organization(slug="quota-org")
     starts_at = timezone.now()
     quota = OrganizationQuota.objects.create(

@@ -13,7 +13,9 @@ urlpatterns = [
         SpectacularAPIView.as_view(api_version="v1", urlconf="config.schema_public"),
         name="api-v1-schema",
     ),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="api-v1-schema"), name="api-docs"),
+    path(
+        "api/docs/", SpectacularSwaggerView.as_view(url_name="api-v1-schema"), name="api-docs"
+    ),
     path("api/v1/", include("api.v1.urls")),
     path(
         "api/staff/v1/schema/",

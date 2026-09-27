@@ -124,7 +124,9 @@ def test_rebuild_document_search_index_copies_published_metadata_and_ordered_aut
     ],
 )
 @pytest.mark.django_db
-def test_rebuild_document_search_index_removes_non_discoverable_documents(publication_status, access_model):
+def test_rebuild_document_search_index_removes_non_discoverable_documents(
+    publication_status, access_model
+):
     from search_discovery.services import rebuild_document_search_index
 
     document = create_document(slug=f"non-discoverable-{publication_status}-{access_model}")
@@ -150,9 +152,13 @@ def test_rebuild_document_search_index_uses_current_processed_version_processed_
     from search_discovery.services import rebuild_document_search_index
 
     document = create_document(slug="processed-pages")
-    old_version = create_processed_version(document, version_label="old", is_current=False, page_count=1)
+    old_version = create_processed_version(
+        document, version_label="old", is_current=False, page_count=1
+    )
     add_page_text(old_version, 1, "Archive ancienne non indexee.")
-    current_version = create_processed_version(document, version_label="current", is_current=True, page_count=2)
+    current_version = create_processed_version(
+        document, version_label="current", is_current=True, page_count=2
+    )
     add_page_text(current_version, 1, "Cellules solaires et reseaux ruraux.")
     add_page_text(
         current_version,
@@ -184,4 +190,6 @@ def test_rebuild_all_document_search_indexes_counts_discoverable_documents():
     indexed_count = rebuild_all_document_search_indexes()
 
     assert indexed_count == 1
-    assert list(DocumentSearchIndex.objects.values_list("document__slug", flat=True)) == ["published-free"]
+    assert list(DocumentSearchIndex.objects.values_list("document__slug", flat=True)) == [
+        "published-free"
+    ]

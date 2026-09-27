@@ -1,9 +1,7 @@
-from django.contrib import admin
-
-from accounts.admin_mixins import ContentAdminArea
-from django.contrib import messages
+from django.contrib import admin, messages
 from django.db import transaction
 
+from accounts.admin_mixins import ContentAdminArea
 from operations.models import AuditLog, PublicationReview, SupportTicket
 from operations.services import record_publication_decision, resolve_support_ticket
 
@@ -13,7 +11,16 @@ class AuditLogAdmin(ContentAdminArea, admin.ModelAdmin):
     list_display = ["created_at", "event_type", "actor", "target", "summary"]
     list_filter = ["event_type", "target_app", "target_model", "created_at"]
     search_fields = ["actor__email", "summary", "target_app", "target_model", "target_id"]
-    readonly_fields = ["actor", "event_type", "target_app", "target_model", "target_id", "summary", "metadata", "created_at"]
+    readonly_fields = [
+        "actor",
+        "event_type",
+        "target_app",
+        "target_model",
+        "target_id",
+        "summary",
+        "metadata",
+        "created_at",
+    ]
 
     @admin.display(description="Target")
     def target(self, obj: AuditLog) -> str:
@@ -34,11 +41,33 @@ class AuditLogAdmin(ContentAdminArea, admin.ModelAdmin):
 @admin.register(PublicationReview)
 class PublicationReviewAdmin(ContentAdminArea, admin.ModelAdmin):
     actions = ["approve_reviews", "reject_reviews", "cancel_reviews"]
-    list_display = ["document", "status", "reviewer", "opened_by", "decided_by", "opened_at", "decided_at"]
+    list_display = [
+        "document",
+        "status",
+        "reviewer",
+        "opened_by",
+        "decided_by",
+        "opened_at",
+        "decided_at",
+    ]
     list_filter = ["status", "opened_at", "decided_at"]
-    search_fields = ["document__title", "reviewer__email", "opened_by__email", "decided_by__email", "decision_reason", "internal_notes"]
+    search_fields = [
+        "document__title",
+        "reviewer__email",
+        "opened_by__email",
+        "decided_by__email",
+        "decision_reason",
+        "internal_notes",
+    ]
     autocomplete_fields = ["document", "opened_by", "reviewer", "decided_by"]
-    readonly_fields = ["status", "decided_by", "opened_at", "decided_at", "created_at", "updated_at"]
+    readonly_fields = [
+        "status",
+        "decided_by",
+        "opened_at",
+        "decided_at",
+        "created_at",
+        "updated_at",
+    ]
 
     @admin.action(description="Approve selected publication reviews", permissions=["change"])
     def approve_reviews(self, request, queryset):
@@ -63,13 +92,24 @@ class PublicationReviewAdmin(ContentAdminArea, admin.ModelAdmin):
                         reason=review.decision_reason,
                     )
         except ValueError as exc:
-            self.message_user(request, f"Publication review action failed: {exc}", level=messages.ERROR)
+            self.message_user(
+                request, f"Publication review action failed: {exc}", level=messages.ERROR
+            )
 
 
 @admin.register(SupportTicket)
 class SupportTicketAdmin(ContentAdminArea, admin.ModelAdmin):
     actions = ["resolve_tickets"]
-    list_display = ["title", "status", "priority", "assigned_to", "user", "organization", "opened_at", "resolved_at"]
+    list_display = [
+        "title",
+        "status",
+        "priority",
+        "assigned_to",
+        "user",
+        "organization",
+        "opened_at",
+        "resolved_at",
+    ]
     list_filter = ["status", "priority", "opened_at", "resolved_at"]
     search_fields = [
         "title",
@@ -96,15 +136,19 @@ class SupportTicketAdmin(ContentAdminArea, admin.ModelAdmin):
     def resolve_tickets(self, request, queryset):
         try:
             with transaction.atomic():
-                for ticket in queryset.filter(status__in=[
-                    SupportTicket.Status.OPEN,
-                    SupportTicket.Status.IN_PROGRESS,
-                    SupportTicket.Status.WAITING,
-                ]):
+                for ticket in queryset.filter(
+                    status__in=[
+                        SupportTicket.Status.OPEN,
+                        SupportTicket.Status.IN_PROGRESS,
+                        SupportTicket.Status.WAITING,
+                    ]
+                ):
                     resolve_support_ticket(
                         ticket=ticket,
                         actor=request.user,
                         resolution_summary=ticket.resolution_summary,
                     )
         except ValueError as exc:
-            self.message_user(request, f"Support ticket action failed: {exc}", level=messages.ERROR)
+            self.message_user(
+                request, f"Support ticket action failed: {exc}", level=messages.ERROR
+            )

@@ -7,8 +7,12 @@ from catalog.models import AcademicDomain, Document
 from document_ingestion.models import DocumentVersion
 from document_processing.models import DocumentPage
 from document_processing.services import attach_extracted_text, create_page_records
-from document_reader.exceptions import ReaderAccessDenied, ReaderPageUnavailable, ReaderSessionInactive
-from document_reader.models import PageAccessLog, ReaderSession
+from document_reader.exceptions import (
+    ReaderAccessDenied,
+    ReaderPageUnavailable,
+    ReaderSessionInactive,
+)
+from document_reader.models import PageAccessLog
 from document_reader.services import get_reader_page, start_reader_session
 
 
@@ -21,7 +25,9 @@ def create_document(
     access_model=Document.AccessModel.FREE,
     publication_status=Document.PublicationStatus.PUBLISHED,
 ):
-    domain = AcademicDomain.objects.create(name=f"Reader Page {slug}", slug=f"reader-page-{slug}")
+    domain = AcademicDomain.objects.create(
+        name=f"Reader Page {slug}", slug=f"reader-page-{slug}"
+    )
     return Document.objects.create(
         title=f"Reader Page {slug}",
         slug=slug,
@@ -127,7 +133,9 @@ def test_get_reader_page_rechecks_expired_entitlement_after_session_start():
     session = start_reader_session(user=user, document=document, at=started_at)
 
     with pytest.raises(ReaderAccessDenied):
-        get_reader_page(session=session, page_number=1, at=started_at + timezone.timedelta(minutes=6))
+        get_reader_page(
+            session=session, page_number=1, at=started_at + timezone.timedelta(minutes=6)
+        )
 
     assert PageAccessLog.objects.count() == 0
 
@@ -141,7 +149,9 @@ def test_get_reader_page_rechecks_expired_entitlement_after_session_start():
     ],
 )
 @pytest.mark.django_db
-def test_get_reader_page_rechecks_document_readability_after_session_start(publication_status, access_model):
+def test_get_reader_page_rechecks_document_readability_after_session_start(
+    publication_status, access_model
+):
     session, _ = create_free_session_with_page()
     session.document.publication_status = publication_status
     session.document.access_model = access_model

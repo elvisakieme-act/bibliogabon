@@ -75,7 +75,9 @@ def test_create_payment_transaction_rejects_conflicting_idempotency_reuse():
 
 
 @pytest.mark.django_db
-def test_create_payment_transaction_reuses_existing_row_after_unique_validation_race(monkeypatch):
+def test_create_payment_transaction_reuses_existing_row_after_unique_validation_race(
+    monkeypatch,
+):
     user = create_user(email="race-user@example.ga")
     offer = create_offer(slug="race-offer")
     existing = create_payment_transaction(
@@ -92,7 +94,9 @@ def test_create_payment_transaction_reuses_existing_row_after_unique_validation_
         if queryset.model is PaymentTransaction and kwargs.get("idempotency_key") == "race-key":
             calls["count"] += 1
             if calls["count"] == 1:
-                raise ValidationError({"idempotency_key": ["Payment transaction with this key already exists."]})
+                raise ValidationError(
+                    {"idempotency_key": ["Payment transaction with this key already exists."]}
+                )
         return original_get_or_create(queryset, *args, **kwargs)
 
     monkeypatch.setattr(QuerySet, "get_or_create", raise_unique_validation_once)
@@ -220,7 +224,9 @@ def test_cancelled_payment_transaction_cannot_be_marked_succeeded():
 
 @pytest.mark.django_db
 def test_payment_transaction_mark_failed_records_retry_and_reason():
-    organization = Organization.objects.create(name="Institution payeuse", slug="institution-payeuse")
+    organization = Organization.objects.create(
+        name="Institution payeuse", slug="institution-payeuse"
+    )
     offer = CommercialOffer.objects.create(
         name="Institution annual",
         slug="institution-annual",
@@ -239,7 +245,9 @@ def test_payment_transaction_mark_failed_records_retry_and_reason():
         amount_xaf=500000,
     )
 
-    payment.mark_failed(error_code="provider_timeout", message="Provider did not confirm payment")
+    payment.mark_failed(
+        error_code="provider_timeout", message="Provider did not confirm payment"
+    )
 
     payment.refresh_from_db()
     assert payment.status == PaymentTransaction.Status.FAILED

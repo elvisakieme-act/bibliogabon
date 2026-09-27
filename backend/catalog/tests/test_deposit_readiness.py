@@ -4,7 +4,12 @@ import pytest
 from django.utils import timezone
 
 from catalog.models import (
-    AcademicDomain, Author, Document, DocumentAuthor, DocumentType, RightsAgreement,
+    AcademicDomain,
+    Author,
+    Document,
+    DocumentAuthor,
+    DocumentType,
+    RightsAgreement,
 )
 from catalog.services import (
     document_is_publishable,
@@ -18,7 +23,10 @@ def document(db):
     domain = AcademicDomain.objects.create(name="Droit", slug="droit")
     doc_type = DocumentType.objects.create(name="Cours", slug="cours")
     document = Document.objects.create(
-        title="Un cours", slug="un-cours", academic_domain=domain, document_type=doc_type,
+        title="Un cours",
+        slug="un-cours",
+        academic_domain=domain,
+        document_type=doc_type,
         category=Document.Category.VOLUNTARY_TEACHER_DEPOSIT,
         access_model=Document.AccessModel.FREE,
     )

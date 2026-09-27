@@ -1,7 +1,6 @@
 from django.contrib import admin
 
 from accounts.admin_mixins import ContentAdminArea
-
 from catalog.models import (
     AcademicDomain,
     Author,

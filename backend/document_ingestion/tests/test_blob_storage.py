@@ -14,7 +14,6 @@ from document_ingestion.blob_storage import (
     save_stream,
 )
 
-
 STORAGE_KEY = "documents/7/versions/v1/2fef47ab/source.pdf"
 PAYLOAD = b"%PDF-1.4 " + b"x" * 200_000
 BUCKET = "bibliogabon-test-documents"

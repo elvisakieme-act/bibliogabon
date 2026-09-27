@@ -184,6 +184,9 @@ class Document(models.Model):
     class Meta:
         ordering = ["title"]
 
+    def __str__(self) -> str:
+        return self.title
+
     @property
     def entitlement_scope_id(self) -> str:
         return str(self.pk)
@@ -201,9 +204,6 @@ class Document(models.Model):
                         )
                     }
                 )
-
-    def __str__(self) -> str:
-        return self.title
 
 
 class DocumentAuthor(models.Model):
@@ -294,12 +294,12 @@ class Collection(models.Model):
     class Meta:
         ordering = ["name"]
 
+    def __str__(self) -> str:
+        return self.name
+
     @property
     def entitlement_scope_id(self) -> str:
         return str(self.pk)
-
-    def __str__(self) -> str:
-        return self.name
 
 
 class CollectionItem(models.Model):
@@ -384,6 +384,9 @@ class RightsAgreement(models.Model):
     class Meta:
         ordering = ["document__title"]
 
+    def __str__(self) -> str:
+        return f"{self.document.title} rights - {self.authorization_status}"
+
     def is_valid_for_publication(self, at=None) -> bool:
         at = at or timezone.now().date()
         if self.authorization_status != self.AuthorizationStatus.APPROVED:
@@ -401,6 +404,3 @@ class RightsAgreement(models.Model):
         if self.valid_until and self.valid_until < at:
             return False
         return True
-
-    def __str__(self) -> str:
-        return f"{self.document.title} rights - {self.authorization_status}"

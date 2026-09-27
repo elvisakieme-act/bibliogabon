@@ -45,16 +45,16 @@ class DocumentPage(models.Model):
         ]
         ordering = ["version", "page_number"]
 
-    def clean(self):
-        if self.created_by_job_id and self.created_by_job.version_id != self.version_id:
-            raise ValidationError("Processing job must belong to the same document version")
+    def __str__(self) -> str:
+        return f"{self.version} page {self.page_number}"
 
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
 
-    def __str__(self) -> str:
-        return f"{self.version} page {self.page_number}"
+    def clean(self):
+        if self.created_by_job_id and self.created_by_job.version_id != self.version_id:
+            raise ValidationError("Processing job must belong to the same document version")
 
 
 class ExtractedText(models.Model):
@@ -89,13 +89,8 @@ class ExtractedText(models.Model):
     class Meta:
         ordering = ["page"]
 
-    def clean(self):
-        if not self.text or not self.text.strip():
-            raise ValidationError("Extracted text must not be blank")
-        if self.confidence is not None and not 0 <= self.confidence <= 1:
-            raise ValidationError("Confidence must be between 0 and 1")
-        if self.created_by_job_id and self.created_by_job.version_id != self.page.version_id:
-            raise ValidationError("Processing job must belong to the same document version")
+    def __str__(self) -> str:
+        return f"Text for {self.page}"
 
     def save(self, *args, **kwargs):
         if self.confidence is not None:
@@ -103,8 +98,13 @@ class ExtractedText(models.Model):
         self.full_clean()
         return super().save(*args, **kwargs)
 
-    def __str__(self) -> str:
-        return f"Text for {self.page}"
+    def clean(self):
+        if not self.text or not self.text.strip():
+            raise ValidationError("Extracted text must not be blank")
+        if self.confidence is not None and not 0 <= self.confidence <= 1:
+            raise ValidationError("Confidence must be between 0 and 1")
+        if self.created_by_job_id and self.created_by_job.version_id != self.page.version_id:
+            raise ValidationError("Processing job must belong to the same document version")
 
 
 class SearchIndexRecord(models.Model):
@@ -142,9 +142,9 @@ class SearchIndexRecord(models.Model):
         ]
         ordering = ["page"]
 
+    def __str__(self) -> str:
+        return f"{self.status}: {self.page}"
+
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
-
-    def __str__(self) -> str:
-        return f"{self.status}: {self.page}"

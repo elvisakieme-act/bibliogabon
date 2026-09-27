@@ -18,16 +18,15 @@ from django.conf import settings
 
 from document_ingestion.blob_storage import open_stream, save_stream
 from document_ingestion.models import DocumentAsset, DocumentVersion, ProcessingJob
-from document_ingestion.pipeline import EMPTY_PAGE_PLACEHOLDER, process_ingest_job
-from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
+from document_ingestion.pipeline import process_ingest_job
 from document_ingestion.services import mark_version_current_and_index
+from document_processing.models import DocumentPage, ExtractedText
 from document_processing.services import (
     attach_extracted_text,
     consume_page_index_record,
     fail_page_index_record,
     queue_page_index_record,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -80,10 +79,8 @@ def ingest_source_document(self, job_id: int) -> int:
             message=job.error_message or str(exc),
             retry_count=attempt,
         )
-        countdown = min(
-            RETRY_BASE_DELAY_SECONDS * (2**attempt), RETRY_MAX_DELAY_SECONDS
-        )
-        raise self.retry(exc=exc, countdown=countdown)
+        countdown = min(RETRY_BASE_DELAY_SECONDS * (2**attempt), RETRY_MAX_DELAY_SECONDS)
+        raise self.retry(exc=exc, countdown=countdown) from exc
 
     return version.pk
 
@@ -124,12 +121,10 @@ def recognise_page(pdf_stream, page_number: int) -> tuple[str, float | None]:
     finally:
         document.close()
 
-    data = pytesseract.image_to_data(
-        image, lang=languages, output_type=pytesseract.Output.DICT
-    )
+    data = pytesseract.image_to_data(image, lang=languages, output_type=pytesseract.Output.DICT)
     words = [
         word
-        for word, confidence in zip(data["text"], data["conf"])
+        for word, confidence in zip(data["text"], data["conf"], strict=True)
         if word.strip() and int(confidence) >= 0
     ]
     confidences = [int(c) for c in data["conf"] if int(c) >= 0]
@@ -181,7 +176,9 @@ def ocr_page(self, page_id: int) -> bool:
 
     if not text.strip():
         logger.info("Page %s : aucun texte reconnu par l'OCR.", page_id)
-        fail_page_index_record(page, "ocr_empty", "L'OCR n'a reconnu aucun texte sur cette page.")
+        fail_page_index_record(
+            page, "ocr_empty", "L'OCR n'a reconnu aucun texte sur cette page."
+        )
         return False
 
     attach_extracted_text(
@@ -193,6 +190,8 @@ def ocr_page(self, page_id: int) -> bool:
     )
     queue_page_index_record(page=page)
     return True
+
+
 # --- Rendu des pages en images privees ---------------------------------------
 
 

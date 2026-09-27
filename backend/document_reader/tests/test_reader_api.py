@@ -28,7 +28,9 @@ def create_document(slug="reader-api-document", access_model=Document.AccessMode
     )
 
 
-def create_readable_document(slug="reader-api-document", access_model=Document.AccessModel.FREE):
+def create_readable_document(
+    slug="reader-api-document", access_model=Document.AccessModel.FREE
+):
     document = create_document(slug=slug, access_model=access_model)
     version = DocumentVersion.objects.create(
         document=document,

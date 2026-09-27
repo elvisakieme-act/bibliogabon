@@ -79,7 +79,14 @@ class AnalyticsRunAdmin(ReadOnlyAnalyticsAdmin):
         "started_at",
         "finished_at",
     ]
-    list_filter = ["run_type", "status", "organization", "period_start", "period_end", "started_at"]
+    list_filter = [
+        "run_type",
+        "status",
+        "organization",
+        "period_start",
+        "period_end",
+        "started_at",
+    ]
     search_fields = ["organization__name", "organization__slug", "run_type", "status"]
     readonly_fields = [
         "run_type",

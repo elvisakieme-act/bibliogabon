@@ -88,9 +88,5 @@ def test_the_staff_schema_contains_no_public_path(api):
 
     response = api.get(reverse("api-staff-v1-schema"), {"format": "json"})
 
-    stray = [
-        path
-        for path in response.json()["paths"]
-        if not path.startswith("/api/staff/v1/")
-    ]
+    stray = [path for path in response.json()["paths"] if not path.startswith("/api/staff/v1/")]
     assert stray == [], stray

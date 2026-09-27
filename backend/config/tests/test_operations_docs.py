@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -60,7 +59,10 @@ def test_agents_guide_matches_current_backend_stack():
 def test_backup_runbook_uses_one_restore_target_and_records_storage_backup_details():
     text = (REPO_ROOT / "docs/operations/backup-and-restore.md").read_text(encoding="utf-8")
 
-    assert 'psql --dbname=bibliogabon_restore_test -c "select count(*) from django_migrations;"' in text
+    assert (
+        'psql --dbname=bibliogabon_restore_test -c "select count(*) from django_migrations;"'
+        in text
+    )
     for phrase in ["bucket", "prefix", "sync location", "timestamp", "operator"]:
         assert phrase in text
 

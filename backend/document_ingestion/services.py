@@ -102,9 +102,9 @@ def mark_version_current_and_index(version) -> None:
     from search_discovery.services import rebuild_document_search_index
 
     with transaction.atomic():
-        DocumentVersion.objects.filter(document=version.document).exclude(
-            pk=version.pk
-        ).update(is_current=False)
+        DocumentVersion.objects.filter(document=version.document).exclude(pk=version.pk).update(
+            is_current=False
+        )
         if not version.is_current:
             version.is_current = True
             version.save(update_fields=["is_current", "updated_at"])

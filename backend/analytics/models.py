@@ -45,6 +45,14 @@ class DailyUsageAggregate(models.Model):
         ]
         ordering = ["-date", "organization__name", "document__title"]
 
+    def __str__(self) -> str:
+        cible = self.organization.name if self.organization_id else "plateforme"
+        return f"{self.date} · {cible} · {self.access_model}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def clean(self):
         if (
             self.document_id
@@ -52,10 +60,6 @@ class DailyUsageAggregate(models.Model):
             and self.document.academic_domain_id != self.academic_domain_id
         ):
             raise ValidationError("academic_domain must match the document domain")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
 
 
 class InstitutionReport(models.Model):
@@ -95,19 +99,24 @@ class InstitutionReport(models.Model):
                 fields=["organization", "period_start", "period_end"],
                 name="institution_report_period_idx",
             ),
-            models.Index(fields=["status", "generated_at"], name="institution_report_status_idx"),
+            models.Index(
+                fields=["status", "generated_at"], name="institution_report_status_idx"
+            ),
         ]
         ordering = ["organization__name", "-period_end"]
+
+    def __str__(self) -> str:
+        return f"{self.organization.name} · {self.period_start} → {self.period_end}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def clean(self):
         if self.period_start and self.period_end and self.period_start > self.period_end:
             raise ValidationError("period_start must be on or before period_end")
         if not isinstance(self.metrics, dict):
             raise ValidationError("metrics must be a JSON object")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
 
 
 class AnalyticsRun(models.Model):
@@ -139,16 +148,21 @@ class AnalyticsRun(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=["run_type", "status"], name="analytics_run_type_status_idx"),
-            models.Index(fields=["period_start", "period_end"], name="analytics_run_period_idx"),
+            models.Index(
+                fields=["period_start", "period_end"], name="analytics_run_period_idx"
+            ),
         ]
         ordering = ["-started_at"]
+
+    def __str__(self) -> str:
+        return f"{self.run_type} · {self.status} · {self.created_at:%Y-%m-%d}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def clean(self):
         if self.period_start and self.period_end and self.period_start > self.period_end:
             raise ValidationError("period_start must be on or before period_end")
         if not isinstance(self.metadata, dict):
             raise ValidationError("metadata must be a JSON object")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)

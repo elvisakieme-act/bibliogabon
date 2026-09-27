@@ -161,7 +161,9 @@ def test_page_access_log_stores_session_page_context():
 @pytest.mark.django_db
 def test_page_access_log_save_rejects_page_from_other_session_version():
     session = create_session()
-    other_version = DocumentVersion.objects.create(document=session.document, version_label="v2")
+    other_version = DocumentVersion.objects.create(
+        document=session.document, version_label="v2"
+    )
     page = DocumentPage.objects.create(version=other_version, page_number=1)
 
     access_log = PageAccessLog(
@@ -244,7 +246,9 @@ def test_start_reader_session_rejects_private_document_even_with_entitlement():
     ],
 )
 @pytest.mark.django_db
-def test_start_reader_session_rejects_restricted_document_without_read_entitlement(access_model):
+def test_start_reader_session_rejects_restricted_document_without_read_entitlement(
+    access_model,
+):
     user = create_user()
     document = create_document(access_model=access_model)
     create_processed_version(document)
@@ -263,7 +267,9 @@ def test_start_reader_session_rejects_restricted_document_without_read_entitleme
     ],
 )
 @pytest.mark.django_db
-def test_start_reader_session_allows_restricted_document_with_document_entitlement(access_model):
+def test_start_reader_session_allows_restricted_document_with_document_entitlement(
+    access_model,
+):
     user = create_user()
     document = create_document(access_model=access_model)
     create_processed_version(document)

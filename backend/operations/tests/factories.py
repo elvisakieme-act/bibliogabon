@@ -36,7 +36,9 @@ def create_publishable_document(slug="operations-document"):
         access_model=Document.AccessModel.FREE,
     )
     author = Author.objects.create(display_name="Author", normalized_name="author")
-    DocumentAuthor.objects.create(document=document, author=author, role=DocumentAuthor.Role.AUTHOR)
+    DocumentAuthor.objects.create(
+        document=document, author=author, role=DocumentAuthor.Role.AUTHOR
+    )
     RightsAgreement.objects.create(
         document=document,
         rights_holder_name="Rights Holder",

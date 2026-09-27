@@ -8,7 +8,9 @@ from document_ingestion.services import register_private_upload
 
 
 def create_document():
-    domain = AcademicDomain.objects.create(name="Archives academiques", slug="archives-academiques")
+    domain = AcademicDomain.objects.create(
+        name="Archives academiques", slug="archives-academiques"
+    )
     return Document.objects.create(
         title="Archives numeriques UOB",
         slug="archives-numeriques-uob",

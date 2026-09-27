@@ -148,7 +148,9 @@ def test_replace_removes_the_previous_private_object(
     ).storage_key
 
     assert new_key != old_key
-    assert not (local_storage / old_key).exists(), "le fichier source remplace reste en stockage"
+    assert not (local_storage / old_key).exists(), (
+        "le fichier source remplace reste en stockage"
+    )
     assert (local_storage / new_key).is_file()
 
 
@@ -159,7 +161,6 @@ def test_replace_works_on_a_document_that_has_been_read(
     une trace d'audit, pas un verrou sur le contenu."""
     from django.utils import timezone
 
-    from document_ingestion.models import DocumentVersion as _Version
     from document_processing.models import DocumentPage as _Page
     from document_reader.models import PageAccessLog, ReaderSession
 

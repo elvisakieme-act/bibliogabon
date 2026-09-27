@@ -10,9 +10,17 @@ from accounts.services import active_organization_ids_for_user, user_has_entitle
 from catalog.models import Document
 from document_ingestion.models import DocumentVersion
 from document_processing.models import DocumentPage, ExtractedText
-from document_reader.exceptions import ReaderAccessDenied, ReaderPageUnavailable, ReaderSessionInactive
-from document_reader.models import FavoriteDocument, PageAccessLog, ReaderSession, ReadingProgress
-
+from document_reader.exceptions import (
+    ReaderAccessDenied,
+    ReaderPageUnavailable,
+    ReaderSessionInactive,
+)
+from document_reader.models import (
+    FavoriteDocument,
+    PageAccessLog,
+    ReaderSession,
+    ReadingProgress,
+)
 
 RESTRICTED_ACCESS_MODELS = {
     Document.AccessModel.SUBSCRIPTION,

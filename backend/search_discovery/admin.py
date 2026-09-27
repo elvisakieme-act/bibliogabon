@@ -14,7 +14,13 @@ class DocumentSearchIndexAdmin(admin.ModelAdmin):
         "indexed_page_count",
         "indexed_at",
     ]
-    list_filter = ["type_slug", "language_code", "access_model", "domain_slug", "publication_year"]
+    list_filter = [
+        "type_slug",
+        "language_code",
+        "access_model",
+        "domain_slug",
+        "publication_year",
+    ]
     search_fields = ["document__title", "title", "type_name", "author_names", "metadata_text"]
     autocomplete_fields = ["document"]
     readonly_fields = ["metadata_text", "page_text", "created_at", "updated_at", "indexed_at"]

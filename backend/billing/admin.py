@@ -1,7 +1,6 @@
 from django.contrib import admin
 
 from accounts.admin_mixins import PlatformStaffArea
-
 from billing.models import (
     CommercialOffer,
     OrganizationQuota,
@@ -13,7 +12,14 @@ from billing.models import (
 
 @admin.register(CommercialOffer)
 class CommercialOfferAdmin(PlatformStaffArea, admin.ModelAdmin):
-    list_display = ["name", "offer_type", "billing_period", "price_xaf", "duration_days", "is_active"]
+    list_display = [
+        "name",
+        "offer_type",
+        "billing_period",
+        "price_xaf",
+        "duration_days",
+        "is_active",
+    ]
     list_filter = ["offer_type", "billing_period", "access_right", "scope_type", "is_active"]
     search_fields = ["name", "slug", "scope_id"]
     prepopulated_fields = {"slug": ("name",)}
@@ -24,7 +30,12 @@ class CommercialOfferAdmin(PlatformStaffArea, admin.ModelAdmin):
 class SubscriptionAdmin(PlatformStaffArea, admin.ModelAdmin):
     list_display = ["target", "offer", "status", "starts_at", "ends_at", "entitlement"]
     list_filter = ["status", "offer__offer_type", "offer__access_right"]
-    search_fields = ["user__email", "user__display_name", "organization__name", "external_reference"]
+    search_fields = [
+        "user__email",
+        "user__display_name",
+        "organization__name",
+        "external_reference",
+    ]
     autocomplete_fields = ["offer", "user", "organization", "entitlement"]
     readonly_fields = ["created_at", "updated_at"]
 
@@ -37,7 +48,14 @@ class SubscriptionAdmin(PlatformStaffArea, admin.ModelAdmin):
 
 @admin.register(PaymentTransaction)
 class PaymentTransactionAdmin(PlatformStaffArea, admin.ModelAdmin):
-    list_display = ["idempotency_key", "provider", "status", "amount_xaf", "currency", "created_at"]
+    list_display = [
+        "idempotency_key",
+        "provider",
+        "status",
+        "amount_xaf",
+        "currency",
+        "created_at",
+    ]
     list_filter = ["provider", "status", "currency"]
     search_fields = [
         "idempotency_key",

@@ -29,7 +29,15 @@ def _create_organization_offer(slug):
 
 
 def _forbidden_keys(payload):
-    forbidden = {"email", "user_id", "user_ids", "session_key", "client_ip", "user_agent", "page_number"}
+    forbidden = {
+        "email",
+        "user_id",
+        "user_ids",
+        "session_key",
+        "client_ip",
+        "user_agent",
+        "page_number",
+    }
     found = set()
 
     def walk(value):
@@ -103,7 +111,9 @@ def test_generate_institution_report_builds_private_organization_metrics():
         opened_at=start,
     )
 
-    report = generate_institution_report(organization, start.date(), end_date, generated_by=user)
+    report = generate_institution_report(
+        organization, start.date(), end_date, generated_by=user
+    )
 
     assert report.organization == organization
     assert report.period_start == start.date()
@@ -118,7 +128,9 @@ def test_generate_institution_report_builds_private_organization_metrics():
     assert report.metrics["usage"]["reader_session_count"] == 1
     assert report.metrics["usage"]["page_view_count"] == 3
     assert report.metrics["usage"]["by_document"][0]["document_title"] == document.title
-    assert AuditLog.objects.filter(event_type="institution_report_generated", target_id=str(report.pk)).exists()
+    assert AuditLog.objects.filter(
+        event_type="institution_report_generated", target_id=str(report.pk)
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -277,13 +289,21 @@ def test_generate_institution_report_keeps_same_title_documents_separate():
     second_document.academic_domain = first_document.academic_domain
     second_document.save(update_fields=["title", "academic_domain", "updated_at"])
     create_reader_activity(user=user, document=first_document, started_at=at, page_views=1)
-    create_reader_activity(user=user, document=second_document, started_at=at + timezone.timedelta(hours=1), page_views=1)
+    create_reader_activity(
+        user=user,
+        document=second_document,
+        started_at=at + timezone.timedelta(hours=1),
+        page_views=1,
+    )
 
     report = generate_institution_report(organization, at.date(), at.date())
 
     by_document = report.metrics["usage"]["by_document"]
     assert len(by_document) == 2
-    assert {row["document_slug"] for row in by_document} == {first_document.slug, second_document.slug}
+    assert {row["document_slug"] for row in by_document} == {
+        first_document.slug,
+        second_document.slug,
+    }
 
 
 @pytest.mark.django_db

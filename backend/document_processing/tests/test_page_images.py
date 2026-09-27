@@ -12,7 +12,6 @@ from document_ingestion.models import DocumentAsset, DocumentVersion
 from document_ingestion.pipeline import ingest_document_file
 from document_processing.models import DocumentPage
 
-
 FIXTURE = (
     Path(__file__).resolve().parents[2]
     / "document_ingestion"
@@ -129,9 +128,7 @@ def test_source_asset_idempotency_still_holds(version):
 
 
 def test_an_asset_cannot_point_at_a_page_from_another_version(version, local_storage, db):
-    other = DocumentVersion.objects.create(
-        document=version.document, version_label="v2"
-    )
+    other = DocumentVersion.objects.create(document=version.document, version_label="v2")
     page = DocumentPage.objects.get(version=version, page_number=1)
 
     asset = DocumentAsset(

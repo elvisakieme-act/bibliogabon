@@ -91,7 +91,10 @@ def queue_page_index_record(*, page: DocumentPage) -> SearchIndexRecord:
         )
         if created:
             return record
-        if record.content_hash == content_hash and record.language_code == extracted_text.language_code:
+        if (
+            record.content_hash == content_hash
+            and record.language_code == extracted_text.language_code
+        ):
             return record
 
         record.status = SearchIndexRecord.Status.QUEUED
@@ -149,7 +152,9 @@ def consume_page_index_record(page: DocumentPage) -> bool:
 
     text = ExtractedText.objects.filter(page=page).first()
     if text is None:
-        fail_page_index_record(page, "no_extracted_text", "Aucun texte extrait pour cette page.")
+        fail_page_index_record(
+            page, "no_extracted_text", "Aucun texte extrait pour cette page."
+        )
         return False
 
     if not page_text_is_indexable(text.text):

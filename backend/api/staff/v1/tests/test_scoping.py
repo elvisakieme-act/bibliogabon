@@ -17,9 +17,12 @@ def make_user(email: str, account_type: str) -> User:
 def make_document(*, slug: str, status: str, access_model: str, author: User | None = None):
     domain, _ = AcademicDomain.objects.get_or_create(name="Droit", slug="droit")
     document = Document.objects.create(
-        title=slug, slug=slug, academic_domain=domain,
+        title=slug,
+        slug=slug,
+        academic_domain=domain,
         category=Document.Category.OPEN_RESOURCE,
-        access_model=access_model, publication_status=status,
+        access_model=access_model,
+        publication_status=status,
     )
     if author is not None:
         entry = Author.objects.create(
@@ -41,23 +44,32 @@ def corpus(db):
         "student": make_user("etudiant@example.ga", User.AccountType.INDIVIDUAL),
         "content_admin": make_user("mod@bibliogabon.ga", User.AccountType.CONTENT_ADMIN),
         "draft_mine": make_document(
-            slug="brouillon-a-moi", status=Document.PublicationStatus.DRAFT,
-            access_model=Document.AccessModel.FREE, author=teacher,
+            slug="brouillon-a-moi",
+            status=Document.PublicationStatus.DRAFT,
+            access_model=Document.AccessModel.FREE,
+            author=teacher,
         ),
         "private_mine": make_document(
-            slug="prive-a-moi", status=Document.PublicationStatus.TECHNICAL_PROCESSING,
-            access_model=Document.AccessModel.PRIVATE, author=teacher,
+            slug="prive-a-moi",
+            status=Document.PublicationStatus.TECHNICAL_PROCESSING,
+            access_model=Document.AccessModel.PRIVATE,
+            author=teacher,
         ),
         "published_mine": make_document(
-            slug="publie-a-moi", status=Document.PublicationStatus.PUBLISHED,
-            access_model=Document.AccessModel.FREE, author=teacher,
+            slug="publie-a-moi",
+            status=Document.PublicationStatus.PUBLISHED,
+            access_model=Document.AccessModel.FREE,
+            author=teacher,
         ),
         "draft_theirs": make_document(
-            slug="brouillon-dautrui", status=Document.PublicationStatus.DRAFT,
-            access_model=Document.AccessModel.FREE, author=other,
+            slug="brouillon-dautrui",
+            status=Document.PublicationStatus.DRAFT,
+            access_model=Document.AccessModel.FREE,
+            author=other,
         ),
         "orphan": make_document(
-            slug="sans-auteur", status=Document.PublicationStatus.DRAFT,
+            slug="sans-auteur",
+            status=Document.PublicationStatus.DRAFT,
             access_model=Document.AccessModel.FREE,
         ),
     }
@@ -71,8 +83,11 @@ def test_a_content_admin_sees_every_state_including_draft_and_private(corpus):
     visible = slugs(documents_visible_to(corpus["content_admin"]))
 
     assert visible == {
-        "brouillon-a-moi", "prive-a-moi", "publie-a-moi",
-        "brouillon-dautrui", "sans-auteur",
+        "brouillon-a-moi",
+        "prive-a-moi",
+        "publie-a-moi",
+        "brouillon-dautrui",
+        "sans-auteur",
     }
 
 

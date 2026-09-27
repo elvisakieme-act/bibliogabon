@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import shutil
 from decimal import Decimal
 from pathlib import Path
@@ -11,7 +10,6 @@ from catalog.models import AcademicDomain, Document
 from document_ingestion import tasks
 from document_ingestion.tests.ingestion_helpers import ingest_source_only
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
-
 
 FIXTURE = (
     Path(__file__).resolve().parents[2]

@@ -41,13 +41,13 @@ class DocumentSearchIndex(models.Model):
         ]
         ordering = ["title"]
 
-    def clean(self):
-        if not self.title or not self.title.strip():
-            raise ValidationError("Title must not be blank")
+    def __str__(self) -> str:
+        return self.title
 
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
 
-    def __str__(self) -> str:
-        return self.title
+    def clean(self):
+        if not self.title or not self.title.strip():
+            raise ValidationError("Title must not be blank")

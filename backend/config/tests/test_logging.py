@@ -8,7 +8,10 @@ def test_build_logging_config_uses_requested_level():
 
     assert config["handlers"]["console"]["level"] == "DEBUG"
     assert config["root"]["level"] == "DEBUG"
-    assert config["formatters"]["standard"]["format"] == "%(asctime)s %(levelname)s %(name)s %(message)s"
+    assert (
+        config["formatters"]["standard"]["format"]
+        == "%(asctime)s %(levelname)s %(name)s %(message)s"
+    )
 
 
 def test_build_logging_config_falls_back_to_info_for_blank_level():

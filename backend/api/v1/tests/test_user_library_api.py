@@ -1,7 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
-from django.test.utils import CaptureQueriesContext
 from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -63,8 +63,12 @@ def test_add_favorite_is_idempotent():
     headers = auth_headers(client)
     document = create_document()
 
-    first = client.post("/api/v1/me/favorites/", {"document_id": document.pk}, format="json", **headers)
-    second = client.post("/api/v1/me/favorites/", {"document_id": document.pk}, format="json", **headers)
+    first = client.post(
+        "/api/v1/me/favorites/", {"document_id": document.pk}, format="json", **headers
+    )
+    second = client.post(
+        "/api/v1/me/favorites/", {"document_id": document.pk}, format="json", **headers
+    )
 
     assert first.status_code == 201
     assert second.status_code == 200
@@ -205,7 +209,9 @@ def test_favorite_rejects_private_and_unpublished_documents(access_model, public
     headers = auth_headers(client)
     document = create_document(access_model=access_model, publication_status=publication_status)
 
-    response = client.post("/api/v1/me/favorites/", {"document_id": document.pk}, format="json", **headers)
+    response = client.post(
+        "/api/v1/me/favorites/", {"document_id": document.pk}, format="json", **headers
+    )
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "not_found"
@@ -245,7 +251,9 @@ def test_favorites_list_serializes_multiple_documents_in_constant_query_count():
     user = get_user_model().objects.get(email="reader@example.ga")
     documents = [create_document(slug=f"favorite-doc-{number}") for number in range(2)]
     for number, document in enumerate(documents):
-        author = Author.objects.create(display_name=f"Author {number}", normalized_name=f"author {number}")
+        author = Author.objects.create(
+            display_name=f"Author {number}", normalized_name=f"author {number}"
+        )
         DocumentAuthor.objects.create(document=document, author=author, position=1)
         FavoriteDocument.objects.create(user=user, document=document)
 

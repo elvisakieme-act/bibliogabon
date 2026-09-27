@@ -85,7 +85,9 @@ def test_approving_publication_review_publishes_document_and_records_audit():
     assert decided.decided_at is not None
     assert document.publication_status == Document.PublicationStatus.PUBLISHED
     assert document.published_at is not None
-    assert AuditLog.objects.filter(event_type="publication_review_approved", target_id=str(document.pk)).exists()
+    assert AuditLog.objects.filter(
+        event_type="publication_review_approved", target_id=str(document.pk)
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -129,7 +131,9 @@ def test_rejecting_publication_review_rejects_document_and_records_audit():
     assert decided.status == PublicationReview.Status.REJECTED
     assert document.publication_status == Document.PublicationStatus.REJECTED
     assert document.published_at is None
-    assert AuditLog.objects.filter(event_type="publication_review_rejected", target_id=str(document.pk)).exists()
+    assert AuditLog.objects.filter(
+        event_type="publication_review_rejected", target_id=str(document.pk)
+    ).exists()
 
 
 @pytest.mark.django_db

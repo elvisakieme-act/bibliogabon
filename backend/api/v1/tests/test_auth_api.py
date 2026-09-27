@@ -1,8 +1,8 @@
 import pytest
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from rest_framework.test import APIClient
 from drf_spectacular.generators import SchemaGenerator
+from rest_framework.test import APIClient
 
 
 def bearer(access_token: str) -> dict:

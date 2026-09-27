@@ -76,7 +76,9 @@ class DocumentAsset(models.Model):
         PRIVATE = "private", "Private"
         INTERNAL = "internal", "Internal"
 
-    version = models.ForeignKey(DocumentVersion, on_delete=models.CASCADE, related_name="assets")
+    version = models.ForeignKey(
+        DocumentVersion, on_delete=models.CASCADE, related_name="assets"
+    )
     # Renseigne pour les derives propres a une page (image de page).
     # Les fichiers source valent pour la version entiere et le laissent nul.
     page = models.ForeignKey(
@@ -132,9 +134,18 @@ class DocumentAsset(models.Model):
         ]
         ordering = ["version", "asset_type", "created_at"]
 
+    def __str__(self) -> str:
+        return f"{self.asset_type}: {self.storage_key}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def clean(self):
         if storage_key_is_public_reference(self.storage_key):
-            raise ValidationError("Storage key must be a private object key, not a public reference")
+            raise ValidationError(
+                "Storage key must be a private object key, not a public reference"
+            )
         if self.page_id and self.page.version_id != self.version_id:
             raise ValidationError("Asset page must belong to the same document version")
         source_types = {
@@ -144,13 +155,6 @@ class DocumentAsset(models.Model):
         }
         if self.asset_type in source_types and self.visibility != self.Visibility.PRIVATE:
             raise ValidationError("Source assets must remain private")
-
-    def __str__(self) -> str:
-        return f"{self.asset_type}: {self.storage_key}"
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
 
 
 class ProcessingJob(models.Model):
@@ -198,6 +202,13 @@ class ProcessingJob(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.job_type} for {self.version}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def clean(self):
         if self.source_asset_id and self.source_asset.version_id != self.version_id:
@@ -247,10 +258,3 @@ class ProcessingJob(models.Model):
         self.output_asset_ids = output_asset_ids or []
         self.completed_at = timezone.now()
         self.save(update_fields=["status", "output_asset_ids", "completed_at", "updated_at"])
-
-    def __str__(self) -> str:
-        return f"{self.job_type} for {self.version}"
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)

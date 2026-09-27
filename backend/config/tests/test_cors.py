@@ -1,7 +1,6 @@
 import pytest
 from django.test import override_settings
 
-
 ALLOWED_ORIGIN = "http://127.0.0.1:5173"
 DISALLOWED_ORIGIN = "https://untrusted.example"
 

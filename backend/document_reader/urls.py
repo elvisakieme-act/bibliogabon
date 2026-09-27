@@ -2,7 +2,6 @@ from django.urls import path
 
 from document_reader import views
 
-
 urlpatterns = [
     path(
         "documents/<int:document_id>/sessions/",

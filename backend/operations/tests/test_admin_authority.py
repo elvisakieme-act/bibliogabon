@@ -9,7 +9,6 @@ from billing.models import CommercialOffer, PaymentTransaction, Subscription
 from catalog.models import Document, RightsAgreement
 from operations.models import AuditLog, PublicationReview, SupportTicket
 
-
 CONTENT_MODELS = [Document, RightsAgreement, PublicationReview, SupportTicket]
 PLATFORM_MODELS = [CommercialOffer, Subscription, PaymentTransaction, User, Organization]
 
@@ -22,8 +21,7 @@ def request_for(user):
 
 def make_user(email: str, account_type: str, **extra) -> User:
     return User.objects.create_user(
-        email=email, password="passphrase", account_type=account_type,
-        is_staff=True, **extra
+        email=email, password="passphrase", account_type=account_type, is_staff=True, **extra
     )
 
 
@@ -34,9 +32,7 @@ def content_admin(db) -> User:
 
 @pytest.fixture
 def super_admin(db) -> User:
-    return User.objects.create_superuser(
-        email="root@bibliogabon.ga", password="passphrase"
-    )
+    return User.objects.create_superuser(email="root@bibliogabon.ga", password="passphrase")
 
 
 @pytest.fixture

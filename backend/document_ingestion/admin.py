@@ -47,6 +47,11 @@ class ProcessingJobAdmin(admin.ModelAdmin):
         "created_at",
     ]
     list_filter = ["job_type", "status"]
-    search_fields = ["version__document__title", "idempotency_key", "celery_task_id", "error_code"]
+    search_fields = [
+        "version__document__title",
+        "idempotency_key",
+        "celery_task_id",
+        "error_code",
+    ]
     autocomplete_fields = ["version", "source_asset"]
     readonly_fields = ["created_at", "updated_at", "started_at", "completed_at", "failed_at"]

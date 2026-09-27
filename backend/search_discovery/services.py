@@ -141,9 +141,13 @@ def _score_index(index: DocumentSearchIndex, normalized_query: str) -> tuple[int
         score += 1000
     if _contains(index.author_names, normalized_query):
         score += 100
-    if _contains(index.domain_name, normalized_query) or _contains(index.domain_slug, normalized_query):
+    if _contains(index.domain_name, normalized_query) or _contains(
+        index.domain_slug, normalized_query
+    ):
         score += 50
-    if _contains(index.type_name, normalized_query) or _contains(index.type_slug, normalized_query):
+    if _contains(index.type_name, normalized_query) or _contains(
+        index.type_slug, normalized_query
+    ):
         score += 40
     if _contains(index.abstract, normalized_query):
         score += 20
@@ -231,5 +235,7 @@ def search_documents(
         score, text_match = _score_index(index, normalized_query)
         results.append(_result_payload(index, score=score, text_match=text_match))
 
-    results.sort(key=lambda result: (-result["score"], result["title"].lower(), result["document_id"]))
+    results.sort(
+        key=lambda result: (-result["score"], result["title"].lower(), result["document_id"])
+    )
     return results if result_limit is None else results[:result_limit]

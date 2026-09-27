@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from catalog.models import AcademicDomain, Document, DocumentAuthor, Author, RightsAgreement
+from catalog.models import AcademicDomain, Document
 from document_ingestion import tasks
 from document_ingestion.models import DocumentVersion
 from document_ingestion.pipeline import ingest_document_file
@@ -12,7 +12,6 @@ from document_ingestion.tests.ingestion_helpers import ingest_source_only
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
 from search_discovery.models import DocumentSearchIndex
 from search_discovery.services import search_documents
-
 
 FIXTURE = (
     Path(__file__).resolve().parents[2]

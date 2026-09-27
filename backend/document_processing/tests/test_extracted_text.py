@@ -5,12 +5,14 @@ from django.core.exceptions import ValidationError
 
 from catalog.models import AcademicDomain, Document
 from document_ingestion.models import DocumentVersion, ProcessingJob
-from document_processing.models import DocumentPage, ExtractedText
+from document_processing.models import ExtractedText
 from document_processing.services import attach_extracted_text, create_page_records
 
 
 def create_version(version_label="v1"):
-    domain = AcademicDomain.objects.create(name=f"Lettres {version_label}", slug=f"lettres-{version_label}")
+    domain = AcademicDomain.objects.create(
+        name=f"Lettres {version_label}", slug=f"lettres-{version_label}"
+    )
     document = Document.objects.create(
         title=f"Corpus {version_label}",
         slug=f"corpus-{version_label}",
@@ -50,7 +52,9 @@ def test_attach_extracted_text_updates_existing_page_text():
     page = create_page()
     first = attach_extracted_text(page=page, text="Ancien texte.")
 
-    second = attach_extracted_text(page=page, text="Texte revise.", extraction_method=ExtractedText.ExtractionMethod.MANUAL)
+    second = attach_extracted_text(
+        page=page, text="Texte revise.", extraction_method=ExtractedText.ExtractionMethod.MANUAL
+    )
 
     assert second.pk == first.pk
     assert ExtractedText.objects.count() == 1

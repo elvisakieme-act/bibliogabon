@@ -164,9 +164,17 @@ def _access_block(document, user=None, readable_document_ids: set[int] | None = 
         reason = "free" if not document_requires_entitlement(document) else "active_entitlement"
         return {"can_read": True, "access_model": access_model, "reason": reason}
     if document_requires_entitlement(document) and not getattr(user, "is_authenticated", False):
-        return {"can_read": False, "access_model": access_model, "reason": "authentication_required"}
+        return {
+            "can_read": False,
+            "access_model": access_model,
+            "reason": "authentication_required",
+        }
     if document_requires_entitlement(document):
-        return {"can_read": False, "access_model": access_model, "reason": "entitlement_required"}
+        return {
+            "can_read": False,
+            "access_model": access_model,
+            "reason": "entitlement_required",
+        }
     return {"can_read": False, "access_model": access_model, "reason": "unavailable"}
 
 

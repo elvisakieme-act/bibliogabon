@@ -14,7 +14,13 @@ class DocumentPageAdmin(admin.ModelAdmin):
 
 @admin.register(ExtractedText)
 class ExtractedTextAdmin(admin.ModelAdmin):
-    list_display = ["page", "language_code", "extraction_method", "confidence", "created_by_job"]
+    list_display = [
+        "page",
+        "language_code",
+        "extraction_method",
+        "confidence",
+        "created_by_job",
+    ]
     list_filter = ["language_code", "extraction_method"]
     search_fields = ["page__version__document__title", "text"]
     autocomplete_fields = ["page", "created_by_job"]

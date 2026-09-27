@@ -12,6 +12,8 @@ Backend (run from `backend/`). On this Linux studio Django is already on `PATH`,
 python -m pytest -q                              # full suite (~427 tests, ~3 min)
 python -m pytest api/v1/tests -q                 # one app's tests
 python -m pytest catalog/tests/test_x.py::test_y # single test
+python -m ruff check .                           # lint
+python -m ruff format .                          # format
 python manage.py check
 python manage.py makemigrations --check --dry-run  # CI fails if migrations are uncommitted
 python manage.py migrate
@@ -25,13 +27,16 @@ python -m celery -A config worker -l info            # ingestion worker (needs C
 Frontend (run from `frontend/`):
 
 ```bash
-npm run dev     # vite on 127.0.0.1:5174
+npm run format  # prettier
+npm run dev     # vite, host and port from .env (see .nvmrc for the Node version)
 npm run test    # vitest
 npm run lint    # eslint
 npm run build   # tsc --noEmit + vite build
 ```
 
-CI (`.github/workflows/ci.yml`) runs exactly: backend `check` → `makemigrations --check` → `pytest`; frontend `lint` → `test` → `build`. Run those four backend/three frontend steps before claiming work is done.
+CI (`.github/workflows/ci.yml`) runs: backend `ruff check` → `ruff format --check` → `check` → `makemigrations --check` → `pytest`; frontend `format:check` → `lint` → `test` → `build`. Run all of them before claiming work is done.
+
+Layout belongs to the formatters — `ruff format` and Prettier. `E501` is disabled in `ruff.lint` on purpose: the formatter already keeps code within the width, and what remains are string literals it deliberately does not break. Splitting a message by hand makes it ungreppable for nothing. Node is pinned by `frontend/.nvmrc`, which CI reads too: `node-version: "20"` once resolved to the latest 20.x in CI while a local 20.9 failed on `node:util.styleText`.
 
 Local dev defaults to SQLite (`backend/db.sqlite3`, gitignored); set `DATABASE_URL` for Postgres. Both sides need a `.env` copied from `.env.example`. API docs at `/api/docs/` (Swagger) and `/api/v1/schema/`.
 

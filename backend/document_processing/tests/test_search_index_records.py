@@ -5,7 +5,11 @@ from django.utils import timezone
 from catalog.models import AcademicDomain, Document
 from document_ingestion.models import DocumentVersion
 from document_processing.models import SearchIndexRecord
-from document_processing.services import attach_extracted_text, create_page_records, queue_page_index_record
+from document_processing.services import (
+    attach_extracted_text,
+    create_page_records,
+    queue_page_index_record,
+)
 
 
 def create_page():
@@ -37,7 +41,10 @@ def test_queue_page_index_record_creates_queued_record_with_text_hash():
     assert record.page == page
     assert record.status == SearchIndexRecord.Status.QUEUED
     assert record.language_code == "fr"
-    assert record.content_hash == "209fc5a8ab892d41a6c01f8f50b03d3cc0286c66704ea6a3ad7c1f7eae1941a0"
+    assert (
+        record.content_hash
+        == "209fc5a8ab892d41a6c01f8f50b03d3cc0286c66704ea6a3ad7c1f7eae1941a0"
+    )
     assert record.indexed_at is None
 
 
@@ -84,7 +91,10 @@ def test_queue_page_index_record_refreshes_hash_when_text_changes():
 
     assert refreshed.pk == record.pk
     assert refreshed.status == SearchIndexRecord.Status.QUEUED
-    assert refreshed.content_hash == "6e1a717bf3eaf63bdb9986805bdafaea43ec0b0d79a4ba6f52206f540d8b5728"
+    assert (
+        refreshed.content_hash
+        == "6e1a717bf3eaf63bdb9986805bdafaea43ec0b0d79a4ba6f52206f540d8b5728"
+    )
 
 
 @pytest.mark.django_db

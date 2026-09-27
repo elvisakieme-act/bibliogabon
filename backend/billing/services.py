@@ -5,8 +5,13 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from accounts.models import Entitlement
-from billing.models import CommercialOffer, PaymentTransaction, Subscription
-from billing.models import OrganizationQuota, SponsoredCampaign
+from billing.models import (
+    CommercialOffer,
+    OrganizationQuota,
+    PaymentTransaction,
+    SponsoredCampaign,
+    Subscription,
+)
 
 
 def _pk(value):
@@ -67,7 +72,7 @@ def create_payment_transaction(
                     idempotency_key=idempotency_key
                 )
             except PaymentTransaction.DoesNotExist:
-                raise exc
+                raise exc from None
 
         if _payment_terms(payment) != desired_terms:
             raise ValueError("idempotency_key already used for different payment terms")
@@ -227,7 +232,9 @@ def activate_organization_quota(*, quota: OrganizationQuota, at=None) -> Entitle
         return entitlement
 
 
-def _close_organization_quota(*, quota: OrganizationQuota, status: str, at=None) -> OrganizationQuota:
+def _close_organization_quota(
+    *, quota: OrganizationQuota, status: str, at=None
+) -> OrganizationQuota:
     at = at or timezone.now()
     with transaction.atomic():
         quota = (
@@ -269,7 +276,9 @@ def _campaign_note(campaign: SponsoredCampaign) -> str:
     return f"sponsored_campaign:{campaign.pk}"
 
 
-def enroll_user_in_sponsored_campaign(*, campaign: SponsoredCampaign, user, at=None) -> Entitlement:
+def enroll_user_in_sponsored_campaign(
+    *, campaign: SponsoredCampaign, user, at=None
+) -> Entitlement:
     at = at or timezone.now()
     with transaction.atomic():
         campaign = (
@@ -317,7 +326,9 @@ def enroll_user_in_sponsored_campaign(*, campaign: SponsoredCampaign, user, at=N
         )
 
 
-def _close_sponsored_campaign(*, campaign: SponsoredCampaign, status: str, at=None) -> SponsoredCampaign:
+def _close_sponsored_campaign(
+    *, campaign: SponsoredCampaign, status: str, at=None
+) -> SponsoredCampaign:
     at = at or timezone.now()
     with transaction.atomic():
         campaign = SponsoredCampaign.objects.select_for_update().get(pk=campaign.pk)

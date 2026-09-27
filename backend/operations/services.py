@@ -43,7 +43,9 @@ def record_audit_event(
         )
 
 
-def open_publication_review(*, document, actor=None, reviewer=None, internal_notes="") -> PublicationReview:
+def open_publication_review(
+    *, document, actor=None, reviewer=None, internal_notes=""
+) -> PublicationReview:
     with transaction.atomic():
         document = Document.objects.select_for_update().get(pk=document.pk)
         existing = PublicationReview.objects.filter(
@@ -68,7 +70,9 @@ def open_publication_review(*, document, actor=None, reviewer=None, internal_not
         return review
 
 
-def record_publication_decision(*, review, decision: str, actor=None, reason: str = "", at=None) -> PublicationReview:
+def record_publication_decision(
+    *, review, decision: str, actor=None, reason: str = "", at=None
+) -> PublicationReview:
     at = at or timezone.now()
     if decision not in {
         PublicationReview.Status.APPROVED,
@@ -88,20 +92,37 @@ def record_publication_decision(*, review, decision: str, actor=None, reason: st
         if review.status != PublicationReview.Status.OPEN:
             raise ValueError("publication review is already closed")
         document = Document.objects.select_for_update().get(pk=review.document_id)
-        if decision == PublicationReview.Status.APPROVED and not document_is_publishable(document):
+        if decision == PublicationReview.Status.APPROVED and not document_is_publishable(
+            document
+        ):
             raise ValueError("document is not publishable")
 
         review.status = decision
         review.decided_by = actor
         review.decision_reason = reason
         review.decided_at = at
-        review.save(update_fields=["status", "decided_by", "decision_reason", "decided_at", "updated_at"])
+        review.save(
+            update_fields=[
+                "status",
+                "decided_by",
+                "decision_reason",
+                "decided_at",
+                "updated_at",
+            ]
+        )
 
         if decision == PublicationReview.Status.APPROVED:
             document.publication_status = Document.PublicationStatus.PUBLISHED
             document.published_at = at
             document.withdrawn_at = None
-            document.save(update_fields=["publication_status", "published_at", "withdrawn_at", "updated_at"])
+            document.save(
+                update_fields=[
+                    "publication_status",
+                    "published_at",
+                    "withdrawn_at",
+                    "updated_at",
+                ]
+            )
             event_type = "publication_review_approved"
         elif decision == PublicationReview.Status.REJECTED:
             document.publication_status = Document.PublicationStatus.REJECTED
@@ -115,7 +136,9 @@ def record_publication_decision(*, review, decision: str, actor=None, reason: st
             actor=actor,
             event_type=event_type,
             target=document,
-            summary=_truncate_audit_summary(f"Publication review {decision} for {document.title}"),
+            summary=_truncate_audit_summary(
+                f"Publication review {decision} for {document.title}"
+            ),
             metadata={"review_id": review.pk, "decision_reason": reason},
         )
         return review
@@ -157,14 +180,18 @@ def open_support_ticket(
                 "user_id": user.pk if user else None,
                 "organization_id": organization.pk if organization else None,
                 "document_id": document.pk if document else None,
-                "payment_transaction_id": payment_transaction.pk if payment_transaction else None,
+                "payment_transaction_id": payment_transaction.pk
+                if payment_transaction
+                else None,
                 "entitlement_id": entitlement.pk if entitlement else None,
             },
         )
         return ticket
 
 
-def resolve_support_ticket(*, ticket, actor=None, resolution_summary: str, at=None) -> SupportTicket:
+def resolve_support_ticket(
+    *, ticket, actor=None, resolution_summary: str, at=None
+) -> SupportTicket:
     if not resolution_summary.strip():
         raise ValueError("resolution_summary is required")
     at = at or timezone.now()

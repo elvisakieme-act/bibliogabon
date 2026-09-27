@@ -44,10 +44,16 @@ class RegisterView(APIView):
         summary="Register an individual learner account",
         request=RegisterSerializer,
         responses={
-            201: OpenApiResponse(RegisterResponseSerializer, description="User created with JWT tokens"),
-            400: OpenApiResponse(ErrorResponseSerializer, description="Invalid registration data"),
+            201: OpenApiResponse(
+                RegisterResponseSerializer, description="User created with JWT tokens"
+            ),
+            400: OpenApiResponse(
+                ErrorResponseSerializer, description="Invalid registration data"
+            ),
             409: OpenApiResponse(ErrorResponseSerializer, description="Email already exists"),
-            415: OpenApiResponse(ErrorResponseSerializer, description="Request body must use application/json"),
+            415: OpenApiResponse(
+                ErrorResponseSerializer, description="Request body must use application/json"
+            ),
         },
         examples=[
             OpenApiExample(
@@ -71,7 +77,7 @@ class RegisterView(APIView):
                     "tokens": {"access": "<jwt>", "refresh": "<jwt>"},
                 },
                 response_only=True,
-            )
+            ),
         ],
     )
     def post(self, request):
@@ -206,7 +212,7 @@ class CurrentUserView(APIView):
                 },
                 response_only=True,
                 status_codes=["200"],
-            )
+            ),
         ],
     )
     def patch(self, request):
@@ -245,7 +251,7 @@ class DocumentedTokenObtainPairView(TokenObtainPairView):
                 value={"access": "<jwt>", "refresh": "<jwt>"},
                 response_only=True,
                 status_codes=["200"],
-            )
+            ),
         ],
     )
     def post(self, request, *args, **kwargs):
@@ -274,7 +280,7 @@ class DocumentedTokenRefreshView(TokenRefreshView):
                 value={"access": "<jwt>", "refresh": "<jwt>"},
                 response_only=True,
                 status_codes=["200"],
-            )
+            ),
         ],
     )
     def post(self, request, *args, **kwargs):

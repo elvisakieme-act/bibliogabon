@@ -5,7 +5,11 @@ from django.views.csrf import csrf_failure as default_csrf_failure
 from django.views.decorators.http import require_GET, require_POST
 
 from catalog.models import Document
-from document_reader.exceptions import ReaderAccessDenied, ReaderPageUnavailable, ReaderSessionInactive
+from document_reader.exceptions import (
+    ReaderAccessDenied,
+    ReaderPageUnavailable,
+    ReaderSessionInactive,
+)
 from document_reader.models import ReaderSession
 from document_reader.services import end_reader_session, get_reader_page, start_reader_session
 
@@ -86,7 +90,9 @@ def reader_page(request, session_key, page_number: int) -> JsonResponse:
         return _error("access_denied", 403)
 
     try:
-        return JsonResponse(get_reader_page(session=session, page_number=page_number), status=200)
+        return JsonResponse(
+            get_reader_page(session=session, page_number=page_number), status=200
+        )
     except ReaderSessionInactive:
         return _error("session_inactive", 403)
     except ReaderAccessDenied:
@@ -110,4 +116,6 @@ def end_reader_session_view(request, session_key) -> JsonResponse:
         return _error("access_denied", 403)
 
     session = end_reader_session(session=session)
-    return JsonResponse({"session_key": str(session.session_key), "status": session.status}, status=200)
+    return JsonResponse(
+        {"session_key": str(session.session_key), "status": session.status}, status=200
+    )

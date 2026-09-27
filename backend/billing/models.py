@@ -52,19 +52,19 @@ class CommercialOffer(models.Model):
     class Meta:
         ordering = ["name"]
 
+    def __str__(self) -> str:
+        return self.name
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def clean(self):
         if self.price_xaf < 0:
             raise ValidationError("price_xaf must not be negative")
         if self.duration_days < 1:
             raise ValidationError("duration_days must be positive")
         _validate_scope(self.scope_type, self.scope_id)
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
-
-    def __str__(self) -> str:
-        return self.name
 
 
 class Subscription(models.Model):
@@ -74,7 +74,9 @@ class Subscription(models.Model):
         EXPIRED = "expired", "Expired"
         CANCELLED = "cancelled", "Cancelled"
 
-    offer = models.ForeignKey(CommercialOffer, on_delete=models.PROTECT, related_name="subscriptions")
+    offer = models.ForeignKey(
+        CommercialOffer, on_delete=models.PROTECT, related_name="subscriptions"
+    )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -111,6 +113,14 @@ class Subscription(models.Model):
         ]
         ordering = ["-starts_at", "-created_at"]
 
+    def __str__(self) -> str:
+        target = self.user.email if self.user_id else self.organization.name
+        return f"{target} - {self.offer.name}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def clean(self):
         if self.user_id and self.organization_id:
             raise ValidationError("Subscription cannot target both user and organization")
@@ -118,20 +128,20 @@ class Subscription(models.Model):
             raise ValidationError("Subscription must target a user or organization")
         _validate_date_window(self.starts_at, self.ends_at)
         if self.offer_id:
-            if self.offer.offer_type == CommercialOffer.OfferType.INDIVIDUAL and not self.user_id:
+            if (
+                self.offer.offer_type == CommercialOffer.OfferType.INDIVIDUAL
+                and not self.user_id
+            ):
                 raise ValidationError("Individual offers require a user subscription target")
-            if self.offer.offer_type == CommercialOffer.OfferType.ORGANIZATION and not self.organization_id:
-                raise ValidationError("Organization offers require an organization subscription target")
+            if (
+                self.offer.offer_type == CommercialOffer.OfferType.ORGANIZATION
+                and not self.organization_id
+            ):
+                raise ValidationError(
+                    "Organization offers require an organization subscription target"
+                )
             if self.offer.offer_type == CommercialOffer.OfferType.SPONSORED:
                 raise ValidationError("Sponsored offers cannot be activated as subscriptions")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
-
-    def __str__(self) -> str:
-        target = self.user.email if self.user_id else self.organization.name
-        return f"{target} - {self.offer.name}"
 
 
 class PaymentTransaction(models.Model):
@@ -203,6 +213,13 @@ class PaymentTransaction(models.Model):
         ]
         ordering = ["-created_at"]
 
+    def __str__(self) -> str:
+        return f"{self.provider} {self.amount_xaf} {self.status}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def clean(self):
         if self.user_id and self.organization_id:
             raise ValidationError("Payment cannot target both user and organization")
@@ -212,10 +229,6 @@ class PaymentTransaction(models.Model):
             raise ValidationError("currency must be XAF")
         if not self.idempotency_key:
             raise ValidationError("idempotency_key is required")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
 
     def _reject_terminal_transition(self, target_status: str):
         terminal_statuses = {
@@ -255,7 +268,9 @@ class PaymentTransaction(models.Model):
             if provider_reference:
                 current.provider_reference = provider_reference
             current.pending_at = timezone.now()
-            current.save(update_fields=["status", "provider_reference", "pending_at", "updated_at"])
+            current.save(
+                update_fields=["status", "provider_reference", "pending_at", "updated_at"]
+            )
             return self._sync_transition_fields_from(current)
 
     def mark_succeeded(self, *, provider_reference: str = ""):
@@ -305,9 +320,6 @@ class PaymentTransaction(models.Model):
             )
             return self._sync_transition_fields_from(current)
 
-    def __str__(self) -> str:
-        return f"{self.provider} {self.amount_xaf} {self.status}"
-
 
 class OrganizationQuota(models.Model):
     class Status(models.TextChoices):
@@ -317,8 +329,12 @@ class OrganizationQuota(models.Model):
         EXPIRED = "expired", "Expired"
         CANCELLED = "cancelled", "Cancelled"
 
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="billing_quotas")
-    offer = models.ForeignKey(CommercialOffer, on_delete=models.PROTECT, related_name="organization_quotas")
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="billing_quotas"
+    )
+    offer = models.ForeignKey(
+        CommercialOffer, on_delete=models.PROTECT, related_name="organization_quotas"
+    )
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
     seat_limit = models.PositiveIntegerField()
     starts_at = models.DateTimeField()
@@ -341,19 +357,19 @@ class OrganizationQuota(models.Model):
         ]
         ordering = ["organization__name", "-starts_at"]
 
+    def __str__(self) -> str:
+        return f"{self.organization.name} quota"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def clean(self):
         if self.seat_limit < 1:
             raise ValidationError("seat_limit must be positive")
         _validate_date_window(self.starts_at, self.ends_at)
         if self.offer_id and self.offer.offer_type != CommercialOffer.OfferType.ORGANIZATION:
             raise ValidationError("Organization quotas require an organization offer")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
-
-    def __str__(self) -> str:
-        return f"{self.organization.name} quota"
 
 
 class SponsoredCampaign(models.Model):
@@ -363,7 +379,9 @@ class SponsoredCampaign(models.Model):
         ENDED = "ended", "Ended"
         CANCELLED = "cancelled", "Cancelled"
 
-    sponsor = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="sponsored_campaigns")
+    sponsor = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="sponsored_campaigns"
+    )
     name = models.CharField(max_length=160)
     slug = models.SlugField(unique=True)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
@@ -387,15 +405,15 @@ class SponsoredCampaign(models.Model):
         ]
         ordering = ["name"]
 
-    def clean(self):
-        if self.funded_seat_count < 1:
-            raise ValidationError("funded_seat_count must be positive")
-        _validate_date_window(self.starts_at, self.ends_at)
-        _validate_scope(self.scope_type, self.scope_id)
+    def __str__(self) -> str:
+        return self.name
 
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
 
-    def __str__(self) -> str:
-        return self.name
+    def clean(self):
+        if self.funded_seat_count < 1:
+            raise ValidationError("funded_seat_count must be positive")
+        _validate_date_window(self.starts_at, self.ends_at)
+        _validate_scope(self.scope_type, self.scope_id)

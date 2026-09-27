@@ -1,6 +1,6 @@
 """Ingère un PDF local dans un document existant (pipeline synchrone, dev).
 
-    python manage.py ingest_file <document_id> /chemin/vers/fichier.pdf
+python manage.py ingest_file <document_id> /chemin/vers/fichier.pdf
 """
 
 from __future__ import annotations
@@ -16,7 +16,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("document_id", type=int, help="Identifiant du document cible.")
         parser.add_argument("pdf_path", type=str, help="Chemin du fichier PDF à ingérer.")
-        parser.add_argument("--version-label", default="v1", help="Libellé de version (défaut : v1).")
+        parser.add_argument(
+            "--version-label", default="v1", help="Libellé de version (défaut : v1)."
+        )
         parser.add_argument(
             "--sync",
             action="store_true",

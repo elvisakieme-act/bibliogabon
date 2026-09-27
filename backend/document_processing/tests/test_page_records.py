@@ -60,14 +60,18 @@ def test_create_page_records_rejects_changed_page_count_retry():
     with pytest.raises(ValueError):
         create_page_records(version=version, page_count=3)
 
-    assert list(DocumentPage.objects.filter(version=version).values_list("page_number", flat=True)) == [1, 2]
+    assert list(
+        DocumentPage.objects.filter(version=version).values_list("page_number", flat=True)
+    ) == [1, 2]
 
 
 @pytest.mark.parametrize("page_count", [0, -1])
 @pytest.mark.django_db
 def test_create_page_records_rejects_non_positive_page_count(page_count):
     with pytest.raises(ValueError):
-        create_page_records(version=create_version(version_label=f"v{abs(page_count)}"), page_count=page_count)
+        create_page_records(
+            version=create_version(version_label=f"v{abs(page_count)}"), page_count=page_count
+        )
 
 
 @pytest.mark.django_db
@@ -82,7 +86,9 @@ def test_document_page_is_unique_per_version_and_page_number():
 @pytest.mark.django_db
 def test_document_page_save_rejects_processing_job_from_other_version():
     version = create_version()
-    other_version = DocumentVersion.objects.create(document=version.document, version_label="v2")
+    other_version = DocumentVersion.objects.create(
+        document=version.document, version_label="v2"
+    )
     other_job = ProcessingJob.objects.create(
         version=other_version,
         job_type=ProcessingJob.JobType.GENERATE_DERIVATIVES,

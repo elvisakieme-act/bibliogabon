@@ -1,10 +1,10 @@
+import pytest
 from django.contrib import admin
 from django.contrib.auth.models import Permission
 from django.test import RequestFactory
-import pytest
 
-from operations.admin import AuditLogAdmin, PublicationReviewAdmin, SupportTicketAdmin
 from catalog.models import Document
+from operations.admin import AuditLogAdmin, PublicationReviewAdmin, SupportTicketAdmin
 from operations.models import AuditLog, PublicationReview, SupportTicket
 from operations.services import open_publication_review, open_support_ticket
 from operations.tests.factories import create_publishable_document, create_user
@@ -203,7 +203,9 @@ def test_publication_review_admin_reports_error_and_rolls_back_batch(monkeypatch
     request = RequestFactory().post("/admin/operations/publicationreview/")
     request.user = actor
     errors = []
-    monkeypatch.setattr(model_admin, "message_user", lambda request, message, **kwargs: errors.append(message))
+    monkeypatch.setattr(
+        model_admin, "message_user", lambda request, message, **kwargs: errors.append(message)
+    )
 
     model_admin.approve_reviews(request, queryset)
 
@@ -235,7 +237,9 @@ def test_support_ticket_admin_reports_error_and_rolls_back_batch(monkeypatch):
     request = RequestFactory().post("/admin/operations/supportticket/")
     request.user = actor
     errors = []
-    monkeypatch.setattr(model_admin, "message_user", lambda request, message, **kwargs: errors.append(message))
+    monkeypatch.setattr(
+        model_admin, "message_user", lambda request, message, **kwargs: errors.append(message)
+    )
 
     model_admin.resolve_tickets(request, queryset)
 

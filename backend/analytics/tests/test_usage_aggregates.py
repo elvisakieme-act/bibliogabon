@@ -44,7 +44,9 @@ def test_daily_usage_aggregate_rebuild_updates_existing_row():
     create_reader_activity(user=user, document=document, started_at=at, page_views=1)
 
     first = build_daily_usage_aggregate(at.date())[0]
-    create_reader_activity(user=user, document=document, started_at=at + timezone.timedelta(hours=1), page_views=2)
+    create_reader_activity(
+        user=user, document=document, started_at=at + timezone.timedelta(hours=1), page_views=2
+    )
     second = build_daily_usage_aggregate(at.date())[0]
 
     assert first.pk == second.pk

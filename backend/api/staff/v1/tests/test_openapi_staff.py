@@ -12,7 +12,8 @@ def schema(db):
     api = APIClient()
     api.force_authenticate(
         User.objects.create_user(
-            email="mod-schema@bibliogabon.ga", password="p",
+            email="mod-schema@bibliogabon.ga",
+            password="p",
             account_type=User.AccountType.CONTENT_ADMIN,
         )
     )
@@ -45,9 +46,7 @@ def test_every_operation_declares_its_responses(schema):
 
 
 def test_every_operation_has_a_stable_identifier(schema):
-    identifiers = [
-        operation["operationId"] for _, _, operation in operations(schema)
-    ]
+    identifiers = [operation["operationId"] for _, _, operation in operations(schema)]
     assert all(identifier.startswith("staff_v1_") for identifier in identifiers), identifiers
     assert len(identifiers) == len(set(identifiers)), "identifiants dupliqués"
 
@@ -62,9 +61,7 @@ def test_path_parameters_are_declared(schema):
             for parameter in operation.get("parameters", [])
             if parameter.get("in") == "path"
         }
-        expected = {
-            fragment.split("}")[0] for fragment in path.split("{")[1:]
-        }
+        expected = {fragment.split("}")[0] for fragment in path.split("{")[1:]}
         if not expected <= declared:
             undeclared.append(f"{method.upper()} {path}: {expected - declared}")
     assert undeclared == [], undeclared

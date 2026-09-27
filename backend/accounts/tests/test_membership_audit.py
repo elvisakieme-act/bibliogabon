@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-from django.utils import timezone
 
 from accounts.models import Entitlement, Organization, OrganizationMembership, User
 from accounts.services import (
@@ -21,7 +20,8 @@ def organization(db) -> Organization:
 @pytest.fixture
 def actor(db) -> User:
     return User.objects.create_user(
-        email="admin@uob.ga", password="p",
+        email="admin@uob.ga",
+        password="p",
         account_type=User.AccountType.ORGANIZATION_ADMIN,
     )
 
@@ -29,7 +29,8 @@ def actor(db) -> User:
 @pytest.fixture
 def member(db) -> User:
     return User.objects.create_user(
-        email="etudiant@example.ga", password="p",
+        email="etudiant@example.ga",
+        password="p",
         account_type=User.AccountType.INDIVIDUAL,
     )
 
@@ -40,9 +41,7 @@ def last_event() -> AuditLog:
 
 @pytest.mark.django_db
 def test_adding_a_member_records_an_audit_event(organization, actor, member):
-    membership = add_organization_member(
-        organization=organization, user=member, actor=actor
-    )
+    membership = add_organization_member(organization=organization, user=member, actor=actor)
 
     assert membership.status == OrganizationMembership.Status.ACTIVE
     event = last_event()

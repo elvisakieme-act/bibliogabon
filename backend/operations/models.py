@@ -48,6 +48,15 @@ class AuditLog(models.Model):
         ]
         ordering = ["-created_at"]
 
+    def __str__(self) -> str:
+        return f"{self.event_type}: {self.summary}"
+
+    def save(self, *args, **kwargs):
+        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+            raise ValueError("Audit logs are immutable")
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def clean(self):
         if not self.event_type.strip():
             raise ValidationError("event_type is required")
@@ -56,17 +65,8 @@ class AuditLog(models.Model):
         if not isinstance(self.metadata, dict):
             raise ValidationError("metadata must be a JSON object")
 
-    def save(self, *args, **kwargs):
-        if self.pk and type(self).objects.filter(pk=self.pk).exists():
-            raise ValueError("Audit logs are immutable")
-        self.full_clean()
-        return super().save(*args, **kwargs)
-
     def delete(self, *args, **kwargs):
         raise ValueError("Audit logs are immutable")
-
-    def __str__(self) -> str:
-        return f"{self.event_type}: {self.summary}"
 
 
 class PublicationReview(models.Model):
@@ -76,7 +76,9 @@ class PublicationReview(models.Model):
         REJECTED = "rejected", "Rejected"
         CANCELLED = "cancelled", "Cancelled"
 
-    document = models.ForeignKey("catalog.Document", on_delete=models.PROTECT, related_name="publication_reviews")
+    document = models.ForeignKey(
+        "catalog.Document", on_delete=models.PROTECT, related_name="publication_reviews"
+    )
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN)
     opened_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -114,6 +116,13 @@ class PublicationReview(models.Model):
         ]
         ordering = ["-opened_at", "-created_at"]
 
+    def __str__(self) -> str:
+        return f"{self.document}: {self.status}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def clean(self):
         if self.status == self.Status.OPEN and self.decided_at is not None:
             raise ValidationError("open reviews cannot have decided_at")
@@ -122,13 +131,6 @@ class PublicationReview(models.Model):
                 raise ValidationError("closed reviews require decided_at")
         if self.status == self.Status.REJECTED and not self.decision_reason.strip():
             raise ValidationError("rejected reviews require decision_reason")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
-
-    def __str__(self) -> str:
-        return f"{self.document}: {self.status}"
 
 
 class SupportTicket(models.Model):
@@ -147,7 +149,9 @@ class SupportTicket(models.Model):
 
     title = models.CharField(max_length=180)
     description = models.TextField()
-    priority = models.CharField(max_length=16, choices=Priority.choices, default=Priority.NORMAL)
+    priority = models.CharField(
+        max_length=16, choices=Priority.choices, default=Priority.NORMAL
+    )
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -214,6 +218,13 @@ class SupportTicket(models.Model):
         ]
         ordering = ["-opened_at", "-created_at"]
 
+    def __str__(self) -> str:
+        return f"{self.title} ({self.status})"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def clean(self):
         if not self.title.strip():
             raise ValidationError("title is required")
@@ -224,10 +235,3 @@ class SupportTicket(models.Model):
                 raise ValidationError("closed tickets require resolved_at")
         if self.status == self.Status.RESOLVED and not self.resolution_summary.strip():
             raise ValidationError("resolved tickets require resolution_summary")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
-
-    def __str__(self) -> str:
-        return f"{self.title} ({self.status})"

@@ -9,8 +9,8 @@ from api.v1.errors import error_response
 from api.v1.pagination import StandardResultsSetPagination
 from api.v1.serializers import (
     AuthorMetadataPageSerializer,
-    DocumentMetadataSerializer,
     DocumentMetadataPageSerializer,
+    DocumentMetadataSerializer,
     DocumentTypePageSerializer,
     DomainPageSerializer,
     ErrorResponseSerializer,
@@ -25,7 +25,9 @@ from search_discovery.services import search_documents
 
 def _published_documents():
     return (
-        Document.objects.select_related("academic_domain", "owner_organization", "document_type")
+        Document.objects.select_related(
+            "academic_domain", "owner_organization", "document_type"
+        )
         .prefetch_related(*document_metadata_prefetches())
         .filter(publication_status=Document.PublicationStatus.PUBLISHED)
         .exclude(access_model=Document.AccessModel.PRIVATE)
@@ -200,7 +202,9 @@ class DocumentTypeListView(APIView):
         ],
     )
     def get(self, request):
-        types = DocumentType.objects.filter(is_active=True).order_by("display_order", "name", "id")
+        types = DocumentType.objects.filter(is_active=True).order_by(
+            "display_order", "name", "id"
+        )
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(types, request, view=self)
         return paginator.get_paginated_response(
@@ -256,7 +260,14 @@ class AuthorListView(APIView):
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(authors, request, view=self)
         return paginator.get_paginated_response(
-            [{"id": author.pk, "display_name": author.display_name, "author_type": author.author_type} for author in page]
+            [
+                {
+                    "id": author.pk,
+                    "display_name": author.display_name,
+                    "author_type": author.author_type,
+                }
+                for author in page
+            ]
         )
 
 
@@ -267,7 +278,12 @@ class SearchView(APIView):
         description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
         parameters=[
             OpenApiParameter("q", OpenApiTypes.STR, OpenApiParameter.QUERY),
-            OpenApiParameter("type", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Slug du type de document (cours, these, examen…)."),
+            OpenApiParameter(
+                "type",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="Slug du type de document (cours, these, examen…).",
+            ),
             OpenApiParameter("domain", OpenApiTypes.STR, OpenApiParameter.QUERY),
             OpenApiParameter("language", OpenApiTypes.STR, OpenApiParameter.QUERY),
             OpenApiParameter("access", OpenApiTypes.STR, OpenApiParameter.QUERY),
@@ -293,7 +309,9 @@ class SearchView(APIView):
             year = request.query_params.get("year")
             publication_year = int(year) if year else None
         except ValueError:
-            return error_response("invalid_year", "year must be an integer.", status.HTTP_400_BAD_REQUEST)
+            return error_response(
+                "invalid_year", "year must be an integer.", status.HTTP_400_BAD_REQUEST
+            )
         results = search_documents(
             query=request.query_params.get("q", ""),
             type_slug=request.query_params.get("type", ""),

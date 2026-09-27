@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from catalog.models import Document, DocumentAuthor, RightsAgreement
 
-
 # Codes stables : ils voyagent jusqu'à l'API et jusqu'à l'écran de dépôt,
 # qui doit dire à un déposant ce qu'il lui reste à fournir.
 MISSING_TITLE = "title"
@@ -62,10 +61,7 @@ def _missing_rights_declaration(document: Document, agreement: RightsAgreement) 
         # Autoriser une diffusion libre puis vendre le document par
         # abonnement est précisément la faute que cette règle empêche.
         missing.append(RIGHTS_ACCESS_MODEL_MISMATCH)
-    if (
-        document.category == Document.Category.STUDENT_WORK
-        and not agreement.consent_reference
-    ):
+    if document.category == Document.Category.STUDENT_WORK and not agreement.consent_reference:
         # « Les travaux d'étudiants exigent un consentement explicite. »
         missing.append(MISSING_STUDENT_CONSENT)
     return missing

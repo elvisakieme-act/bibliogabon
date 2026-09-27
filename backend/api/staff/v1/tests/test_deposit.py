@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 from pathlib import Path
 
 import pytest
@@ -13,8 +12,13 @@ from api.staff.v1 import deposit as deposit_module
 from catalog.models import AcademicDomain, Author, Document, DocumentAuthor, DocumentType
 from document_ingestion.models import DocumentAsset
 
-
-FIXTURE = Path(__file__).resolve().parents[4] / "document_ingestion" / "tests" / "fixtures" / "sample-3-pages.pdf"
+FIXTURE = (
+    Path(__file__).resolve().parents[4]
+    / "document_ingestion"
+    / "tests"
+    / "fixtures"
+    / "sample-3-pages.pdf"
+)
 SOURCE = "api-staff-v1:document-source"
 
 
@@ -41,8 +45,10 @@ def document(db, teacher, storage):
     domain = AcademicDomain.objects.create(name="Reseaux", slug="reseaux")
     doc_type = DocumentType.objects.create(name="Cours", slug="cours")
     document = Document.objects.create(
-        title="Comprendre la 4G", slug="comprendre-4g",
-        academic_domain=domain, document_type=doc_type,
+        title="Comprendre la 4G",
+        slug="comprendre-4g",
+        academic_domain=domain,
+        document_type=doc_type,
         category=Document.Category.VOLUNTARY_TEACHER_DEPOSIT,
         access_model=Document.AccessModel.FREE,
     )
@@ -134,7 +140,9 @@ def test_a_second_upload_conflicts_and_replace_succeeds(api, teacher, document, 
     api.post(reverse(SOURCE, args=[document.pk]), {"file": pdf_upload()}, format="multipart")
 
     conflict = api.post(
-        reverse(SOURCE, args=[document.pk]), {"file": pdf_upload("autre.pdf")}, format="multipart"
+        reverse(SOURCE, args=[document.pk]),
+        {"file": pdf_upload("autre.pdf")},
+        format="multipart",
     )
     assert conflict.status_code == 409
     assert conflict.json()["error"]["code"] == "version_already_ingested"
@@ -213,9 +221,7 @@ def test_a_teacher_cannot_replace_the_source_of_a_published_document(
     assert response.json()["error"]["code"] == "document_locked"
 
 
-def test_a_moderator_may_replace_the_source_of_a_published_document(
-    api, document, storage
-):
+def test_a_moderator_may_replace_the_source_of_a_published_document(api, document, storage):
     document.publication_status = Document.PublicationStatus.PUBLISHED
     document.save(update_fields=["publication_status"])
     api.force_authenticate(make_user("mod@bibliogabon.ga", User.AccountType.CONTENT_ADMIN))
@@ -313,7 +319,9 @@ def test_a_failed_job_surfaces_its_reason(api, teacher, document, storage):
         job_type=ProcessingJob.JobType.INGEST_SOURCE,
         idempotency_key="ingest:test:failed",
     )
-    job.mark_failed(error_code="ingest_failed", message="Stream has ended unexpectedly", retry_count=3)
+    job.mark_failed(
+        error_code="ingest_failed", message="Stream has ended unexpectedly", retry_count=3
+    )
     api.force_authenticate(teacher)
 
     body = api.get(reverse(INGESTION, args=[document.pk])).json()

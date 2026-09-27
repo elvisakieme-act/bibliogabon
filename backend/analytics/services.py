@@ -60,23 +60,31 @@ def build_daily_usage_aggregate(day) -> list[DailyUsageAggregate]:
     counters = defaultdict(lambda: {"reader_session_count": 0, "page_view_count": 0})
 
     try:
-        sessions = ReaderSession.objects.filter(started_at__gte=start, started_at__lt=end).select_related(
+        sessions = ReaderSession.objects.filter(
+            started_at__gte=start, started_at__lt=end
+        ).select_related(
             "user",
             "document",
             "document__academic_domain",
         )
         for session in sessions:
-            key = _dimension_for_activity(user=session.user, document=session.document, at=session.started_at)
+            key = _dimension_for_activity(
+                user=session.user, document=session.document, at=session.started_at
+            )
             if key is not None:
                 counters[key]["reader_session_count"] += 1
 
-        page_logs = PageAccessLog.objects.filter(accessed_at__gte=start, accessed_at__lt=end).select_related(
+        page_logs = PageAccessLog.objects.filter(
+            accessed_at__gte=start, accessed_at__lt=end
+        ).select_related(
             "user",
             "document",
             "document__academic_domain",
         )
         for log in page_logs:
-            key = _dimension_for_activity(user=log.user, document=log.document, at=log.accessed_at)
+            key = _dimension_for_activity(
+                user=log.user, document=log.document, at=log.accessed_at
+            )
             if key is not None:
                 counters[key]["page_view_count"] += 1
 
@@ -100,7 +108,12 @@ def build_daily_usage_aggregate(day) -> list[DailyUsageAggregate]:
                 if existing_key not in current_keys:
                     existing.delete()
 
-            for (organization_id, document_id, domain_id, access_model), values in counters.items():
+            for (
+                organization_id,
+                document_id,
+                domain_id,
+                access_model,
+            ), values in counters.items():
                 aggregate, _ = DailyUsageAggregate.objects.update_or_create(
                     date=day,
                     organization_id=organization_id,
@@ -129,7 +142,9 @@ def build_daily_usage_aggregate(day) -> list[DailyUsageAggregate]:
 
 def _period_bounds(period_start, period_end):
     start = timezone.make_aware(datetime.combine(period_start, time.min))
-    end = timezone.make_aware(datetime.combine(period_end + timezone.timedelta(days=1), time.min))
+    end = timezone.make_aware(
+        datetime.combine(period_end + timezone.timedelta(days=1), time.min)
+    )
     return start, end
 
 
@@ -182,7 +197,13 @@ def _usage_by_domain(aggregates):
 def _usage_by_document(aggregates):
     rows = (
         aggregates.filter(document_id__isnull=False)
-        .values("document_id", "document__title", "document__slug", "academic_domain__name", "access_model")
+        .values(
+            "document_id",
+            "document__title",
+            "document__slug",
+            "academic_domain__name",
+            "access_model",
+        )
         .annotate(
             reader_session_count=Sum("reader_session_count"),
             page_view_count=Sum("page_view_count"),
@@ -229,7 +250,9 @@ def _usage_by_access_model(aggregates):
 def _build_institution_metrics(organization, period_start, period_end):
     start, end = _period_bounds(period_start, period_end)
     overlapping = Q(starts_at__lt=end) & (Q(ends_at__isnull=True) | Q(ends_at__gt=start))
-    active_at_period_end = Q(starts_at__lt=end) & (Q(ends_at__isnull=True) | Q(ends_at__gte=end))
+    active_at_period_end = Q(starts_at__lt=end) & (
+        Q(ends_at__isnull=True) | Q(ends_at__gte=end)
+    )
     usage_aggregates = DailyUsageAggregate.objects.filter(
         organization=organization,
         date__gte=period_start,
@@ -307,8 +330,12 @@ def _build_institution_metrics(organization, period_start, period_end):
             },
         },
         "support": {
-            "opened_count": support_tickets.filter(opened_at__gte=start, opened_at__lt=end).count(),
-            "resolved_count": support_tickets.filter(resolved_at__gte=start, resolved_at__lt=end).count(),
+            "opened_count": support_tickets.filter(
+                opened_at__gte=start, opened_at__lt=end
+            ).count(),
+            "resolved_count": support_tickets.filter(
+                resolved_at__gte=start, resolved_at__lt=end
+            ).count(),
         },
         "usage": {
             "reader_session_count": usage_totals["reader_session_count"] or 0,

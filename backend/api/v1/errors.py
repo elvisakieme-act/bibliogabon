@@ -28,7 +28,7 @@ def _field_errors(data) -> dict:
         return {}
     if "detail" in data:
         return {}
-    return {key: value for key, value in data.items()}
+    return dict(data)
 
 
 def _message(data) -> str:

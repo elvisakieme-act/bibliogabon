@@ -29,7 +29,6 @@ from document_reader.services import (
     remove_favorite,
 )
 
-
 _DOCUMENT_EXAMPLE = {
     "id": 1,
     "slug": "droit-public",
@@ -139,7 +138,7 @@ class FavoriteListCreateView(APIView):
                 },
                 response_only=True,
                 status_codes=["201"],
-            )
+            ),
         ],
     )
     def post(self, request):
@@ -165,7 +164,11 @@ class FavoriteListCreateView(APIView):
 class FavoriteDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(tags=["Personal Library"], summary="Remove a document from the current user's favorites", responses={204: None, 401: ErrorResponseSerializer})
+    @extend_schema(
+        tags=["Personal Library"],
+        summary="Remove a document from the current user's favorites",
+        responses={204: None, 401: ErrorResponseSerializer},
+    )
     def delete(self, request, document_id: int):
         try:
             document = Document.objects.get(pk=document_id)
@@ -262,7 +265,7 @@ class ReadingProgressUpdateView(APIView):
                 },
                 response_only=True,
                 status_codes=["200"],
-            )
+            ),
         ],
     )
     def patch(self, request, document_id: int):
@@ -290,7 +293,11 @@ class ReadingProgressUpdateView(APIView):
             message = f"{str(exc).rstrip('.')}."
             return error_response("invalid_page_number", message, status.HTTP_400_BAD_REQUEST)
         except ReaderAccessDenied:
-            return error_response("entitlement_required", "An active read entitlement is required.", status.HTTP_403_FORBIDDEN)
+            return error_response(
+                "entitlement_required",
+                "An active read entitlement is required.",
+                status.HTTP_403_FORBIDDEN,
+            )
         return Response(
             {
                 "document": serialize_document_metadata(progress.document, user=request.user),

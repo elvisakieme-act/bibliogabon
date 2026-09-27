@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth.models import AnonymousUser
-from django.utils import timezone
 
 from accounts.models import Organization, OrganizationMembership, User
 from accounts.permissions import (
@@ -19,7 +18,6 @@ from accounts.permissions import (
 )
 from catalog.models import AcademicDomain, Author, Document, DocumentAuthor
 
-
 # --- Les sept acteurs du document produit -----------------------------------
 
 
@@ -32,7 +30,8 @@ def make_user(email: str, account_type: str, **extra) -> User:
 @pytest.fixture
 def organization(db) -> Organization:
     return Organization.objects.create(
-        name="Universite Omar Bongo", slug="uob",
+        name="Universite Omar Bongo",
+        slug="uob",
         organization_type=Organization.OrganizationType.UNIVERSITY,
     )
 
@@ -40,7 +39,8 @@ def organization(db) -> Organization:
 @pytest.fixture
 def sponsor(db) -> Organization:
     return Organization.objects.create(
-        name="Fondation Lumiere", slug="fondation-lumiere",
+        name="Fondation Lumiere",
+        slug="fondation-lumiere",
         organization_type=Organization.OrganizationType.SPONSOR,
     )
 
@@ -143,7 +143,9 @@ def test_only_the_organization_admin_manages_its_members(actors, organization):
         assert can_manage_organization_members(actors[name], organization) is expected, name
 
 
-def test_a_sponsor_partner_administers_its_own_sponsor_organization(actors, sponsor, organization):
+def test_a_sponsor_partner_administers_its_own_sponsor_organization(
+    actors, sponsor, organization
+):
     """Sponsor Partner n'est pas un type de compte : c'est un admin
     d'organisation dont l'organisation est de type sponsor."""
     partner = actors["sponsor_partner"]
@@ -153,7 +155,9 @@ def test_a_sponsor_partner_administers_its_own_sponsor_organization(actors, spon
     assert administers_organization(partner, organization) is False
 
 
-def test_administered_organization_ids_lists_only_administered_ones(actors, organization, sponsor):
+def test_administered_organization_ids_lists_only_administered_ones(
+    actors, organization, sponsor
+):
     assert administered_organization_ids(actors["institution_admin"]) == [organization.pk]
     assert administered_organization_ids(actors["sponsor_partner"]) == [sponsor.pk]
     assert administered_organization_ids(actors["student"]) == []
@@ -177,8 +181,11 @@ def test_a_plain_member_does_not_administer_its_organization(db, organization):
 def make_document(*, category, owner=None, slug="document") -> Document:
     domain, _ = AcademicDomain.objects.get_or_create(name="Droit", slug="droit")
     document = Document.objects.create(
-        title="Document", slug=slug, academic_domain=domain,
-        category=category, access_model=Document.AccessModel.FREE,
+        title="Document",
+        slug=slug,
+        academic_domain=domain,
+        category=category,
+        access_model=Document.AccessModel.FREE,
     )
     if owner is not None:
         author = Author.objects.create(
@@ -193,7 +200,9 @@ def make_document(*, category, owner=None, slug="document") -> Document:
 def test_a_teacher_may_withdraw_their_own_voluntary_deposit(actors):
     teacher = actors["teacher"]
     document = make_document(
-        category=Document.Category.VOLUNTARY_TEACHER_DEPOSIT, owner=teacher, slug="depot-volontaire"
+        category=Document.Category.VOLUNTARY_TEACHER_DEPOSIT,
+        owner=teacher,
+        slug="depot-volontaire",
     )
 
     assert can_withdraw_document(teacher, document) is True
@@ -203,7 +212,9 @@ def test_a_teacher_may_not_withdraw_an_institutional_fund_document(actors):
     """« Les fonds institutionnels suivent les regles du contrat. »"""
     teacher = actors["teacher"]
     document = make_document(
-        category=Document.Category.INSTITUTIONAL_FUND, owner=teacher, slug="fonds-institutionnel"
+        category=Document.Category.INSTITUTIONAL_FUND,
+        owner=teacher,
+        slug="fonds-institutionnel",
     )
 
     assert can_withdraw_document(teacher, document) is False

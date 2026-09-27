@@ -66,41 +66,93 @@ TYPES = [
 ORGANIZATIONS = [
     # (nom, slug, type, exige_verification)
     ("Université Omar Bongo", "uob", Organization.OrganizationType.UNIVERSITY, True),
-    ("Université des Sciences et Techniques de Masuku", "ustm", Organization.OrganizationType.UNIVERSITY, True),
-    ("Fondation pour l'Éducation Numérique", "fondation-edunum", Organization.OrganizationType.SPONSOR, False),
+    (
+        "Université des Sciences et Techniques de Masuku",
+        "ustm",
+        Organization.OrganizationType.UNIVERSITY,
+        True,
+    ),
+    (
+        "Fondation pour l'Éducation Numérique",
+        "fondation-edunum",
+        Organization.OrganizationType.SPONSOR,
+        False,
+    ),
 ]
 
 # (titre, slug, type, domaine, catégorie, modèle d'accès, année, [emails auteurs], nb pages, [mots-clés])
 DOCUMENTS = [
     (
-        "Introduction au droit public gabonais", "intro-droit-public-gabonais",
-        "cours", "droit", Document.Category.OPEN_RESOURCE, Document.AccessModel.FREE, 2024,
-        ["elvis.oyono@bibliogabon.ga"], 4, ["constitution", "administration", "état"],
+        "Introduction au droit public gabonais",
+        "intro-droit-public-gabonais",
+        "cours",
+        "droit",
+        Document.Category.OPEN_RESOURCE,
+        Document.AccessModel.FREE,
+        2024,
+        ["elvis.oyono@bibliogabon.ga"],
+        4,
+        ["constitution", "administration", "état"],
     ),
     (
-        "Cardiologie : notions fondamentales", "cardiologie-notions-fondamentales",
-        "cours", "medecine", Document.Category.VOLUNTARY_TEACHER_DEPOSIT, Document.AccessModel.SUBSCRIPTION, 2023,
-        ["aline.nze@bibliogabon.ga"], 3, ["cœur", "circulation", "diagnostic"],
+        "Cardiologie : notions fondamentales",
+        "cardiologie-notions-fondamentales",
+        "cours",
+        "medecine",
+        Document.Category.VOLUNTARY_TEACHER_DEPOSIT,
+        Document.AccessModel.SUBSCRIPTION,
+        2023,
+        ["aline.nze@bibliogabon.ga"],
+        3,
+        ["cœur", "circulation", "diagnostic"],
     ),
     (
-        "Algorithmes et structures de données", "algorithmes-structures-donnees",
-        "cours", "informatique", Document.Category.OPEN_RESOURCE, Document.AccessModel.FREE, 2025,
-        ["levis.andongui@bibliogabon.ga", "ulrich.essone@bibliogabon.ga"], 5, ["tri", "graphe", "complexité"],
+        "Algorithmes et structures de données",
+        "algorithmes-structures-donnees",
+        "cours",
+        "informatique",
+        Document.Category.OPEN_RESOURCE,
+        Document.AccessModel.FREE,
+        2025,
+        ["levis.andongui@bibliogabon.ga", "ulrich.essone@bibliogabon.ga"],
+        5,
+        ["tri", "graphe", "complexité"],
     ),
     (
-        "Mémoire : microfinance et inclusion au Gabon", "memoire-microfinance-inclusion-gabon",
-        "memoire", "sciences-economiques", Document.Category.STUDENT_WORK, Document.AccessModel.INSTITUTION_ONLY, 2024,
-        ["mpiga.jess@bibliogabon.ga"], 4, ["microfinance", "inclusion", "épargne"],
+        "Mémoire : microfinance et inclusion au Gabon",
+        "memoire-microfinance-inclusion-gabon",
+        "memoire",
+        "sciences-economiques",
+        Document.Category.STUDENT_WORK,
+        Document.AccessModel.INSTITUTION_ONLY,
+        2024,
+        ["mpiga.jess@bibliogabon.ga"],
+        4,
+        ["microfinance", "inclusion", "épargne"],
     ),
     (
-        "Examen de droit constitutionnel — session 2024", "examen-droit-constitutionnel-2024",
-        "examen", "droit", Document.Category.INSTITUTIONAL_FUND, Document.AccessModel.INSTITUTION_ONLY, 2024,
-        ["brice.ondo@bibliogabon.ga"], 2, ["séparation des pouvoirs", "souveraineté"],
+        "Examen de droit constitutionnel — session 2024",
+        "examen-droit-constitutionnel-2024",
+        "examen",
+        "droit",
+        Document.Category.INSTITUTIONAL_FUND,
+        Document.AccessModel.INSTITUTION_ONLY,
+        2024,
+        ["brice.ondo@bibliogabon.ga"],
+        2,
+        ["séparation des pouvoirs", "souveraineté"],
     ),
     (
-        "Thèse : littérature gabonaise contemporaine", "these-litterature-gabonaise-contemporaine",
-        "these", "lettres-sciences-humaines", Document.Category.VOLUNTARY_TEACHER_DEPOSIT, Document.AccessModel.SUBSCRIPTION, 2022,
-        ["elvis.oyono@bibliogabon.ga"], 4, ["roman", "oralité", "identité"],
+        "Thèse : littérature gabonaise contemporaine",
+        "these-litterature-gabonaise-contemporaine",
+        "these",
+        "lettres-sciences-humaines",
+        Document.Category.VOLUNTARY_TEACHER_DEPOSIT,
+        Document.AccessModel.SUBSCRIPTION,
+        2022,
+        ["elvis.oyono@bibliogabon.ga"],
+        4,
+        ["roman", "oralité", "identité"],
     ),
 ]
 
@@ -124,9 +176,18 @@ class Command(BaseCommand):
         teachers: dict[str, User] = {}
         for email, name in TEACHERS:
             teachers[email] = self._get_user(email, name, User.AccountType.TEACHER_AUTHOR)
-        learners = [self._get_user(email, name, User.AccountType.INDIVIDUAL) for email, name in LEARNERS]
-        org_admin = self._get_user(ORG_ADMIN[0], ORG_ADMIN[1], User.AccountType.ORGANIZATION_ADMIN)
-        staff = self._get_user("demo.staff@bibliogabon.ga", "Démo Staff", User.AccountType.PLATFORM_STAFF, is_staff=True)
+        learners = [
+            self._get_user(email, name, User.AccountType.INDIVIDUAL) for email, name in LEARNERS
+        ]
+        org_admin = self._get_user(
+            ORG_ADMIN[0], ORG_ADMIN[1], User.AccountType.ORGANIZATION_ADMIN
+        )
+        staff = self._get_user(
+            "demo.staff@bibliogabon.ga",
+            "Démo Staff",
+            User.AccountType.PLATFORM_STAFF,
+            is_staff=True,
+        )
         # Moderateur de contenu : la tranche depot a besoin d'un relecteur
         # dont le perimetre s'arrete au contenu, sans la facturation.
         self._get_user(
@@ -152,7 +213,8 @@ class Command(BaseCommand):
         uob = orgs["uob"]
         # Un membre vérifié, un membre non vérifié (pour démontrer la barrière), un admin d'organisation.
         OrganizationMembership.objects.get_or_create(
-            organization=uob, user=learners[0],
+            organization=uob,
+            user=learners[0],
             defaults={
                 "role": OrganizationMembership.Role.MEMBER,
                 "status": OrganizationMembership.Status.ACTIVE,
@@ -164,7 +226,8 @@ class Command(BaseCommand):
             },
         )
         OrganizationMembership.objects.get_or_create(
-            organization=uob, user=learners[1],
+            organization=uob,
+            user=learners[1],
             defaults={
                 "role": OrganizationMembership.Role.MEMBER,
                 "status": OrganizationMembership.Status.ACTIVE,
@@ -172,7 +235,8 @@ class Command(BaseCommand):
             },
         )
         OrganizationMembership.objects.get_or_create(
-            organization=uob, user=org_admin,
+            organization=uob,
+            user=org_admin,
             defaults={
                 "role": OrganizationMembership.Role.ADMIN,
                 "status": OrganizationMembership.Status.ACTIVE,
@@ -193,7 +257,13 @@ class Command(BaseCommand):
         for name, slug, icon, color, order in TYPES:
             types[slug], _ = DocumentType.objects.get_or_create(
                 slug=slug,
-                defaults={"name": name, "icon": icon, "color": color, "display_order": order, "is_active": True},
+                defaults={
+                    "name": name,
+                    "icon": icon,
+                    "color": color,
+                    "display_order": order,
+                    "is_active": True,
+                },
             )
 
         # --- Auteurs (rattachés aux comptes enseignants) ---
@@ -211,8 +281,18 @@ class Command(BaseCommand):
 
         # --- Documents ---
         documents: dict[str, Document] = {}
-        for (title, slug, type_slug, domain_slug, category, access_model, year,
-             author_emails, npages, keywords) in DOCUMENTS:
+        for (
+            title,
+            slug,
+            type_slug,
+            domain_slug,
+            category,
+            access_model,
+            year,
+            author_emails,
+            _npages,
+            _keywords,
+        ) in DOCUMENTS:
             document, created = Document.objects.get_or_create(
                 slug=slug,
                 defaults={
@@ -232,7 +312,8 @@ class Command(BaseCommand):
 
             for position, email in enumerate(author_emails, start=1):
                 DocumentAuthor.objects.get_or_create(
-                    document=document, author=authors[email],
+                    document=document,
+                    author=authors[email],
                     defaults={"role": DocumentAuthor.Role.AUTHOR, "position": position},
                 )
 
@@ -268,7 +349,11 @@ class Command(BaseCommand):
             },
         )
         for position, slug in enumerate(
-            ["intro-droit-public-gabonais", "algorithmes-structures-donnees", "examen-droit-constitutionnel-2024"],
+            [
+                "intro-droit-public-gabonais",
+                "algorithmes-structures-donnees",
+                "examen-droit-constitutionnel-2024",
+            ],
             start=1,
         ):
             CollectionItem.objects.get_or_create(
@@ -305,29 +390,34 @@ class Command(BaseCommand):
             defaults={"starts_at": now, "note": "Quota UOB de démonstration."},
         )
 
-        self.stdout.write(self.style.SUCCESS(
-            "Seed terminé : "
-            f"{User.objects.count()} utilisateurs, "
-            f"{Organization.objects.count()} organisations, "
-            f"{DocumentType.objects.count()} types, "
-            f"{AcademicDomain.objects.count()} domaines, "
-            f"{Document.objects.count()} documents, "
-            f"{Collection.objects.count()} collection(s)."
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                "Seed terminé : "
+                f"{User.objects.count()} utilisateurs, "
+                f"{Organization.objects.count()} organisations, "
+                f"{DocumentType.objects.count()} types, "
+                f"{AcademicDomain.objects.count()} domaines, "
+                f"{Document.objects.count()} documents, "
+                f"{Collection.objects.count()} collection(s)."
+            )
+        )
         self.stdout.write("Comptes de démo (mot de passe : demo1234) :")
-        self.stdout.write("  - Enseignants : levis.andongui@bibliogabon.ga, mpiga.jess@bibliogabon.ga, elvis.oyono@bibliogabon.ga, ulrich.essone@bibliogabon.ga …")
-        self.stdout.write("  - Apprenants  : sarah.moussavou@example.ga (UOB vérifié + accès global), yannick.boulingui@example.ga (UOB non vérifié)")
-        self.stdout.write("  - Back-office : demo.staff@bibliogabon.ga (super admin), demo.moderation@bibliogabon.ga (modération contenu, sans facturation)")
+        self.stdout.write(
+            "  - Enseignants : levis.andongui@bibliogabon.ga, mpiga.jess@bibliogabon.ga, elvis.oyono@bibliogabon.ga, ulrich.essone@bibliogabon.ga …"
+        )
+        self.stdout.write(
+            "  - Apprenants  : sarah.moussavou@example.ga (UOB vérifié + accès global), yannick.boulingui@example.ga (UOB non vérifié)"
+        )
+        self.stdout.write(
+            "  - Back-office : demo.staff@bibliogabon.ga (super admin), demo.moderation@bibliogabon.ga (modération contenu, sans facturation)"
+        )
         self.stdout.write("")
         self.stdout.write(
-            "Les documents n'ont encore aucune page : le catalogue est peuplé, "
-            "pas le contenu."
+            "Les documents n'ont encore aucune page : le catalogue est peuplé, pas le contenu."
         )
         first = Document.objects.order_by("id").first()
         example_id = first.pk if first else 1
-        self.stdout.write(
-            "Pour ingérer un vrai PDF et le rendre lisible et cherchable :"
-        )
+        self.stdout.write("Pour ingérer un vrai PDF et le rendre lisible et cherchable :")
         self.stdout.write(
             f"  python manage.py ingest_file {example_id} /chemin/vers/fichier.pdf"
         )
@@ -337,10 +427,16 @@ class Command(BaseCommand):
 
     # ------------------------------------------------------------------ helpers
 
-    def _get_user(self, email: str, display_name: str, account_type: str, is_staff: bool = False) -> User:
+    def _get_user(
+        self, email: str, display_name: str, account_type: str, is_staff: bool = False
+    ) -> User:
         user, created = User.objects.get_or_create(
             email=email,
-            defaults={"display_name": display_name, "account_type": account_type, "is_staff": is_staff},
+            defaults={
+                "display_name": display_name,
+                "account_type": account_type,
+                "is_staff": is_staff,
+            },
         )
         if created:
             user.set_password(PASSWORD)

@@ -6,7 +6,12 @@ from rest_framework.test import APIClient
 
 from accounts.models import User
 from catalog.models import (
-    AcademicDomain, Author, Document, DocumentAuthor, DocumentType, RightsAgreement,
+    AcademicDomain,
+    Author,
+    Document,
+    DocumentAuthor,
+    DocumentType,
+    RightsAgreement,
 )
 from operations.models import AuditLog
 
@@ -70,7 +75,9 @@ def test_a_teacher_creates_a_draft_and_is_its_author(api, teacher, reference):
     assert response.status_code == 201, response.json()
     body = response.json()
     assert body["publication_status"] == Document.PublicationStatus.DRAFT
-    assert [a["display_name"] for a in body["authors"]] == [teacher.display_name or teacher.email]
+    assert [a["display_name"] for a in body["authors"]] == [
+        teacher.display_name or teacher.email
+    ]
     document = Document.objects.get(slug="intro-droit-public")
     assert document.document_authors.filter(author__linked_user=teacher).exists()
 
@@ -110,10 +117,13 @@ def test_a_student_cannot_create(api, reference):
 
 def make_document(reference, *, slug, status, author=None):
     document = Document.objects.create(
-        title=slug, slug=slug,
-        academic_domain=reference["domain"], document_type=reference["type"],
+        title=slug,
+        slug=slug,
+        academic_domain=reference["domain"],
+        document_type=reference["type"],
         category=Document.Category.OPEN_RESOURCE,
-        access_model=Document.AccessModel.FREE, publication_status=status,
+        access_model=Document.AccessModel.FREE,
+        publication_status=status,
     )
     if author is not None:
         entry = Author.objects.create(
@@ -150,7 +160,9 @@ def test_filters_narrow_the_list(api, moderator, reference):
 
 
 def test_a_teacher_only_lists_their_own(api, teacher, reference):
-    make_document(reference, slug="a-moi", status=Document.PublicationStatus.DRAFT, author=teacher)
+    make_document(
+        reference, slug="a-moi", status=Document.PublicationStatus.DRAFT, author=teacher
+    )
     make_document(reference, slug="dautrui", status=Document.PublicationStatus.DRAFT)
     api.force_authenticate(teacher)
 
@@ -172,10 +184,14 @@ def test_a_teacher_gets_404_on_a_document_they_did_not_author(api, teacher, refe
 
 
 def test_a_teacher_patches_their_own_document(api, teacher, reference):
-    mine = make_document(reference, slug="a-moi", status=Document.PublicationStatus.DRAFT, author=teacher)
+    mine = make_document(
+        reference, slug="a-moi", status=Document.PublicationStatus.DRAFT, author=teacher
+    )
     api.force_authenticate(teacher)
 
-    response = api.patch(reverse(DETAIL, args=[mine.pk]), {"abstract": "Corrigé."}, format="json")
+    response = api.patch(
+        reverse(DETAIL, args=[mine.pk]), {"abstract": "Corrigé."}, format="json"
+    )
 
     assert response.status_code == 200
     mine.refresh_from_db()
@@ -197,9 +213,12 @@ def test_a_moderator_can_patch_any_document(api, moderator, reference):
     other = make_document(reference, slug="dautrui", status=Document.PublicationStatus.DRAFT)
     api.force_authenticate(moderator)
 
-    assert api.patch(
-        reverse(DETAIL, args=[other.pk]), {"abstract": "Revu."}, format="json"
-    ).status_code == 200
+    assert (
+        api.patch(
+            reverse(DETAIL, args=[other.pk]), {"abstract": "Revu."}, format="json"
+        ).status_code
+        == 200
+    )
 
 
 def test_the_publication_status_cannot_be_changed_by_patch(api, moderator, reference):
@@ -223,7 +242,8 @@ def test_the_publication_status_cannot_be_changed_by_patch(api, moderator, refer
 
 def complete(document, author_user):
     entry = Author.objects.create(
-        display_name=author_user.email, normalized_name=author_user.email,
+        display_name=author_user.email,
+        normalized_name=author_user.email,
         linked_user=author_user,
     )
     DocumentAuthor.objects.create(
@@ -273,7 +293,9 @@ def test_submitting_twice_is_idempotent(api, teacher, reference):
 
 
 def test_submitting_without_author_or_rights_names_what_is_missing(api, teacher, reference):
-    document = make_document(reference, slug="incomplet", status=Document.PublicationStatus.DRAFT)
+    document = make_document(
+        reference, slug="incomplet", status=Document.PublicationStatus.DRAFT
+    )
     entry = Author.objects.create(
         display_name=teacher.email, normalized_name=teacher.email, linked_user=teacher
     )

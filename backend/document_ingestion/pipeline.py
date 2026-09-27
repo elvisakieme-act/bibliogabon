@@ -51,9 +51,7 @@ def _extract_pdf_page_texts(source) -> list[str]:
     try:
         from pypdf import PdfReader
     except ImportError as exc:  # pragma: no cover - dépend de l'environnement
-        raise RuntimeError(
-            "pypdf n'est pas installé. Lance : pip install pypdf"
-        ) from exc
+        raise RuntimeError("pypdf n'est pas installé. Lance : pip install pypdf") from exc
 
     reader = PdfReader(source)
     return [(page.extract_text() or "").strip() for page in reader.pages]
@@ -67,7 +65,9 @@ def process_ingest_job(job: ProcessingJob) -> DocumentVersion:
     version = job.version
     source_asset = job.source_asset
     if source_asset is None:
-        job.mark_failed(error_code="no_source_asset", message="Le job n'a pas de fichier source.")
+        job.mark_failed(
+            error_code="no_source_asset", message="Le job n'a pas de fichier source."
+        )
         raise ValueError("Le job d'ingestion n'a pas de fichier source associé.")
 
     job.mark_started()
@@ -81,8 +81,13 @@ def process_ingest_job(job: ProcessingJob) -> DocumentVersion:
         language_code = version.document.language_code or "fr"
 
         with transaction.atomic():
-            pages = create_page_records(version=version, page_count=page_count, created_by_job=job)
-            for page, raw_text in zip(pages, page_texts):
+            pages = create_page_records(
+                version=version, page_count=page_count, created_by_job=job
+            )
+            # strict=True : une divergence entre le nombre de pages creees
+            # et le nombre de textes extraits laisserait sinon des pages
+            # sans texte, sans la moindre erreur.
+            for page, raw_text in zip(pages, page_texts, strict=True):
                 text = raw_text or EMPTY_PAGE_PLACEHOLDER.format(n=page.page_number)
                 attach_extracted_text(
                     page=page,

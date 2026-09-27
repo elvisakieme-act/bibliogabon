@@ -108,7 +108,9 @@ CORS_ALLOWED_ORIGINS = env_list(
     default="http://127.0.0.1:5173,http://localhost:5173",
 )
 SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", default=DJANGO_ENV == "production")
-SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", default=DJANGO_ENV == "production")
+SESSION_COOKIE_SECURE = env_bool(
+    "DJANGO_SESSION_COOKIE_SECURE", default=DJANGO_ENV == "production"
+)
 CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", default=DJANGO_ENV == "production")
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
@@ -163,18 +165,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGGING = build_logging_config(os.getenv("DJANGO_LOG_LEVEL", "INFO"))
 
 REST_FRAMEWORK = {
-    "DEFAULT_RENDERER_CLASSES": (
-        "rest_framework.renderers.JSONRenderer",
-    ),
-    "DEFAULT_PARSER_CLASSES": (
-        "rest_framework.parsers.JSONParser",
-    ),
+    "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
+    "DEFAULT_PARSER_CLASSES": ("rest_framework.parsers.JSONParser",),
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.AllowAny",
-    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
     "DEFAULT_PAGINATION_CLASS": "api.v1.pagination.StandardResultsSetPagination",
     "PAGE_SIZE": 20,
     "EXCEPTION_HANDLER": "api.v1.errors.api_exception_handler",

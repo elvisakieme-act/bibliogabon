@@ -24,7 +24,8 @@ def make_org(slug: str, *, requires_verification: bool = False) -> Organization:
 
 def make_admin(email: str, *organizations, **membership) -> User:
     user = User.objects.create_user(
-        email=email, password="passphrase",
+        email=email,
+        password="passphrase",
         account_type=User.AccountType.ORGANIZATION_ADMIN,
     )
     for organization in organizations:
@@ -67,9 +68,7 @@ def test_an_admin_of_two_organizations_is_accepted_on_both():
 @pytest.mark.django_db
 def test_a_suspended_membership_removes_administrative_authority():
     uob = make_org("uob")
-    admin = make_admin(
-        "suspendu@uob.ga", uob, status=OrganizationMembership.Status.SUSPENDED
-    )
+    admin = make_admin("suspendu@uob.ga", uob, status=OrganizationMembership.Status.SUSPENDED)
 
     assert administers_organization(admin, uob) is False
     assert administered_organization_ids(admin) == []
@@ -78,9 +77,7 @@ def test_a_suspended_membership_removes_administrative_authority():
 @pytest.mark.django_db
 def test_an_ended_membership_removes_administrative_authority():
     uob = make_org("uob")
-    admin = make_admin(
-        "parti@uob.ga", uob, ends_at=timezone.now() - timezone.timedelta(days=1)
-    )
+    admin = make_admin("parti@uob.ga", uob, ends_at=timezone.now() - timezone.timedelta(days=1))
 
     assert administers_organization(admin, uob) is False
 
@@ -114,9 +111,7 @@ def test_losing_administrative_authority_leaves_the_account_usable_as_a_reader()
     """Perdre l'autorité n'est pas perdre le compte : le document produit
     exige que le retrait d'une organisation ne supprime pas l'utilisateur."""
     uob = make_org("uob")
-    admin = make_admin(
-        "ancien@uob.ga", uob, status=OrganizationMembership.Status.SUSPENDED
-    )
+    admin = make_admin("ancien@uob.ga", uob, status=OrganizationMembership.Status.SUSPENDED)
     Entitlement.objects.create(
         user=admin,
         source=Entitlement.Source.ADMIN_GRANT,

@@ -41,9 +41,17 @@ class StaffDocumentWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = [
-            "title", "slug", "abstract", "language_code", "publication_year",
-            "academic_domain", "document_type", "owner_organization",
-            "category", "access_model", "confidentiality_notes",
+            "title",
+            "slug",
+            "abstract",
+            "language_code",
+            "publication_year",
+            "academic_domain",
+            "document_type",
+            "owner_organization",
+            "category",
+            "access_model",
+            "confidentiality_notes",
         ]
         # `publication_status` est délibérément absent : l'état n'avance que
         # par les transitions dédiées, qui sont auditées. L'exposer ici

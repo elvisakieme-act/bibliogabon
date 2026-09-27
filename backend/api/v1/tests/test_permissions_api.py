@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from django.urls import path
 from rest_framework.response import Response
-from rest_framework.test import APIClient, URLPatternsTestCase
+from rest_framework.test import APIClient
 from rest_framework.views import APIView
 
 from accounts.models import Organization, OrganizationMembership, User
@@ -27,9 +27,7 @@ class OrganizationProbeView(APIView):
     permission_classes = [AdministersOrganization]
 
     def get(self, request, organization_id: int):
-        self.check_object_permissions(
-            request, Organization.objects.get(pk=organization_id)
-        )
+        self.check_object_permissions(request, Organization.objects.get(pk=organization_id))
         return Response({"ok": True})
 
 

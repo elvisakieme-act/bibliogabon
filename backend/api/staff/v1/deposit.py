@@ -31,7 +31,6 @@ from document_ingestion.models import DocumentVersion, ProcessingJob
 from document_ingestion.pipeline import ingest_document_file
 from operations.services import record_audit_event
 
-
 # États dans lesquels un déposant peut encore remplacer sa source. Au-delà,
 # le contenu diffusé a été validé : la correction repasse par un modérateur.
 DEPOSITOR_EDITABLE_STATES = frozenset(
@@ -61,7 +60,12 @@ class DocumentSourceView(StaffAPIView):
                 description="Replace the content of an already ingested version.",
             )
         ],
-        request={"multipart/form-data": {"type": "object", "properties": {"file": {"type": "string", "format": "binary"}}}},
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {"file": {"type": "string", "format": "binary"}},
+            }
+        },
     )
     def post(self, request, document_id: int):
         if not roles.can_submit_document(request.user):
@@ -87,7 +91,9 @@ class DocumentSourceView(StaffAPIView):
         upload = request.FILES.get("file")
         if upload is None:
             return error_response(
-                "invalid_request", "Aucun fichier reçu.", 400,
+                "invalid_request",
+                "Aucun fichier reçu.",
+                400,
                 {"file": ["Ce champ est obligatoire."]},
             )
 

@@ -4,7 +4,6 @@ import os
 
 from django.core.exceptions import ImproperlyConfigured
 
-
 VALID_DJANGO_ENVS = {"development", "test", "production"}
 TRUTHY_VALUES = {"1", "true", "yes", "on"}
 FALSY_VALUES = {"0", "false", "no", "off"}
@@ -78,9 +77,13 @@ def validate_production_settings(
     if secret_key.strip() in DEVELOPMENT_SECRET_KEYS:
         raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set to a production value")
     if not allowed_hosts or "*" in allowed_hosts:
-        raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS must contain explicit production hosts")
+        raise ImproperlyConfigured(
+            "DJANGO_ALLOWED_HOSTS must contain explicit production hosts"
+        )
     if all(host in LOCAL_ALLOWED_HOSTS for host in allowed_hosts):
-        raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS must include a non-local production host")
+        raise ImproperlyConfigured(
+            "DJANGO_ALLOWED_HOSTS must include a non-local production host"
+        )
     if not csrf_trusted_origins:
         raise ImproperlyConfigured("DJANGO_CSRF_TRUSTED_ORIGINS is required in production")
     if any(not origin.startswith("https://") for origin in csrf_trusted_origins):

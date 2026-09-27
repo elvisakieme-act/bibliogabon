@@ -4,7 +4,11 @@ from django.utils import timezone
 
 from operations.models import AuditLog, SupportTicket
 from operations.services import open_support_ticket, resolve_support_ticket
-from operations.tests.factories import create_entitlement, create_payment_transaction, create_user
+from operations.tests.factories import (
+    create_entitlement,
+    create_payment_transaction,
+    create_user,
+)
 
 
 @pytest.mark.django_db
@@ -84,7 +88,9 @@ def test_resolve_support_ticket_closes_ticket_and_records_audit_event():
     assert resolved.status == SupportTicket.Status.RESOLVED
     assert resolved.resolution_summary == "Reader session was reset"
     assert resolved.resolved_at is not None
-    assert AuditLog.objects.filter(event_type="support_ticket_resolved", target_id=str(ticket.pk)).exists()
+    assert AuditLog.objects.filter(
+        event_type="support_ticket_resolved", target_id=str(ticket.pk)
+    ).exists()
 
 
 @pytest.mark.django_db

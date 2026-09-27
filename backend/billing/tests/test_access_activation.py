@@ -24,7 +24,9 @@ def create_organization(slug="access-org"):
     return Organization.objects.create(name=f"Organisation {slug}", slug=slug)
 
 
-def create_offer(slug="access-offer", offer_type=CommercialOffer.OfferType.INDIVIDUAL, is_active=True):
+def create_offer(
+    slug="access-offer", offer_type=CommercialOffer.OfferType.INDIVIDUAL, is_active=True
+):
     return CommercialOffer.objects.create(
         name=f"Access offer {slug}",
         slug=slug,
@@ -147,7 +149,9 @@ def test_activate_organization_subscription_creates_organization_entitlement():
     organization = create_organization(slug="subscriber-org")
     user = create_user(email="member@example.ga")
     OrganizationMembership.objects.create(organization=organization, user=user)
-    offer = create_offer(slug="org-subscription", offer_type=CommercialOffer.OfferType.ORGANIZATION)
+    offer = create_offer(
+        slug="org-subscription", offer_type=CommercialOffer.OfferType.ORGANIZATION
+    )
     starts_at, ends_at = subscription_window()
     subscription = Subscription.objects.create(
         offer=offer,
@@ -254,7 +258,9 @@ def test_suspend_organization_quota_revokes_existing_organization_entitlement():
     organization = create_organization(slug="suspended-quota")
     user = create_user(email="suspended-member@example.ga")
     OrganizationMembership.objects.create(organization=organization, user=user)
-    offer = create_offer(slug="suspended-quota-offer", offer_type=CommercialOffer.OfferType.ORGANIZATION)
+    offer = create_offer(
+        slug="suspended-quota-offer", offer_type=CommercialOffer.OfferType.ORGANIZATION
+    )
     starts_at, ends_at = subscription_window()
     quota = OrganizationQuota.objects.create(
         organization=organization,
@@ -278,7 +284,9 @@ def test_suspend_organization_quota_does_not_revoke_another_matching_quota_entit
     organization = create_organization(slug="parallel-quotas")
     user = create_user(email="parallel-quota-member@example.ga")
     OrganizationMembership.objects.create(organization=organization, user=user)
-    offer = create_offer(slug="parallel-quota-offer", offer_type=CommercialOffer.OfferType.ORGANIZATION)
+    offer = create_offer(
+        slug="parallel-quota-offer", offer_type=CommercialOffer.OfferType.ORGANIZATION
+    )
     starts_at, ends_at = subscription_window()
     first_quota = OrganizationQuota.objects.create(
         organization=organization,
@@ -320,7 +328,9 @@ def test_suspend_organization_quota_does_not_revoke_another_matching_quota_entit
 @pytest.mark.django_db
 def test_activate_organization_quota_rejects_closed_or_suspended_quota(status):
     organization = create_organization(slug=f"closed-quota-{status}")
-    offer = create_offer(slug=f"closed-quota-offer-{status}", offer_type=CommercialOffer.OfferType.ORGANIZATION)
+    offer = create_offer(
+        slug=f"closed-quota-offer-{status}", offer_type=CommercialOffer.OfferType.ORGANIZATION
+    )
     starts_at, ends_at = subscription_window()
     quota = OrganizationQuota.objects.create(
         organization=organization,
@@ -337,7 +347,9 @@ def test_activate_organization_quota_rejects_closed_or_suspended_quota(status):
     assert Entitlement.objects.count() == 0
 
 
-def create_campaign(slug="sponsored-access", status=SponsoredCampaign.Status.ACTIVE, funded_seat_count=2):
+def create_campaign(
+    slug="sponsored-access", status=SponsoredCampaign.Status.ACTIVE, funded_seat_count=2
+):
     sponsor = create_organization(slug=f"sponsor-{slug}")
     starts_at = timezone.now() - timezone.timedelta(minutes=5)
     return SponsoredCampaign.objects.create(

@@ -121,7 +121,12 @@ def test_search_documents_api_applies_filters_and_limit(client):
     )
     rebuild_document_search_index(matching)
     rebuild_document_search_index(
-        create_document(slug="api-filter-other", title="Autre archive", domain_slug="droit", domain_name="Droit")
+        create_document(
+            slug="api-filter-other",
+            title="Autre archive",
+            domain_slug="droit",
+            domain_name="Droit",
+        )
     )
 
     response = client.get(

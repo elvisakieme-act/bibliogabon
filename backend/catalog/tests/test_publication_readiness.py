@@ -1,7 +1,14 @@
 import pytest
 from django.utils import timezone
 
-from catalog.models import AcademicDomain, Author, Document, DocumentAuthor, DocumentType, RightsAgreement
+from catalog.models import (
+    AcademicDomain,
+    Author,
+    Document,
+    DocumentAuthor,
+    DocumentType,
+    RightsAgreement,
+)
 from catalog.services import document_is_publishable
 
 

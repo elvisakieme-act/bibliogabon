@@ -6,10 +6,14 @@ from rest_framework.test import APIClient
 
 from accounts.models import User
 from catalog.models import (
-    AcademicDomain, Author, Document, DocumentAuthor, DocumentType, RightsAgreement,
+    AcademicDomain,
+    Author,
+    Document,
+    DocumentAuthor,
+    DocumentType,
+    RightsAgreement,
 )
 from operations.models import AuditLog
-
 
 AUTHORS = "api-staff-v1:document-authors"
 AUTHOR_DETAIL = "api-staff-v1:document-author-detail"
@@ -38,7 +42,10 @@ def document(db, teacher):
     domain = AcademicDomain.objects.create(name="Droit", slug="droit")
     doc_type = DocumentType.objects.create(name="Cours", slug="cours")
     document = Document.objects.create(
-        title="Un cours", slug="un-cours", academic_domain=domain, document_type=doc_type,
+        title="Un cours",
+        slug="un-cours",
+        academic_domain=domain,
+        document_type=doc_type,
         category=Document.Category.VOLUNTARY_TEACHER_DEPOSIT,
         access_model=Document.AccessModel.FREE,
     )

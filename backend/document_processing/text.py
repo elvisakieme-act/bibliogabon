@@ -14,7 +14,6 @@ from __future__ import annotations
 import re
 import unicodedata
 
-
 # Substitutions constatées sur des PDF réels : les extracteurs émettent ces
 # codes de contrôle à la place des guillemets français.
 CONTROL_SUBSTITUTIONS = {
@@ -42,8 +41,7 @@ def normalize_extracted_text(text: str) -> str:
     text = "".join(
         character
         for character in text
-        if character in _LAYOUT_WHITESPACE
-        or unicodedata.category(character) != "Cc"
+        if character in _LAYOUT_WHITESPACE or unicodedata.category(character) != "Cc"
     )
 
     text = _HORIZONTAL_RUN.sub(" ", text)

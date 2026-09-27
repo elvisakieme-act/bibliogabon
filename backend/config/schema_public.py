@@ -7,7 +7,6 @@ ferait entrer les chemins staff, qui existent justement pour les montrer.
 
 from django.urls import include, path
 
-
 urlpatterns = [
     path("api/v1/", include("api.v1.urls")),
 ]

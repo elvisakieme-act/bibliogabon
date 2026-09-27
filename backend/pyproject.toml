@@ -40,6 +40,7 @@ include = [
 
 [project.optional-dependencies]
 dev = [
+  "ruff>=0.14,<1.0",
   "pytest>=8.3,<9.0",
   "pytest-django>=4.9,<5.0",
   "moto[s3]>=5.0,<6.0",
@@ -61,4 +62,31 @@ testpaths = [
   "billing/tests",
   "operations/tests",
   "analytics/tests",
+]
+
+[tool.ruff]
+# Aligne sur la largeur choisie cote frontend, pour une seule regle de
+# lisibilite dans tout le depot.
+line-length = 96
+target-version = "py312"
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle
+  "F",    # pyflakes : imports et variables inutilisees, noms inconnus
+  "I",    # ordre des imports
+  "UP",   # tournures obsoletes pour la version de Python ciblee
+  "B",    # bugbear : pieges reels, pas du style
+  "DJ",   # regles specifiques a Django
+  "C4",   # comprehensions
+]
+
+ignore = [
+  # La mise en page appartient au formateur (`ruff format`), qui garantit
+  # deja que le code tient dans la largeur. Ne restent sous E501 que des
+  # chaines litterales — messages, descriptions OpenAPI — que le formateur
+  # ne coupe pas a dessein. Les decouper a la main rend un message
+  # introuvable au grep sans rien gagner en lisibilite.
+  "E501",
 ]

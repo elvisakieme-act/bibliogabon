@@ -139,13 +139,17 @@ def test_search_documents_filters_by_domain_language_access_and_publication_year
     )
     rebuild_document_search_index(matching)
     rebuild_document_search_index(
-        create_document(slug="other-domain", title="Autre domaine", domain_slug="droit", domain_name="Droit")
+        create_document(
+            slug="other-domain", title="Autre domaine", domain_slug="droit", domain_name="Droit"
+        )
     )
     rebuild_document_search_index(
         create_document(slug="other-language", title="Autre langue", language_code="en")
     )
     rebuild_document_search_index(
-        create_document(slug="other-access", title="Autre acces", access_model=Document.AccessModel.FREE)
+        create_document(
+            slug="other-access", title="Autre acces", access_model=Document.AccessModel.FREE
+        )
     )
     rebuild_document_search_index(
         create_document(slug="other-year", title="Autre annee", publication_year=2025)
@@ -185,10 +189,14 @@ def test_search_documents_returns_live_access_model_when_index_access_is_stale()
     ],
 )
 @pytest.mark.django_db
-def test_search_documents_excludes_stale_indexes_for_now_hidden_documents(publication_status, access_model):
+def test_search_documents_excludes_stale_indexes_for_now_hidden_documents(
+    publication_status, access_model
+):
     from search_discovery.services import search_documents
 
-    document = create_document(slug=f"stale-hidden-{publication_status}-{access_model}", title="Notice cachee")
+    document = create_document(
+        slug=f"stale-hidden-{publication_status}-{access_model}", title="Notice cachee"
+    )
     rebuild_document_search_index(document)
     document.publication_status = publication_status
     document.access_model = access_model

@@ -13,7 +13,11 @@ from api.v1.serializers import (
     ReaderSessionSerializer,
 )
 from catalog.models import Document
-from document_reader.exceptions import ReaderAccessDenied, ReaderPageUnavailable, ReaderSessionInactive
+from document_reader.exceptions import (
+    ReaderAccessDenied,
+    ReaderPageUnavailable,
+    ReaderSessionInactive,
+)
 from document_reader.models import ReaderSession
 from document_reader.services import (
     document_requires_entitlement,
@@ -64,7 +68,7 @@ class ReaderSessionCreateView(APIView):
                 },
                 response_only=True,
                 status_codes=["201"],
-            )
+            ),
         ],
     )
     def post(self, request):
@@ -156,15 +160,30 @@ class ReaderPageView(APIView):
                 session_key=session_key
             )
         except ReaderSession.DoesNotExist:
-            return error_response("not_found", "Reader session not found.", status.HTTP_404_NOT_FOUND)
+            return error_response(
+                "not_found", "Reader session not found.", status.HTTP_404_NOT_FOUND
+            )
         if session.user_id and session.user_id != getattr(request.user, "pk", None):
-            return error_response("access_denied", "This session belongs to another user.", status.HTTP_403_FORBIDDEN)
+            return error_response(
+                "access_denied",
+                "This session belongs to another user.",
+                status.HTTP_403_FORBIDDEN,
+            )
         try:
-            return Response(get_reader_page(session=session, page_number=page_number), status=status.HTTP_200_OK)
+            return Response(
+                get_reader_page(session=session, page_number=page_number),
+                status=status.HTTP_200_OK,
+            )
         except ReaderSessionInactive:
-            return error_response("session_inactive", "Reader session is inactive.", status.HTTP_403_FORBIDDEN)
+            return error_response(
+                "session_inactive", "Reader session is inactive.", status.HTTP_403_FORBIDDEN
+            )
         except ReaderAccessDenied:
-            return error_response("entitlement_required", "An active read entitlement is required.", status.HTTP_403_FORBIDDEN)
+            return error_response(
+                "entitlement_required",
+                "An active read entitlement is required.",
+                status.HTTP_403_FORBIDDEN,
+            )
         except ReaderPageUnavailable:
             return error_response("not_found", "Page not found.", status.HTTP_404_NOT_FOUND)
 
@@ -186,6 +205,10 @@ class ReaderSessionDeleteView(APIView):
         except ReaderSession.DoesNotExist:
             return Response(status=status.HTTP_204_NO_CONTENT)
         if session.user_id and session.user_id != getattr(request.user, "pk", None):
-            return error_response("access_denied", "This session belongs to another user.", status.HTTP_403_FORBIDDEN)
+            return error_response(
+                "access_denied",
+                "This session belongs to another user.",
+                status.HTTP_403_FORBIDDEN,
+            )
         end_reader_session(session=session)
         return Response(status=status.HTTP_204_NO_CONTENT)

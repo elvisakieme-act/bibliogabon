@@ -57,9 +57,7 @@ def create_queued_job(*, slug: str = "tache-ingestion", pages: int = 2) -> Proce
         checksum_sha256=checksum,
         version_label="v1",
     )
-    return ProcessingJob.objects.get(
-        idempotency_key=f"ingest:{document.pk}:v1:{checksum}"
-    )
+    return ProcessingJob.objects.get(idempotency_key=f"ingest:{document.pk}:v1:{checksum}")
 
 
 @pytest.fixture
@@ -119,9 +117,7 @@ def test_replaying_a_succeeded_job_changes_nothing(local_storage):
 
 
 @pytest.mark.django_db
-def test_failure_propagates_the_original_error_when_running_inline(
-    local_storage, monkeypatch
-):
+def test_failure_propagates_the_original_error_when_running_inline(local_storage, monkeypatch):
     job = create_queued_job()
 
     def explode(job):
@@ -141,9 +137,7 @@ def test_failure_propagates_the_original_error_when_running_inline(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("attempts", [0, 2, 3])
-def test_retry_count_reflects_the_celery_attempt_number(
-    local_storage, monkeypatch, attempts
-):
+def test_retry_count_reflects_the_celery_attempt_number(local_storage, monkeypatch, attempts):
     job = create_queued_job(slug=f"tache-retry-{attempts}")
 
     def explode(job):

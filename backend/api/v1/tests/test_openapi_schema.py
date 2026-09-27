@@ -1,7 +1,6 @@
 import pytest
 from rest_framework.test import APIClient
 
-
 EXPECTED_RESPONSE_CODES = {
     ("/api/v1/", "get"): {"200", "401"},
     ("/api/v1/auth/register/", "post"): {"201", "400", "409", "415"},
@@ -90,10 +89,14 @@ def test_openapi_schema_lists_public_v1_endpoints():
         assert path in paths
 
     assert (
-        paths["/api/v1/"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+        paths["/api/v1/"]["get"]["responses"]["200"]["content"]["application/json"]["schema"][
+            "$ref"
+        ]
         == "#/components/schemas/ApiIndex"
     )
-    assert paths["/api/v1/catalog/documents/"]["get"]["operationId"] == "v1_catalog_documents_list"
+    assert (
+        paths["/api/v1/catalog/documents/"]["get"]["operationId"] == "v1_catalog_documents_list"
+    )
     assert (
         paths["/api/v1/catalog/documents/{document_id}/"]["get"]["operationId"]
         == "v1_catalog_documents_retrieve"

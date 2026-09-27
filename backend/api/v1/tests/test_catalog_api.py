@@ -33,7 +33,9 @@ def create_document(
         access_model=access_model,
         publication_status=status,
     )
-    author = Author.objects.create(display_name=f"Auteur {title}", normalized_name=title.lower())
+    author = Author.objects.create(
+        display_name=f"Auteur {title}", normalized_name=title.lower()
+    )
     DocumentAuthor.objects.create(document=document, author=author, position=1)
     version = DocumentVersion.objects.create(
         document=document,
@@ -103,7 +105,9 @@ def test_restricted_document_detail_public_metadata_requires_auth_for_access():
 @pytest.mark.django_db
 def test_private_document_detail_returns_404():
     client = APIClient()
-    document = create_document("private", "Document prive", access_model=Document.AccessModel.PRIVATE)
+    document = create_document(
+        "private", "Document prive", access_model=Document.AccessModel.PRIVATE
+    )
 
     response = client.get(f"/api/v1/catalog/documents/{document.pk}/")
 
@@ -208,7 +212,9 @@ def test_authenticated_catalog_restricted_documents_use_constant_query_count():
 
     assert one_document_response.status_code == 200
     assert four_document_response.json()["count"] == 4
-    assert all(result["access"]["can_read"] for result in four_document_response.json()["results"])
+    assert all(
+        result["access"]["can_read"] for result in four_document_response.json()["results"]
+    )
     assert len(four_document_queries) == len(one_document_queries)
 
 
@@ -233,9 +239,13 @@ def test_openapi_schema_documents_catalog_and_search_endpoints():
         "/api/v1/search/": "SearchResult",
     }
     for path, result_schema_name in paginated_endpoints.items():
-        response_schema = paths[path]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+        response_schema = paths[path]["get"]["responses"]["200"]["content"]["application/json"][
+            "schema"
+        ]
         if "$ref" in response_schema:
-            response_schema = schema["components"]["schemas"][response_schema["$ref"].rsplit("/", 1)[-1]]
+            response_schema = schema["components"]["schemas"][
+                response_schema["$ref"].rsplit("/", 1)[-1]
+            ]
 
         assert response_schema["type"] == "object"
         assert {"count", "next", "previous", "results"} <= set(response_schema["properties"])

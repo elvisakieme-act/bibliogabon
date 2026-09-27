@@ -34,8 +34,12 @@ urlpatterns = [
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("me/", CurrentUserView.as_view(), name="me"),
     path("me/favorites/", FavoriteListCreateView.as_view(), name="favorite-list-create"),
-    path("me/favorites/<int:document_id>/", FavoriteDeleteView.as_view(), name="favorite-delete"),
-    path("me/reading-progress/", ReadingProgressListView.as_view(), name="reading-progress-list"),
+    path(
+        "me/favorites/<int:document_id>/", FavoriteDeleteView.as_view(), name="favorite-delete"
+    ),
+    path(
+        "me/reading-progress/", ReadingProgressListView.as_view(), name="reading-progress-list"
+    ),
     path(
         "me/reading-progress/<int:document_id>/",
         ReadingProgressUpdateView.as_view(),

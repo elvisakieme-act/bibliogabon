@@ -52,8 +52,20 @@ class ReaderSession(models.Model):
         ]
         ordering = ["-started_at", "-created_at"]
 
+    def __str__(self) -> str:
+        reader = self.user if self.user_id else "anonymous"
+        return f"{reader} reading {self.document}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def clean(self):
-        if self.version_id and self.document_id and self.version.document_id != self.document_id:
+        if (
+            self.version_id
+            and self.document_id
+            and self.version.document_id != self.document_id
+        ):
             raise ValidationError("Reader session version must belong to the same document")
         if (
             self.status == self.Status.ACTIVE
@@ -67,7 +79,9 @@ class ReaderSession(models.Model):
 
     def is_active_at(self, at=None) -> bool:
         at = at or timezone.now()
-        return self.status == self.Status.ACTIVE and self.ended_at is None and self.expires_at > at
+        return (
+            self.status == self.Status.ACTIVE and self.ended_at is None and self.expires_at > at
+        )
 
     def end(self, at=None):
         at = at or timezone.now()
@@ -76,14 +90,6 @@ class ReaderSession(models.Model):
         self.last_seen_at = at
         self.save(update_fields=["status", "ended_at", "last_seen_at", "updated_at"])
         return self
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
-
-    def __str__(self) -> str:
-        reader = self.user if self.user_id else "anonymous"
-        return f"{reader} reading {self.document}"
 
 
 class PageAccessLog(models.Model):
@@ -134,22 +140,26 @@ class PageAccessLog(models.Model):
         ]
         ordering = ["-accessed_at"]
 
-    def clean(self):
-        if self.user_id and self.session_id and self.user_id != self.session.user_id:
-            raise ValidationError("Page access user must match the reader session user")
-        if self.document_id and self.session_id and self.document_id != self.session.document_id:
-            raise ValidationError("Page access document must match the reader session document")
-        if self.page_id and self.session_id and self.page.version_id != self.session.version_id:
-            raise ValidationError("Page access page must belong to the session version")
-        if self.page_id and self.page_number != self.page.page_number:
-            raise ValidationError("Page access page_number must match the page")
+    def __str__(self) -> str:
+        return f"{self.user} read {self.document} page {self.page_number}"
 
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
 
-    def __str__(self) -> str:
-        return f"{self.user} read {self.document} page {self.page_number}"
+    def clean(self):
+        if self.user_id and self.session_id and self.user_id != self.session.user_id:
+            raise ValidationError("Page access user must match the reader session user")
+        if (
+            self.document_id
+            and self.session_id
+            and self.document_id != self.session.document_id
+        ):
+            raise ValidationError("Page access document must match the reader session document")
+        if self.page_id and self.session_id and self.page.version_id != self.session.version_id:
+            raise ValidationError("Page access page must belong to the session version")
+        if self.page_id and self.page_number != self.page.page_number:
+            raise ValidationError("Page access page_number must match the page")
 
 
 class FavoriteDocument(models.Model):
@@ -167,7 +177,9 @@ class FavoriteDocument(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["user", "document"], name="uniq_favorite_document_per_user"),
+            models.UniqueConstraint(
+                fields=["user", "document"], name="uniq_favorite_document_per_user"
+            ),
         ]
         indexes = [
             models.Index(fields=["user", "created_at"], name="favorite_user_created_idx"),

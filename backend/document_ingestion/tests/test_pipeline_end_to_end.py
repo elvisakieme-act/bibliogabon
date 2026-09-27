@@ -12,7 +12,6 @@ from document_ingestion.pipeline import ingest_document_file
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
 from search_discovery.services import search_documents
 
-
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "sample-3-pages.pdf"
 
 needs_tesseract = pytest.mark.skipif(

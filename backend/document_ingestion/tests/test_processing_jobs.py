@@ -93,7 +93,9 @@ def test_enqueue_processing_job_rejects_input_payload_conflict():
 @pytest.mark.django_db
 def test_processing_job_save_rejects_source_asset_from_other_version():
     version, asset = create_version_and_asset()
-    other_version = DocumentVersion.objects.create(document=version.document, version_label="v2")
+    other_version = DocumentVersion.objects.create(
+        document=version.document, version_label="v2"
+    )
     job = ProcessingJob(
         version=other_version,
         source_asset=asset,

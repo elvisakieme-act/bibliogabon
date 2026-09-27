@@ -203,6 +203,9 @@ class OrganizationMembership(models.Model):
         ]
         ordering = ["organization__name", "user__email"]
 
+    def __str__(self) -> str:
+        return f"{self.user.email} @ {self.organization.name}"
+
     @property
     def is_active(self) -> bool:
         now = timezone.now()
@@ -240,10 +243,9 @@ class OrganizationMembership(models.Model):
             self.verification_status == self.VerificationStatus.REJECTED
             and not self.verification_notes.strip()
         ):
-            raise ValidationError("Un rejet de vérification doit être motivé (verification_notes).")
-
-    def __str__(self) -> str:
-        return f"{self.user.email} @ {self.organization.name}"
+            raise ValidationError(
+                "Un rejet de vérification doit être motivé (verification_notes)."
+            )
 
 
 class Entitlement(models.Model):
@@ -301,6 +303,10 @@ class Entitlement(models.Model):
         ]
         ordering = ["-starts_at", "-created_at"]
 
+    def __str__(self) -> str:
+        target = self.user.email if self.user_id else self.organization.name
+        return f"{target}: {self.access_right} ({self.scope_type})"
+
     def clean(self):
         from django.core.exceptions import ValidationError
 
@@ -325,7 +331,3 @@ class Entitlement(models.Model):
         if self.scope_type == self.ScopeType.GLOBAL:
             return True
         return self.scope_type == scope_type and self.scope_id == scope_id
-
-    def __str__(self) -> str:
-        target = self.user.email if self.user_id else self.organization.name
-        return f"{target}: {self.access_right} ({self.scope_type})"

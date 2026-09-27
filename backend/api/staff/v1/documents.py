@@ -17,7 +17,7 @@ from api.staff.v1.views import StaffAPIView
 from api.v1.errors import error_response
 from api.v1.pagination import StandardResultsSetPagination
 from catalog.models import Author, Document, DocumentAuthor
-from catalog.services import missing_deposit_requirements, missing_publication_requirements
+from catalog.services import missing_deposit_requirements
 from operations.services import record_audit_event
 
 
@@ -59,7 +59,9 @@ class StaffDocumentListView(StaffAPIView):
             queryset = queryset.filter(title__icontains=value)
 
         paginator = StandardResultsSetPagination()
-        page = paginator.paginate_queryset(queryset.order_by("-updated_at", "id"), request, view=self)
+        page = paginator.paginate_queryset(
+            queryset.order_by("-updated_at", "id"), request, view=self
+        )
         return paginator.get_paginated_response(
             [serialize_staff_document(document) for document in page]
         )
@@ -87,9 +89,7 @@ class StaffDocumentListView(StaffAPIView):
             )
 
         with transaction.atomic():
-            document = serializer.save(
-                publication_status=Document.PublicationStatus.DRAFT
-            )
+            document = serializer.save(publication_status=Document.PublicationStatus.DRAFT)
             if roles.is_teacher_author(request.user):
                 author, _ = Author.objects.get_or_create(
                     linked_user=request.user,

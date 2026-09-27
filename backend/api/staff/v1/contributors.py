@@ -75,9 +75,7 @@ class RightsDecisionSerializer(serializers.Serializer):
                 "Une approbation doit référencer le contrat ou l'autorisation signée."
             ]
         if attrs["decision"] == "rejected" and not attrs.get("rejection_reason", "").strip():
-            errors["rejection_reason"] = [
-                "Un rejet doit être motivé, pour l'audit interne."
-            ]
+            errors["rejection_reason"] = ["Un rejet doit être motivé, pour l'audit interne."]
         if errors:
             raise serializers.ValidationError(errors)
         return attrs
@@ -97,9 +95,7 @@ class DocumentAuthorListView(StaffAPIView):
 
         serializer = DocumentAuthorWriteSerializer(data=request.data)
         if not serializer.is_valid():
-            return error_response(
-                "invalid_request", "Auteur invalide.", 400, serializer.errors
-            )
+            return error_response("invalid_request", "Auteur invalide.", 400, serializer.errors)
 
         next_position = (
             DocumentAuthor.objects.filter(document=document).aggregate(Max("position"))[
@@ -169,9 +165,11 @@ class DocumentRightsView(StaffAPIView):
             return error_response("not_found", "Document introuvable.", 404)
 
         existing = RightsAgreement.objects.filter(document=document).first()
-        if existing and existing.authorization_status == (
-            RightsAgreement.AuthorizationStatus.APPROVED
-        ) and not roles.can_review_publication(request.user):
+        if (
+            existing
+            and existing.authorization_status == (RightsAgreement.AuthorizationStatus.APPROVED)
+            and not roles.can_review_publication(request.user)
+        ):
             return error_response(
                 "rights_already_approved",
                 "Cette déclaration a été approuvée et ne peut plus être modifiée "
@@ -272,8 +270,7 @@ class DocumentRightsDecisionView(StaffAPIView):
                 ),
                 target=document,
                 summary=(
-                    f"Droits {'approuvés' if approved else 'rejetés'} pour "
-                    f"« {document.title} »"
+                    f"Droits {'approuvés' if approved else 'rejetés'} pour « {document.title} »"
                 ),
                 metadata={
                     "document_id": document.pk,
