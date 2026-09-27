@@ -1,6 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getDocument, listDocuments, listDomains, searchDocuments } from "@/api/catalog";
+import {
+  getDocument,
+  listDocuments,
+  listDomains,
+  listTypes,
+  searchDocuments
+} from "@/api/catalog";
 import { useAuth } from "@/auth/AuthProvider";
 
 export function useDocuments(params: Record<string, string | number | undefined>) {
@@ -21,6 +27,10 @@ export function useDocument(documentId: string | number) {
 
 export function useDomains() {
   return useQuery({ queryKey: ["domains"], queryFn: () => listDomains() });
+}
+
+export function useDocumentTypes() {
+  return useQuery({ queryKey: ["document-types"], queryFn: () => listTypes() });
 }
 
 export function useSearch(params: Record<string, string | number | undefined>) {

@@ -129,11 +129,11 @@ mapping, not a second error component.
 **Interfaces:**
 - Produces `/gestion/documents`.
 
-- [ ] Write failing tests: the list renders title, state badge, domain and type; filters by state, domain, type and title fragment drive the query; pagination uses the API envelope; loading, empty and error states each render; a server refusal renders as a refusal rather than an empty list.
-- [ ] Write a failing test asserting no rendered row contains a storage key, a `.pdf` path or a `://`.
-- [ ] Implement the page and its query hooks.
-- [ ] Run `npm run test`.
-- [ ] Commit `feat: add the back-office document list`.
+- [x] Write failing tests: the list renders title, state badge, domain and type; filters by state, domain, type and title fragment drive the query; pagination uses the API envelope; loading, empty and error states each render; a server refusal renders as a refusal rather than an empty list.
+- [x] Write a failing test asserting no rendered row contains a storage key, a `.pdf` path or a `://`.
+- [x] Implement the page and its query hooks.
+- [x] Run `npm run test`.
+- [x] Commit `feat: add the back-office document list`.
 
 ---
 

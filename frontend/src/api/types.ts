@@ -37,6 +37,14 @@ export interface DomainSummary {
   slug: string;
 }
 
+export interface DocumentTypeSummary {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string;
+  color: string;
+}
+
 export interface SearchDomainSummary {
   name: string;
   slug: string;

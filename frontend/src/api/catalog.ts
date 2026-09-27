@@ -1,6 +1,7 @@
 import { apiRequest } from "@/api/client";
 import type {
   DocumentMetadata,
+  DocumentTypeSummary,
   DomainSummary,
   PaginatedResponse,
   SearchResult
@@ -35,6 +36,12 @@ export function getDocument(documentId: number | string, token?: string | null) 
 export function listDomains(params: Record<string, QueryValue> = {}) {
   return apiRequest<PaginatedResponse<DomainSummary>>(
     withQuery("/api/v1/catalog/domains/", params)
+  );
+}
+
+export function listTypes(params: Record<string, QueryValue> = {}) {
+  return apiRequest<PaginatedResponse<DocumentTypeSummary>>(
+    withQuery("/api/v1/catalog/types/", params)
   );
 }
 
