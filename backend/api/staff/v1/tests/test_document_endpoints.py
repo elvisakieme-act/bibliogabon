@@ -310,3 +310,38 @@ def test_submitting_without_author_or_rights_names_what_is_missing(api, teacher,
     error = response.json()["error"]
     assert error["code"] == "incomplete_document"
     assert error["field_errors"]["missing"] == ["rights_agreement"]
+
+
+@pytest.mark.parametrize(
+    ("state", "expected"),
+    [
+        # Un rejet doit etre corrigeable : sans cette transition, un document
+        # rejete reste bloque a vie et son deposant n'a aucun recours.
+        (Document.PublicationStatus.REJECTED, 200),
+        # « Withdrawn documents ... can be republished only through a new
+        # validation decision. » Cette republication passe par une soumission.
+        (Document.PublicationStatus.WITHDRAWN, 200),
+        # Deja public : le resoumettre le retirerait du public par un chemin
+        # detourne, sans motif ni trace de retrait.
+        (Document.PublicationStatus.PUBLISHED, 409),
+        # L'archivage est la fin de vie du document.
+        (Document.PublicationStatus.ARCHIVED, 409),
+    ],
+)
+def test_which_states_can_be_submitted_again(api, teacher, reference, state, expected):
+    """Trouve par le parcours manuel de la tranche 3 : la file refusait
+    d'ouvrir une revue sur un document rejete, parce que la soumission ne le
+    ramenait pas en `submitted`."""
+    document = complete(
+        make_document(reference, slug=f"resoumission-{state}", status=state), teacher
+    )
+    api.force_authenticate(teacher)
+
+    response = api.post(reverse(SUBMIT, args=[document.pk]))
+
+    assert response.status_code == expected, response.json()
+    document.refresh_from_db()
+    if expected == 200:
+        assert document.publication_status == Document.PublicationStatus.SUBMITTED
+    else:
+        assert document.publication_status == state

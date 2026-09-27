@@ -163,6 +163,42 @@ Upload bounds come from `/api/staff/v1/` — the server announces
 from the real configuration. The screen checks them before opening a request
 and still renders the server's 413/415, since a proxy can be stricter.
 
+### Validation workflow
+
+`/gestion/revues` is the only staff listing **not** scoped by authorship — a
+reviewer must see what others deposited — so it is scoped by role instead.
+
+Two refusals are structural, not conventional. A content admin who authored the
+document cannot decide on it (`self_review_forbidden`): without that, the
+separation of duties would hold only by luck of role assignment. And approving
+a document whose rights are not approved is refused *at the endpoint*, naming
+the blocking requirement — the service already refused, but a door that closes
+without a visible reason reads as a fault.
+
+`withdraw_document` and `archive_document` (in `operations/services.py`) delete
+nothing: pages, version, index and rights survive, and only
+`document_is_reader_accessible` changes its answer, because it tests for
+`published`. Withdrawal is not a rights revocation — conflating them would make
+republication demand a fresh approval it does not need. Both refuse an empty
+reason and an absent actor: an anonymous, unmotivated disappearance is exactly
+what an audit exists to prevent.
+
+`SUBMITTABLE_STATES` is `draft | rejected | withdrawn`. Rejected belongs there
+or a rejected document is stuck for life; withdrawn belongs there because
+governance requires republication "through a new validation decision", and that
+decision starts with a submission. This gap was found by walking the flow by
+hand, not by a unit test — the endpoint tests each passed on their own.
+
+The audit endpoint filters `metadata` through an allow-list
+(`api/staff/v1/lifecycle.py`). That field is written by many services and
+ingestion handles storage keys constantly; a privacy rule that depends on every
+future writer being careful is not a rule. A test feeds it a deliberately
+poisoned event.
+
+`event_type` is a free string, not a `TextChoices`, so `auditLabels.ts` is not
+covered by the enum-parity guard — which is exactly why an unknown type renders
+raw instead of vanishing.
+
 ### Frontend
 
 TanStack Router routes declared centrally in `src/router.tsx` (French URL segments: `/connexion`, `/recherche`, `/lecture/...`, `/bibliotheque`). Layers: `src/api/` (typed fetch wrappers over `apiRequest`, which unwraps the error envelope into `ApiError`), `src/features/<domain>/hooks.ts` (TanStack Query hooks), `src/routes/` (pages), `src/components/` (presentational). Auth state lives in `src/auth/` — `AuthProvider.tsx` holds the provider, `authContext.ts` the context and `useAuth.ts` the hook. They are three files on purpose: a module exporting both a component and a value breaks hot-reload granularity, and `npm run lint` is silent so a new mix shows up immediately. JWT access/refresh live in `localStorage` via `tokenStore`; a 401 dispatches `UNAUTHORIZED_EVENT` so the provider can clear the session, and `guards.tsx` redirects to `/connexion?next=...`. Import alias `@/` → `src/`.

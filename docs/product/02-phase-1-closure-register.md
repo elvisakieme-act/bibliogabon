@@ -38,6 +38,12 @@ qu'avec un test qui l'empêche de revenir.
 | B2 | Trie-t-on les auteurs par nom de famille, comme l'usage académique ? | Déduire le nom de famille d'un nom affiché est peu fiable (noms composés, institutions, « Université Omar Bongo »). Cela demanderait un champ `sort_name` distinct. | **A1 rend l'ordre cohérent, pas savant** : il porte sur le nom affiché, donc « Aline NZE » se classe sous A et non sous N. Un test le dit explicitement. Trancher B2 demanderait un champ dédié et une règle de saisie. |
 | B3 | Quel fournisseur S3 héberge les documents privés ? (D007) | Dépend du volume réel et de l'arbitrage souveraineté / coût de bande passante. | Tout parle S3 via `DOCUMENT_STORAGE_ENDPOINT_URL` ; le choix n'est encodé nulle part. |
 
+## Traité (suite)
+
+| # | Point | Correction | Ce qui l'empêche de revenir |
+|---|---|---|---|
+| A4 | `SUBMITTABLE_STATES` n'acceptait que `draft` | Un document rejeté restait bloqué à vie, et la republication d'un retrait — que la gouvernance exige « through a new validation decision » — était impossible. `rejected` et `withdrawn` sont désormais soumissibles ; `published` et `archived` ne le sont pas. | Un test paramétré sur les quatre états. Trouvé par le parcours manuel, pas par un test unitaire : chaque endpoint passait isolément. |
+
 ## Décisions tranchées
 
 | # | Question | Décision | Consigné |

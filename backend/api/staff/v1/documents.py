@@ -150,6 +150,25 @@ class StaffDocumentDetailView(StaffAPIView):
         return Response(serialize_staff_document(document))
 
 
+# États d'où un document peut (re)partir en revue.
+#
+# `rejected` en fait partie : sans cette transition, un document rejeté reste
+# bloqué à vie et son déposant n'a aucun recours. `withdrawn` aussi, parce que
+# la gouvernance exige qu'un retrait soit réversible « through a new validation
+# decision » — et cette décision passe par une soumission.
+#
+# `published` en est exclu : le resoumettre le retirerait du public par un
+# chemin détourné, sans motif ni trace de retrait. `archived` l'est aussi,
+# étant la fin de vie du document.
+SUBMITTABLE_STATES = frozenset(
+    {
+        Document.PublicationStatus.DRAFT,
+        Document.PublicationStatus.REJECTED,
+        Document.PublicationStatus.WITHDRAWN,
+    }
+)
+
+
 class StaffDocumentSubmitView(StaffAPIView):
     @extend_schema(
         tags=["Staff documents"],
@@ -169,7 +188,7 @@ class StaffDocumentSubmitView(StaffAPIView):
         if document.publication_status == Document.PublicationStatus.SUBMITTED:
             return Response(serialize_staff_document(document))
 
-        if document.publication_status != Document.PublicationStatus.DRAFT:
+        if document.publication_status not in SUBMITTABLE_STATES:
             return error_response(
                 "invalid_transition",
                 f"Un document en état « {document.publication_status} » ne peut pas être soumis.",

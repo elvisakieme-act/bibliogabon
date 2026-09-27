@@ -138,31 +138,31 @@ Design: `docs/superpowers/specs/2026-09-27-bibliogabon-validation-workflow-desig
 **Files:**
 - Modify: `CLAUDE.md`, `docs/product/02-phase-1-closure-register.md`
 
-- [ ] Extend `test_frontend_type_parity` to the review, audit and lifecycle payloads — the guard that stops a stub from lying must cover the new surface too.
-- [ ] Extend `test_frontend_enum_parity` to `PublicationReview.Status`.
-- [ ] Walk the flow against the running backend: submit, review, reject with a reason, resubmit, approve, read as a reader, withdraw, verify unreadable, republish through a new review, archive. Record what actually happened.
-- [ ] Re-assert the bundle split: the reader entry chunk still contains no staff module.
-- [ ] Run the whole CI locally, both sides, with `REQUIRE_OCR=1`.
-- [ ] Document the workflow in `CLAUDE.md` and update the closure register.
-- [ ] Commit `docs: document the validation workflow`.
+- [x] Extend `test_frontend_type_parity` to the review, audit and lifecycle payloads — the guard that stops a stub from lying must cover the new surface too.
+- [x] Extend `test_frontend_enum_parity` to `PublicationReview.Status`.
+- [x] Walk the flow against the running backend : 33 vérifications, toutes passées **après** correction. Le parcours a trouvé un trou qu'aucun test unitaire ne voyait : `SUBMITTABLE_STATES` n'acceptait que `draft`, donc un document rejeté restait bloqué à vie et un retrait n'était pas réversible, en contradiction avec la gouvernance.
+- [x] Re-assert the bundle split: the reader entry chunk still contains no staff module.
+- [x] Run the whole CI locally, both sides, with `REQUIRE_OCR=1`.
+- [x] Document the workflow in `CLAUDE.md` and update the closure register.
+- [x] Commit `docs: document the validation workflow`.
 
 ---
 
 ## Self-Review Checklist
 
-- [ ] A teacher-author is refused on the queue, the decision and the audit trail.
-- [ ] A content admin who authored the document is refused on its decision.
-- [ ] Approving with unapproved rights is refused at the endpoint, naming the requirement.
-- [ ] A rejection and a withdrawal both require a reason.
-- [ ] Withdrawal keeps pages, version, index and rights; only readability changes.
-- [ ] A withdrawn document is unreadable through both reader surfaces.
-- [ ] Republication goes through a new review and clears `withdrawn_at`.
-- [ ] Every transition writes exactly one audit event with actor and reason.
-- [ ] The audit endpoint's allow-list is tested with a poisoned event.
-- [ ] No screen or payload exposes a storage key, a `.pdf` path or a source URL.
-- [ ] The review screen offers no rights-approval control.
-- [ ] Reader routes, components and tests are unchanged.
-- [ ] Type and enum parity guards cover the new surface.
+- [x] A teacher-author is refused on the queue, the decision and the audit trail.
+- [x] A content admin who authored the document is refused on its decision.
+- [x] Approving with unapproved rights is refused at the endpoint, naming the requirement.
+- [x] A rejection and a withdrawal both require a reason.
+- [x] Withdrawal keeps pages, version, index and rights; only readability changes.
+- [x] A withdrawn document is unreadable through both reader surfaces.
+- [x] Republication goes through a new review and clears `withdrawn_at`.
+- [x] Every transition writes exactly one audit event with actor and reason.
+- [x] The audit endpoint's allow-list is tested with a poisoned event.
+- [x] No screen or payload exposes a storage key, a `.pdf` path or a source URL.
+- [x] The review screen offers no rights-approval control.
+- [x] Reader routes, components and tests are unchanged.
+- [x] Type and enum parity guards cover the new surface.
 
 ## Execution Handoff
 

@@ -34,6 +34,7 @@ from catalog.models import (
     RightsAgreement,
 )
 from document_ingestion.pipeline import ingest_document_file
+from operations.services import open_publication_review, withdraw_document
 
 TYPES_FILE = Path(__file__).resolve().parents[5] / "frontend" / "src" / "api" / "types.ts"
 FIXTURE = (
@@ -207,3 +208,43 @@ def test_the_upload_endpoint_still_refuses_an_unaccepted_type(api, full_document
     )
 
     assert response.status_code == 415
+
+
+@pytest.fixture
+def review(full_document, moderator):
+    full_document.publication_status = Document.PublicationStatus.SUBMITTED
+    full_document.save(update_fields=["publication_status", "updated_at"])
+    return open_publication_review(document=full_document, actor=moderator)
+
+
+def test_the_review_matches_its_declared_type(api, review):
+    payload = api.get(
+        reverse("api-staff-v1:review-detail", kwargs={"review_id": review.pk})
+    ).json()
+
+    assert set(payload) == declared_fields("StaffReview")
+    assert set(payload["opened_by"]) == declared_fields("StaffPerson")
+
+
+def test_the_audit_event_matches_its_declared_type(api, full_document, moderator):
+    full_document.publication_status = Document.PublicationStatus.PUBLISHED
+    full_document.save(update_fields=["publication_status", "updated_at"])
+    withdraw_document(document=full_document, reason="Motif suffisant.", actor=moderator)
+
+    payload = api.get(
+        reverse("api-staff-v1:document-audit", kwargs={"document_id": full_document.pk})
+    ).json()
+
+    assert set(payload["results"][0]) == declared_fields("StaffAuditEvent")
+
+
+def test_no_lifecycle_payload_names_a_stored_object(api, review, full_document):
+    """La surface de la tranche 3 est soumise à la même règle que celle de la
+    tranche 2, et le redire ici évite qu'un nouvel endpoint y échappe."""
+    for path in (
+        reverse("api-staff-v1:review-list"),
+        reverse("api-staff-v1:review-detail", kwargs={"review_id": review.pk}),
+        reverse("api-staff-v1:document-audit", kwargs={"document_id": full_document.pk}),
+    ):
+        body = api.get(path).content.decode()
+        assert not re.search(r"\.pdf|://|storage|bucket", body, re.I), path
