@@ -96,6 +96,20 @@ Search (`search_discovery/`) is a denormalized `DocumentSearchIndex` row per doc
 
 All `/api/v1/` errors use one envelope — `{"error": {"code", "message", "field_errors"}}` — produced by `api/v1/errors.py` (`error_response` for explicit returns, `api_exception_handler` for DRF exceptions). Pagination is `StandardResultsSetPagination` (page size 20, max 50). Views are `APIView` subclasses annotated with `@extend_schema` including examples; `api/v1/tests/test_openapi_schema.py` guards the generated schema, so new endpoints need schema annotations. DRF default permission is `AllowAny` — every view states its own auth requirement.
 
+### Staff API
+
+`/api/staff/v1/` is a **separate namespace with its own OpenAPI schema**, generated from its own URL perimeter (`config/schema_staff.py`; the public one from `config/schema_public.py`). Scoping only the staff schema would leave the public one generating from the root urlconf and silently documenting internal endpoints — two tests assert both directions stay clean.
+
+Every view inherits `StaffAPIView`, which applies the `has_back_office_access` floor. Inheriting `APIView` directly would fall back to the project default of `AllowAny`, making a forgotten permission publicly readable.
+
+Visibility is scoped on the queryset (`api/staff/v1/scoping.py`): a content admin sees every publication state, a teacher only what they authored. A document out of scope returns **404, not 403** — answering "forbidden" would confirm a draft exists.
+
+Rights enforce a separation of duties. The declaration serializer does not expose `authorization_status`, `authorization_date`, `reviewer_decision`, `rejection_reason` or `audit_reference`: the depositor declares, capped at `pending_review`, and only a content admin decides, supplying the signed contract's audit reference (or a rejection reason). Editing a declaration resets it to `pending_review`.
+
+Two readiness gates, not one: `missing_deposit_requirements` (declaration complete) gates submission, `missing_publication_requirements` (declaration approved) gates publication. Collapsing them makes submission impossible, since approval happens after it.
+
+Upload is the only multipart endpoint, a deliberate exception to the JSON-only public contract. Bounds are checked before storage is touched, and the file reaches `ingest_document_file` as a `TemporaryUploadedFile` above 2.5 MB rather than passing through memory.
+
 ### Frontend
 
 TanStack Router routes declared centrally in `src/router.tsx` (French URL segments: `/connexion`, `/recherche`, `/lecture/...`, `/bibliotheque`). Layers: `src/api/` (typed fetch wrappers over `apiRequest`, which unwraps the error envelope into `ApiError`), `src/features/<domain>/hooks.ts` (TanStack Query hooks), `src/routes/` (pages), `src/components/` (presentational). Auth state lives in `src/auth/AuthProvider.tsx` with JWT access/refresh in `localStorage` via `tokenStore`; a 401 dispatches `UNAUTHORIZED_EVENT` so the provider can clear the session, and `guards.tsx` redirects to `/connexion?next=...`. Import alias `@/` → `src/`.

@@ -22,6 +22,8 @@ Run backend commands from `backend/`:
 - `cd frontend && npm run build`: type-check and build the frontend.
 - `cd frontend && npm run test`: run frontend tests.
 
+The internal back-office API lives under `/api/staff/v1/` with its own OpenAPI schema; the public API under `/api/v1/` must never document a staff path.
+
 ## Coding Style & Naming Conventions
 
 Use Python 3.12 and Django conventions. Keep models, services, admin classes, URLs, and tests close to their app. Use 4-space indentation, descriptive domain names, and small service functions for cross-model behavior. Keep secrets and environment-specific values in environment variables and document them in `backend/.env.example`.

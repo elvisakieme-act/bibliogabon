@@ -64,6 +64,24 @@ L'OCR nécessite `tesseract-ocr` et le pack de langue correspondant
 (`tesseract-ocr-fra`). Sans eux, les pages sans couche texte conservent un
 texte de remplacement et le pipeline continue.
 
+### Dépôt par l'API interne
+
+`/api/staff/v1/` est l'API du back-office, distincte de l'API publique et
+réservée aux rôles de gestion. Son schéma : `/api/staff/v1/schema/`.
+
+Le parcours de dépôt :
+
+1. `POST /api/staff/v1/documents/` — créer le document (état `draft`) ;
+2. `POST .../authors/` — rattacher les auteurs ;
+3. `PUT .../rights/` — déclarer les droits (l'enseignant déclare ; le statut
+   reste `pending_review`) ;
+4. `POST .../source/` — téléverser le PDF, ce qui déclenche l'ingestion ;
+5. `GET .../ingestion/` — suivre le traitement ;
+6. `POST .../submit/` — soumettre à la revue.
+
+Puis, côté modération : `POST .../rights/decision/` approuve ou rejette la
+déclaration, avec la référence du contrat signé ou un motif de rejet.
+
 ### Tests et vérifications backend
 
 ```powershell

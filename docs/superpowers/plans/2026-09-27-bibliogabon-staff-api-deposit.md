@@ -176,11 +176,11 @@ backend/
 **Interfaces:**
 - Produces `GET /api/staff/v1/documents/{id}/ingestion/`.
 
-- [ ] Write failing tests: the endpoint reports version state, page count, job state, retry count and error code; a failed job surfaces its reason; a document with no version reports that plainly rather than 404; the payload exposes no storage key.
-- [ ] Write a failing test for the asynchronous case: with tasks queued rather than eager, the endpoint reports the job as queued or running instead of pretending it is done. This is what the back-office screen will poll.
-- [ ] Implement, reading the current version and its job.
-- [ ] Run `pytest api/staff -q`.
-- [ ] Commit `feat: report ingestion status to the staff API`.
+- [x] Write failing tests: the endpoint reports version state, page count, job state, retry count and error code; a failed job surfaces its reason; a document with no version reports that plainly rather than 404; the payload exposes no storage key.
+- [x] Write a failing test for the asynchronous case: with tasks queued rather than eager, the endpoint reports the job as queued or running instead of pretending it is done. This is what the back-office screen will poll.
+- [x] Implement, reading the current version and its job.
+- [x] Run `pytest api/staff -q`.
+- [x] Commit `feat: report ingestion status to the staff API`.
 
 ---
 
@@ -190,27 +190,27 @@ backend/
 - Modify: every staff view, `CLAUDE.md`, `AGENTS.md`, `README.md`
 - Create: `backend/api/staff/v1/tests/test_openapi_staff.py`
 
-- [ ] Write a failing test asserting every staff path carries a summary, a description, request and response schemas and its authentication requirement — the same guard `api/v1/tests/test_openapi_schema.py` provides for the public API.
-- [ ] Re-assert, at the end, that the public schema still contains no staff path.
-- [ ] Annotate the views with `@extend_schema`.
-- [ ] Document the staff API in `CLAUDE.md` — separate namespace, separate schema, role-guarded, multipart exception — and the deposit flow in `README.md`.
-- [ ] Run full verification: `pytest -q`, `manage.py check`, `manage.py makemigrations --check --dry-run`, `git diff --check`.
-- [ ] Commit `docs: document the staff API`.
+- [x] Write a failing test asserting every staff path carries a summary, a description, request and response schemas and its authentication requirement — the same guard `api/v1/tests/test_openapi_schema.py` provides for the public API.
+- [x] Re-assert, at the end, that the public schema still contains no staff path.
+- [x] Annotate the views with `@extend_schema`.
+- [x] Document the staff API in `CLAUDE.md` — separate namespace, separate schema, role-guarded, multipart exception — and the deposit flow in `README.md`.
+- [x] Run full verification: `pytest -q`, `manage.py check`, `manage.py makemigrations --check --dry-run`, `git diff --check`.
+- [x] Commit `docs: document the staff API`.
 
 ---
 
 ## Self-Review Checklist
 
-- [ ] Every staff endpoint refuses the wrong role with the standard envelope; anonymous gets 401, wrong role 403.
-- [ ] A teacher sees and edits only their own documents; a content admin sees every state.
-- [ ] No staff response contains a storage key, a URL or a source download link.
-- [ ] The public schema contains no staff path, and the public API tests are untouched.
-- [ ] An upload over the size limit or of an unaccepted type is refused before anything is written.
-- [ ] A large upload reaches the service as a temporary file, not as bytes in memory.
-- [ ] Re-uploading to a populated version returns 409, and `replace=true` works.
-- [ ] `draft → submitted` is audited, idempotent, and refused when authors or rights are missing.
-- [ ] Only `draft` and `submitted` are used; the remaining publication states are untouched.
-- [ ] No screen, review workflow, organization management, notification, bulk import or EPUB was added.
+- [x] Every staff endpoint refuses the wrong role with the standard envelope; anonymous gets 401, wrong role 403.
+- [x] A teacher sees and edits only their own documents; a content admin sees every state.
+- [x] No staff response contains a storage key, a URL or a source download link.
+- [x] The public schema contains no staff path, and the public API tests are untouched.
+- [x] An upload over the size limit or of an unaccepted type is refused before anything is written.
+- [x] A large upload reaches the service as a temporary file, not as bytes in memory.
+- [x] Re-uploading to a populated version returns 409, and `replace=true` works.
+- [x] `draft → submitted` is audited, idempotent, and refused when authors or rights are missing.
+- [x] Only `draft` and `submitted` are used; the remaining publication states are untouched.
+- [x] No screen, review workflow, organization management, notification, bulk import or EPUB was added.
 
 ## Execution Handoff
 

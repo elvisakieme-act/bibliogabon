@@ -6,7 +6,7 @@ from api.staff.v1.contributors import (
     DocumentRightsDecisionView,
     DocumentRightsView,
 )
-from api.staff.v1.deposit import DocumentSourceView
+from api.staff.v1.deposit import DocumentIngestionView, DocumentSourceView
 from api.staff.v1.documents import (
     StaffDocumentDetailView,
     StaffDocumentListView,
@@ -29,6 +29,11 @@ urlpatterns = [
         name="document-author-detail",
     ),
     path("documents/<int:document_id>/source/", DocumentSourceView.as_view(), name="document-source"),
+    path(
+        "documents/<int:document_id>/ingestion/",
+        DocumentIngestionView.as_view(),
+        name="document-ingestion",
+    ),
     path("documents/<int:document_id>/rights/", DocumentRightsView.as_view(), name="document-rights"),
     path(
         "documents/<int:document_id>/rights/decision/",

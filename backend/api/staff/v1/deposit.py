@@ -27,6 +27,7 @@ from api.staff.v1.views import StaffAPIView
 from api.v1.errors import error_response
 from catalog.models import Document
 from document_ingestion.exceptions import VersionAlreadyIngested
+from document_ingestion.models import DocumentVersion, ProcessingJob
 from document_ingestion.pipeline import ingest_document_file
 from operations.services import record_audit_event
 
@@ -138,3 +139,84 @@ class DocumentSourceView(StaffAPIView):
 
         document.refresh_from_db()
         return Response(serialize_staff_document(document), status=status.HTTP_201_CREATED)
+
+
+# --- Suivi du traitement -----------------------------------------------------
+
+# États agrégés, pour que l'écran n'ait pas à recombiner ceux de la version et
+# du job. Un écran qui devrait les croiser lui-même finirait par afficher
+# « terminé » sur un travail en cours.
+STATE_NO_SOURCE = "no_source"
+STATE_IN_PROGRESS = "in_progress"
+STATE_READY = "ready"
+STATE_FAILED = "failed"
+
+
+def _aggregate_state(version, job) -> str:
+    if version is None:
+        return STATE_NO_SOURCE
+    if version.status == DocumentVersion.Status.FAILED or (
+        job is not None and job.status == ProcessingJob.Status.FAILED
+    ):
+        return STATE_FAILED
+    if version.status == DocumentVersion.Status.PROCESSED:
+        return STATE_READY
+    return STATE_IN_PROGRESS
+
+
+class DocumentIngestionView(StaffAPIView):
+    @extend_schema(
+        tags=["Staff deposit"],
+        summary="Report the ingestion state of a document",
+        description=(
+            "Version state, page count, job state, retry count and failure "
+            "reason. A document with no source reports no_source rather than "
+            "404 — it exists, it has simply received nothing yet. Never "
+            "exposes a storage key."
+        ),
+        operation_id="staff_v1_document_ingestion_status",
+    )
+    def get(self, request, document_id: int):
+        document = get_visible_document(request.user, document_id)
+        if document is None:
+            return error_response("not_found", "Document introuvable.", 404)
+
+        version = (
+            DocumentVersion.objects.filter(document=document)
+            .order_by("-is_current", "-created_at")
+            .first()
+        )
+        job = (
+            ProcessingJob.objects.filter(version=version).order_by("-created_at").first()
+            if version is not None
+            else None
+        )
+
+        return Response(
+            {
+                "state": _aggregate_state(version, job),
+                "version": (
+                    {
+                        "version_label": version.version_label,
+                        "status": version.status,
+                        "is_current": version.is_current,
+                        "page_count": version.page_count,
+                        "processed_at": version.processed_at,
+                    }
+                    if version is not None
+                    else None
+                ),
+                "job": (
+                    {
+                        "status": job.status,
+                        "retry_count": job.retry_count,
+                        "error_code": job.error_code,
+                        "error_message": job.error_message,
+                        "started_at": job.started_at,
+                        "completed_at": job.completed_at,
+                    }
+                    if job is not None
+                    else None
+                ),
+            }
+        )

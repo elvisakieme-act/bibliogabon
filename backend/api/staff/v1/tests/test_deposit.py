@@ -234,3 +234,98 @@ def test_an_upload_without_a_file_is_refused(api, teacher, document, storage):
 
     assert response.status_code == 400
     assert "file" in response.json()["error"]["field_errors"]
+
+
+# --- Statut d'ingestion ------------------------------------------------------
+
+INGESTION = "api-staff-v1:document-ingestion"
+
+
+def test_ingestion_status_reports_the_processed_version(api, teacher, document, storage):
+    api.force_authenticate(teacher)
+    api.post(reverse(SOURCE, args=[document.pk]), {"file": pdf_upload()}, format="multipart")
+
+    body = api.get(reverse(INGESTION, args=[document.pk])).json()
+
+    assert body["version"]["status"] == "processed"
+    assert body["version"]["page_count"] == 3
+    assert body["job"]["status"] == "succeeded"
+    assert body["job"]["retry_count"] == 0
+    assert body["job"]["error_code"] == ""
+
+
+def test_ingestion_status_never_exposes_a_storage_key(api, teacher, document, storage):
+    api.force_authenticate(teacher)
+    api.post(reverse(SOURCE, args=[document.pk]), {"file": pdf_upload()}, format="multipart")
+
+    body = api.get(reverse(INGESTION, args=[document.pk])).content.decode()
+
+    assert "storage" not in body.lower()
+    assert ".pdf" not in body
+    assert "://" not in body
+
+
+def test_a_document_with_no_version_says_so_plainly(api, teacher, document, storage):
+    """Un 404 laisserait croire que le document n'existe pas ; il existe, il
+    n'a simplement encore rien recu."""
+    api.force_authenticate(teacher)
+
+    response = api.get(reverse(INGESTION, args=[document.pk]))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["version"] is None
+    assert body["job"] is None
+    assert body["state"] == "no_source"
+
+
+def test_a_queued_job_is_reported_as_queued_not_as_done(api, teacher, document, storage):
+    """Derriere un vrai broker, l'ecran interroge pendant que le worker
+    travaille : il ne doit pas voir « termine » avant que ce soit vrai."""
+    from document_ingestion.models import DocumentVersion, ProcessingJob
+
+    version = DocumentVersion.objects.create(
+        document=document, version_label="v1", status=DocumentVersion.Status.QUEUED
+    )
+    ProcessingJob.objects.create(
+        version=version,
+        job_type=ProcessingJob.JobType.INGEST_SOURCE,
+        idempotency_key="ingest:test:queued",
+        status=ProcessingJob.Status.QUEUED,
+    )
+    api.force_authenticate(teacher)
+
+    body = api.get(reverse(INGESTION, args=[document.pk])).json()
+
+    assert body["version"]["status"] == "queued"
+    assert body["job"]["status"] == "queued"
+    assert body["state"] == "in_progress"
+
+
+def test_a_failed_job_surfaces_its_reason(api, teacher, document, storage):
+    from document_ingestion.models import DocumentVersion, ProcessingJob
+
+    version = DocumentVersion.objects.create(
+        document=document, version_label="v1", status=DocumentVersion.Status.FAILED
+    )
+    job = ProcessingJob.objects.create(
+        version=version,
+        job_type=ProcessingJob.JobType.INGEST_SOURCE,
+        idempotency_key="ingest:test:failed",
+    )
+    job.mark_failed(error_code="ingest_failed", message="Stream has ended unexpectedly", retry_count=3)
+    api.force_authenticate(teacher)
+
+    body = api.get(reverse(INGESTION, args=[document.pk])).json()
+
+    assert body["state"] == "failed"
+    assert body["job"]["error_code"] == "ingest_failed"
+    assert body["job"]["error_message"] == "Stream has ended unexpectedly"
+    assert body["job"]["retry_count"] == 3
+
+
+def test_a_teacher_cannot_read_the_status_of_someone_elses_document(api, document, storage):
+    intruder = make_user("intrus2@example.ga", User.AccountType.TEACHER_AUTHOR)
+    api.force_authenticate(intruder)
+
+    assert api.get(reverse(INGESTION, args=[document.pk])).status_code == 404
