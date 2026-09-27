@@ -26,6 +26,12 @@ jobs:
           python -m pip install -r requirements-lock.txt
           python -m pip install -e . --no-deps
 
+      - name: Ruff lint
+        run: python -m ruff check .
+
+      - name: Ruff format check
+        run: python -m ruff format --check .
+
       - name: Django system checks
         run: python manage.py check
 
@@ -45,12 +51,18 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Aligne la CI sur .nvmrc : « node-version: 20 » resolvait vers le
+          # dernier 20.x cote CI pendant qu'une machine locale en 20.9 cassait
+          # sur node:util.styleText. Une divergence CI/local silencieuse.
+          node-version-file: frontend/.nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Format check
+        run: npm run format:check
 
       - name: Lint
         run: npm run lint
