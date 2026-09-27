@@ -134,6 +134,21 @@ class PublicationReview(models.Model):
 
 
 class SupportTicket(models.Model):
+    class Category(models.TextChoices):
+        """Ce que le ticket demande, et non ce qu'il concerne.
+
+        Le cycle de vie est identique pour les trois — `open → in_progress →
+        resolved` — et le lien vers le document existait déjà. Seule l'intention
+        diffère, et elle compte : une demande de retrait appelle un **acte**,
+        une question de support appelle une réponse. Sans cette distinction,
+        la première dort dans une file générique jusqu'à ce que quelqu'un la
+        lise assez attentivement pour la reconnaître.
+        """
+
+        SUPPORT = "support", "Support request"
+        DOCUMENT_REPORT = "document_report", "Document report"
+        WITHDRAWAL_REQUEST = "withdrawal_request", "Withdrawal request"
+
     class Priority(models.TextChoices):
         LOW = "low", "Low"
         NORMAL = "normal", "Normal"
@@ -149,6 +164,11 @@ class SupportTicket(models.Model):
 
     title = models.CharField(max_length=180)
     description = models.TextField()
+    # Valeur par défaut : les tickets déjà en base restent des demandes de
+    # support, ce qu'ils étaient.
+    category = models.CharField(
+        max_length=24, choices=Category.choices, default=Category.SUPPORT, db_index=True
+    )
     priority = models.CharField(
         max_length=16, choices=Priority.choices, default=Priority.NORMAL
     )

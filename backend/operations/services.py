@@ -245,6 +245,7 @@ def open_support_ticket(
     description: str,
     created_by=None,
     assigned_to=None,
+    category: str = SupportTicket.Category.SUPPORT,
     priority: str = SupportTicket.Priority.NORMAL,
     user=None,
     organization=None,
@@ -258,6 +259,7 @@ def open_support_ticket(
             description=description,
             created_by=created_by,
             assigned_to=assigned_to,
+            category=category,
             priority=priority,
             user=user,
             organization=organization,
@@ -271,6 +273,7 @@ def open_support_ticket(
             target=ticket,
             summary=f"Support ticket opened: {ticket.title}",
             metadata={
+                "category": ticket.category,
                 "priority": ticket.priority,
                 "user_id": user.pk if user else None,
                 "organization_id": organization.pk if organization else None,
@@ -282,6 +285,90 @@ def open_support_ticket(
             },
         )
         return ticket
+
+
+def _open_document_ticket(
+    *,
+    document,
+    reason: str,
+    actor,
+    category: str,
+    priority: str,
+    title: str,
+    event_type: str,
+    verb: str,
+) -> SupportTicket:
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError(f"{verb} requires a reason")
+    if actor is None:
+        # Un signalement anonyme n'est pas traçable, et le traiter demanderait
+        # de recontacter quelqu'un dont on ne sait rien.
+        raise ValueError(f"{verb} requires an actor")
+
+    ticket = open_support_ticket(
+        title=_truncate_audit_summary(f"{title} : {document.title}"),
+        description=reason,
+        created_by=actor,
+        category=category,
+        priority=priority,
+        user=actor,
+        document=document,
+        organization=document.owner_organization,
+    )
+    record_audit_event(
+        actor=actor,
+        event_type=event_type,
+        target=document,
+        summary=_truncate_audit_summary(f"{title} : {document.title}"),
+        metadata={"document_id": document.pk, "reason": reason, "ticket_id": ticket.pk},
+    )
+    return ticket
+
+
+def report_document(*, document, reason: str, reported_by=None, at=None) -> SupportTicket:
+    """Signalement d'un document par un lecteur."""
+    return _open_document_ticket(
+        document=document,
+        reason=reason,
+        actor=reported_by,
+        category=SupportTicket.Category.DOCUMENT_REPORT,
+        priority=SupportTicket.Priority.NORMAL,
+        title="Signalement",
+        event_type="document_reported",
+        verb="report",
+    )
+
+
+def request_document_withdrawal(
+    *, document, reason: str, requested_by=None, at=None
+) -> SupportTicket:
+    """Demande de retrait — qui ne retire rien.
+
+    Un auteur qui retirerait directement contournerait les règles
+    contractuelles encodées dans `can_withdraw_document` : un fonds
+    institutionnel ne se retire pas unilatéralement. La demande crée donc un
+    ticket qu'un modérateur traite avec `withdraw_document`, lequel exige un
+    motif et écrit un événement d'audit.
+
+    Priorité haute : une demande peut porter sur des droits ou une
+    confidentialité, et n'a pas à attendre derrière une question de facturation.
+    """
+    if document.publication_status != Document.PublicationStatus.PUBLISHED:
+        # Il n'y a rien à retirer d'un brouillon : accepter la demande
+        # promettrait un acte qui ne peut pas avoir lieu.
+        raise ValueError("only a published document can be requested for withdrawal")
+
+    return _open_document_ticket(
+        document=document,
+        reason=reason,
+        actor=requested_by,
+        category=SupportTicket.Category.WITHDRAWAL_REQUEST,
+        priority=SupportTicket.Priority.HIGH,
+        title="Demande de retrait",
+        event_type="document_withdrawal_requested",
+        verb="withdrawal request",
+    )
 
 
 def resolve_support_ticket(

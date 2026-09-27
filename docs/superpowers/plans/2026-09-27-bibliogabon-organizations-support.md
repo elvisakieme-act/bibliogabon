@@ -27,13 +27,13 @@ Slice 4 of 4. Design: `docs/superpowers/specs/2026-09-27-bibliogabon-organizatio
 - Create: `backend/operations/migrations/00XX_supportticket_category.py`
 - Create: `backend/operations/tests/test_reports_and_requests.py`
 
-- [ ] Write failing tests: reporting a published document creates a `document_report` ticket naming the reporter and the reason; an empty reason and an absent actor are both refused; an audit event is written.
-- [ ] Write failing tests: requesting withdrawal of a published document creates a `withdrawal_request` ticket and **changes nothing about the document**; requesting it on a draft is refused, because accepting would promise an act that cannot happen.
-- [ ] Write a failing test that resolving a withdrawal-request ticket leaves the document untouched — resolution is an answer, withdrawal is an act.
-- [ ] Add `SupportTicket.category` with a default of `support`, so existing rows keep their meaning.
-- [ ] Implement both services.
-- [ ] Run `python -m pytest operations -q`.
-- [ ] Commit `feat: distinguish reports and withdrawal requests from support`.
+- [x] Write failing tests: reporting a published document creates a `document_report` ticket naming the reporter and the reason; an empty reason and an absent actor are both refused; an audit event is written.
+- [x] Write failing tests: requesting withdrawal of a published document creates a `withdrawal_request` ticket and **changes nothing about the document**; requesting it on a draft is refused, because accepting would promise an act that cannot happen.
+- [x] Write a failing test that resolving a withdrawal-request ticket leaves the document untouched — resolution is an answer, withdrawal is an act.
+- [x] Add `SupportTicket.category` with a default of `support`, so existing rows keep their meaning.
+- [x] Implement both services.
+- [x] Run `python -m pytest operations -q`.
+- [x] Commit `feat: distinguish reports and withdrawal requests from support`.
 
 ---
 
