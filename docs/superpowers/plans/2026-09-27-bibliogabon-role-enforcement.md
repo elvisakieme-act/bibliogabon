@@ -90,10 +90,11 @@ backend/
 **Interfaces:**
 - Hardens the organization-scoped predicates from Task 2.
 
-- [ ] Write failing tests: an admin of organization A is refused on organization B; an admin of two organizations is accepted on both; a suspended membership, an ended membership, and an unverified identity in a verification-required organization each remove administrative authority while the account stays usable as a reader.
-- [ ] Fix whatever the tests expose; the predicates should already be close if Task 2 reused the accounts service.
-- [ ] Run `pytest accounts/tests -q`.
-- [ ] Commit `test: cover organization scope of administrative authority`.
+- [x] Write failing tests: an admin of organization A is refused on organization B; an admin of two organizations is accepted on both; a suspended membership, an ended membership, and an unverified identity in a verification-required organization each remove administrative authority while the account stays usable as a reader.
+- [x] Nothing to fix: all eight passed first run, because Task 2 reused `active_organization_ids_for_user`
+      rather than reimplementing membership rules. The tests stand as a regression lock on that reuse.
+- [x] Run `pytest accounts/tests -q`.
+- [x] Commit `test: cover organization scope of administrative authority`.
 
 ---
 
