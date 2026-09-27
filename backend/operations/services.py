@@ -146,6 +146,99 @@ def record_publication_decision(
         return review
 
 
+def _close_publication(
+    *,
+    document,
+    target_status: str,
+    event_type: str,
+    verb: str,
+    reason: str,
+    actor,
+    at,
+    allowed_from: set[str],
+):
+    """Sort un document du public, en enregistrant qui et pourquoi.
+
+    Retrait et archivage ne diffèrent que par l'état visé, ce qui est attendu,
+    et par les états d'où ils partent, ce qui l'est moins : on ne retire pas ce
+    qui n'a jamais paru, et on n'archive pas deux fois.
+
+    Ni l'un ni l'autre ne supprime quoi que ce soit. La gouvernance exige que
+    le retrait soit réversible en interne : les pages, la version, l'index et
+    les droits restent, et seule la lisibilité change — `document_is_reader_
+    accessible` teste `published`. Les droits en particulier ne sont pas
+    touchés : confondre retrait et révocation ferait exiger une nouvelle
+    approbation à une republication qui n'en a pas besoin.
+    """
+    reason = (reason or "").strip()
+    if not reason:
+        # Un document public qui disparaît sans motif enregistré est exactement
+        # ce qu'un audit sert à empêcher.
+        raise ValueError(f"{verb} requires a reason")
+    if actor is None:
+        # Un acte anonyme est intraçable, ce qui vide l'audit de son sens.
+        raise ValueError(f"{verb} requires an actor")
+
+    at = at or timezone.now()
+    with transaction.atomic():
+        document = Document.objects.select_for_update().get(pk=document.pk)
+        if document.publication_status not in allowed_from:
+            raise ValueError(f"cannot {verb} a document in state {document.publication_status}")
+
+        document.publication_status = target_status
+        update_fields = ["publication_status", "updated_at"]
+        if target_status == Document.PublicationStatus.WITHDRAWN:
+            document.withdrawn_at = at
+            update_fields.append("withdrawn_at")
+        document.save(update_fields=update_fields)
+
+        record_audit_event(
+            actor=actor,
+            event_type=event_type,
+            target=document,
+            summary=_truncate_audit_summary(f"{verb.capitalize()}: {document.title}"),
+            # Le motif complet vit dans `metadata` : le résumé est borné à 240
+            # caractères et le tronquerait.
+            metadata={"document_id": document.pk, "reason": reason},
+        )
+        return document
+
+
+def withdraw_document(*, document, reason: str, actor=None, at=None) -> Document:
+    """Retire un document du public. Réversible par une nouvelle décision."""
+    return _close_publication(
+        document=document,
+        target_status=Document.PublicationStatus.WITHDRAWN,
+        event_type="document_withdrawn",
+        verb="withdraw",
+        reason=reason,
+        actor=actor,
+        at=at,
+        allowed_from={Document.PublicationStatus.PUBLISHED},
+    )
+
+
+def archive_document(*, document, reason: str, actor=None, at=None) -> Document:
+    """Archive un document : fin de sa vie sur la plateforme.
+
+    Distinct du retrait, qui est réversible. Un document archivé se ferme, et
+    l'archivage part donc aussi bien d'un document publié que retiré.
+    """
+    return _close_publication(
+        document=document,
+        target_status=Document.PublicationStatus.ARCHIVED,
+        event_type="document_archived",
+        verb="archive",
+        reason=reason,
+        actor=actor,
+        at=at,
+        allowed_from={
+            Document.PublicationStatus.PUBLISHED,
+            Document.PublicationStatus.WITHDRAWN,
+        },
+    )
+
+
 def open_support_ticket(
     *,
     title: str,

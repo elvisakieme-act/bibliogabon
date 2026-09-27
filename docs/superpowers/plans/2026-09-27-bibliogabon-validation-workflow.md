@@ -34,12 +34,12 @@ Design: `docs/superpowers/specs/2026-09-27-bibliogabon-validation-workflow-desig
 - Produces `withdraw_document(*, document, reason, actor=None, at=None)`.
 - Produces `archive_document(*, document, reason, actor=None, at=None)`.
 
-- [ ] Write failing tests: withdrawing a published document sets `publication_status` and `withdrawn_at` and writes one audit event naming actor and reason; an empty reason is refused; withdrawing a draft is refused; archiving twice is refused.
-- [ ] Write a failing test that withdrawal keeps the version, its pages and its search index rows, and that the rights agreement is untouched — a withdrawal is not a rights revocation, and conflating them would make republication demand a fresh approval it does not need.
-- [ ] Write a failing test that a withdrawn document is unreadable through `document_is_reader_accessible` and through both reader surfaces.
-- [ ] Implement both services with `select_for_update`, shaped like `record_publication_decision`.
-- [ ] Run `python -m pytest operations catalog document_reader -q`.
-- [ ] Commit `feat: add withdrawal and archiving services`.
+- [x] Write failing tests: withdrawing a published document sets `publication_status` and `withdrawn_at` and writes one audit event naming actor and reason; an empty reason is refused; withdrawing a draft is refused; archiving twice is refused.
+- [x] Write a failing test that withdrawal keeps the version, its pages and its search index rows, and that the rights agreement is untouched — a withdrawal is not a rights revocation, and conflating them would make republication demand a fresh approval it does not need.
+- [x] Write a failing test that a withdrawn document is unreadable through `document_is_reader_accessible` and through both reader surfaces.
+- [x] Implement both services with `select_for_update`, shaped like `record_publication_decision`.
+- [x] Run `python -m pytest operations catalog document_reader -q`.
+- [x] Commit `feat: add withdrawal and archiving services`.
 
 ---
 
