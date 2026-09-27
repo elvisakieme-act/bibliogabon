@@ -13,11 +13,17 @@ export interface PaginatedResponse<T> {
   results: T[];
 }
 
+// Les cinq valeurs de `accounts.User.AccountType` cote backend. Le type
+// n'en declarait qu'une : un compte de moderation violait donc le type
+// declare, et TypeScript ne pouvait verifier aucune comparaison de role.
+export type AccountType =
+  "individual" | "teacher_author" | "organization_admin" | "content_admin" | "platform_staff";
+
 export interface ApiUser {
   id: number;
   email: string;
   display_name: string;
-  account_type: "individual";
+  account_type: AccountType;
 }
 
 export interface AuthTokens {
