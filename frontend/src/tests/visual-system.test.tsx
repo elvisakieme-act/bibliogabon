@@ -11,10 +11,7 @@ import { AuthProvider } from "@/auth/AuthProvider";
 
 describe("maquette visual system", () => {
   it("preserves BiblioGABON brand tokens and motion utilities", () => {
-    const css = fs.readFileSync(
-      path.resolve(process.cwd(), "src/styles/globals.css"),
-      "utf8"
-    );
+    const css = fs.readFileSync(path.resolve(process.cwd(), "src/styles/globals.css"), "utf8");
 
     expect(css).toContain("--navy:");
     expect(css).toContain("--green:");
@@ -32,12 +29,7 @@ describe("maquette visual system", () => {
   });
 
   it("uses the maquette empty state pattern", () => {
-    render(
-      <EmptyState
-        title="Aucun document"
-        description="Essayez un autre filtre."
-      />
-    );
+    render(<EmptyState title="Aucun document" description="Essayez un autre filtre." />);
 
     expect(screen.getByText("Aucun document")).toBeInTheDocument();
     expect(screen.getByText("Essayez un autre filtre.")).toBeInTheDocument();
@@ -55,7 +47,11 @@ describe("maquette visual system", () => {
   });
 
   it("shows logged-out account affordances without a logout action", () => {
-    render(<AuthProvider><Navbar /></AuthProvider>);
+    render(
+      <AuthProvider>
+        <Navbar />
+      </AuthProvider>
+    );
 
     expect(screen.getByRole("link", { name: "Connexion" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "S'inscrire" })).toBeInTheDocument();
@@ -66,8 +62,8 @@ describe("maquette visual system", () => {
     const { container } = render(<Footer />);
 
     expect(container.querySelector("footer > .gabon-stripe")).toBeInTheDocument();
-    expect(
-      container.querySelector('footer a[aria-label="BiblioGABON"]')
-    ).toHaveClass("text-[var(--navy)]");
+    expect(container.querySelector('footer a[aria-label="BiblioGABON"]')).toHaveClass(
+      "text-[var(--navy)]"
+    );
   });
 });

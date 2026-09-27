@@ -18,7 +18,7 @@ export function fieldErrorProps(
   if (!fieldErrors[field]?.length) return {};
   return {
     "aria-invalid": true as const,
-    "aria-describedby": fieldErrorId(form, field),
+    "aria-describedby": fieldErrorId(form, field)
   };
 }
 

@@ -16,5 +16,55 @@ export function DomainDetailPage() {
   const domains = useDomains();
   const name = domains.data?.results.find((domain) => domain.slug === slug)?.name ?? slug;
 
-  return <SiteLayout><main className="container-editorial py-10 sm:py-14"><a href="/domaines" className="text-sm font-semibold text-[var(--green)] hover:underline">Domaines</a><h1 className="mt-3 font-display text-4xl font-semibold capitalize text-[var(--navy)]">{name}</h1>{search.isPending ? <div className="mt-8 space-y-4"><Skeleton /><Skeleton /><Skeleton /></div> : search.isError ? <div className="mt-8"><EmptyState title="Domaine indisponible" description="Reessayez dans quelques instants." /></div> : search.data?.results.length ? <><section className="mt-8 space-y-4">{search.data.results.map((result) => <SearchResultCard key={result.id} result={result} />)}</section><PaginationControls response={search.data} page={page} pageSize={pageSize} path={`/domaines/${slug}`} params={{ domain: slug }} /></> : <div className="mt-8"><EmptyState title="Aucun document" description="Aucun document ne correspond encore a ce domaine." /></div>}</main></SiteLayout>;
+  return (
+    <SiteLayout>
+      <main className="container-editorial py-10 sm:py-14">
+        <a
+          href="/domaines"
+          className="text-sm font-semibold text-[var(--green)] hover:underline"
+        >
+          Domaines
+        </a>
+        <h1 className="mt-3 font-display text-4xl font-semibold capitalize text-[var(--navy)]">
+          {name}
+        </h1>
+        {search.isPending ? (
+          <div className="mt-8 space-y-4">
+            <Skeleton />
+            <Skeleton />
+            <Skeleton />
+          </div>
+        ) : search.isError ? (
+          <div className="mt-8">
+            <EmptyState
+              title="Domaine indisponible"
+              description="Reessayez dans quelques instants."
+            />
+          </div>
+        ) : search.data?.results.length ? (
+          <>
+            <section className="mt-8 space-y-4">
+              {search.data.results.map((result) => (
+                <SearchResultCard key={result.id} result={result} />
+              ))}
+            </section>
+            <PaginationControls
+              response={search.data}
+              page={page}
+              pageSize={pageSize}
+              path={`/domaines/${slug}`}
+              params={{ domain: slug }}
+            />
+          </>
+        ) : (
+          <div className="mt-8">
+            <EmptyState
+              title="Aucun document"
+              description="Aucun document ne correspond encore a ce domaine."
+            />
+          </div>
+        )}
+      </main>
+    </SiteLayout>
+  );
 }

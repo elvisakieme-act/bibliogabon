@@ -102,11 +102,18 @@ describe("LibrarySection", () => {
     render(
       <LibrarySection
         favorites={[
-          { document: { ...document, id: 3, title: "Deja favori" }, created_at: "2026-07-30T10:00:00Z" }
+          {
+            document: { ...document, id: 3, title: "Deja favori" },
+            created_at: "2026-07-30T10:00:00Z"
+          }
         ]}
         progress={[
           { document, last_page_number: 2, updated_at: "2026-07-30T10:00:00Z" },
-          { document: { ...document, id: 3, title: "Deja favori" }, last_page_number: 1, updated_at: "2026-07-30T10:00:00Z" }
+          {
+            document: { ...document, id: 3, title: "Deja favori" },
+            last_page_number: 1,
+            updated_at: "2026-07-30T10:00:00Z"
+          }
         ]}
         onAddFavorite={onAddFavorite}
         onRemoveFavorite={onRemoveFavorite}
@@ -134,48 +141,66 @@ describe("LibrarySection", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
       if (url.pathname === "/api/v1/me/") {
-        return new Response(JSON.stringify({
-          id: 1,
-          email: "reader@example.ga",
-          display_name: "Reader",
-          account_type: "individual"
-        }));
+        return new Response(
+          JSON.stringify({
+            id: 1,
+            email: "reader@example.ga",
+            display_name: "Reader",
+            account_type: "individual"
+          })
+        );
       }
       if (url.pathname === "/api/v1/me/favorites/") {
         const page = url.searchParams.get("page") ?? "1";
-        return new Response(JSON.stringify(page === "1" ? {
-          count: 2,
-          next: "http://127.0.0.1:8000/api/v1/me/favorites/?page=2",
-          previous: null,
-          results: [{ document: favoriteOne, created_at: "2026-07-30T10:00:00Z" }]
-        } : {
-          count: 2,
-          next: null,
-          previous: "http://127.0.0.1:8000/api/v1/me/favorites/?page=1",
-          results: [{ document: favoriteTwo, created_at: "2026-07-31T10:00:00Z" }]
-        }));
+        return new Response(
+          JSON.stringify(
+            page === "1"
+              ? {
+                  count: 2,
+                  next: "http://127.0.0.1:8000/api/v1/me/favorites/?page=2",
+                  previous: null,
+                  results: [{ document: favoriteOne, created_at: "2026-07-30T10:00:00Z" }]
+                }
+              : {
+                  count: 2,
+                  next: null,
+                  previous: "http://127.0.0.1:8000/api/v1/me/favorites/?page=1",
+                  results: [{ document: favoriteTwo, created_at: "2026-07-31T10:00:00Z" }]
+                }
+          )
+        );
       }
       if (url.pathname === "/api/v1/me/reading-progress/") {
         const page = url.searchParams.get("page") ?? "1";
-        return new Response(JSON.stringify(page === "1" ? {
-          count: 2,
-          next: "http://127.0.0.1:8000/api/v1/me/reading-progress/?page=2",
-          previous: null,
-          results: [{
-            document: progressOne,
-            last_page_number: 1,
-            updated_at: "2026-07-30T10:00:00Z"
-          }]
-        } : {
-          count: 2,
-          next: null,
-          previous: "http://127.0.0.1:8000/api/v1/me/reading-progress/?page=1",
-          results: [{
-            document: progressTwo,
-            last_page_number: 2,
-            updated_at: "2026-07-31T10:00:00Z"
-          }]
-        }));
+        return new Response(
+          JSON.stringify(
+            page === "1"
+              ? {
+                  count: 2,
+                  next: "http://127.0.0.1:8000/api/v1/me/reading-progress/?page=2",
+                  previous: null,
+                  results: [
+                    {
+                      document: progressOne,
+                      last_page_number: 1,
+                      updated_at: "2026-07-30T10:00:00Z"
+                    }
+                  ]
+                }
+              : {
+                  count: 2,
+                  next: null,
+                  previous: "http://127.0.0.1:8000/api/v1/me/reading-progress/?page=1",
+                  results: [
+                    {
+                      document: progressTwo,
+                      last_page_number: 2,
+                      updated_at: "2026-07-31T10:00:00Z"
+                    }
+                  ]
+                }
+          )
+        );
       }
       throw new Error(`Unexpected request: ${url}`);
     });

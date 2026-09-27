@@ -13,5 +13,10 @@ export function Button({ variant = "primary", className, ...props }: ButtonProps
     ghost: "bg-transparent text-[var(--navy)] hover:bg-[var(--navy-soft)]"
   };
 
-  return <button className={`rounded-xl px-4 py-2 font-semibold ring-[var(--gold)] focus-visible:outline-none focus-visible:ring-2 ${variants[variant]} ${className ?? ""}`} {...props} />;
+  return (
+    <button
+      className={`rounded-xl px-4 py-2 font-semibold ring-[var(--gold)] focus-visible:outline-none focus-visible:ring-2 ${variants[variant]} ${className ?? ""}`}
+      {...props}
+    />
+  );
 }

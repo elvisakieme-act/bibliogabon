@@ -19,18 +19,19 @@ export function CatalogPage() {
     <SiteLayout>
       <main className="container-editorial py-10 sm:py-14">
         <p className="text-sm font-semibold uppercase text-[var(--green)]">Explorer</p>
-        <h1 className="mt-3 font-display text-4xl font-semibold text-[var(--navy)]">Catalogue</h1>
+        <h1 className="mt-3 font-display text-4xl font-semibold text-[var(--navy)]">
+          Catalogue
+        </h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
           Parcourez les publications academiques accessibles sur BiblioGABON.
         </p>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
-          <aside aria-label="Filtres du catalogue" className="lg:sticky lg:top-24 lg:self-start">
-            <CatalogFilters
-              values={{}}
-              domains={domains.data?.results}
-              variant="sidebar"
-            />
+          <aside
+            aria-label="Filtres du catalogue"
+            className="lg:sticky lg:top-24 lg:self-start"
+          >
+            <CatalogFilters values={{}} domains={domains.data?.results} variant="sidebar" />
           </aside>
 
           <div className="min-w-0">

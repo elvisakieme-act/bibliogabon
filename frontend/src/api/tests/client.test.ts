@@ -68,24 +68,27 @@ describe("apiRequest", () => {
       )
     );
 
-    await expect(apiRequest("/api/v1/reader/sessions/", { method: "POST" }))
-      .rejects.toMatchObject({
-        code: "entitlement_required",
-        status: 403
-      });
+    await expect(
+      apiRequest("/api/v1/reader/sessions/", { method: "POST" })
+    ).rejects.toMatchObject({
+      code: "entitlement_required",
+      status: 403
+    });
   });
 
   it("returns undefined for 204 responses", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
 
-    await expect(apiRequest("/api/v1/auth/logout/", { method: "POST" })).resolves.toBeUndefined();
+    await expect(
+      apiRequest("/api/v1/auth/logout/", { method: "POST" })
+    ).resolves.toBeUndefined();
   });
 
   it("normalizes a configured API base URL with trailing slashes", async () => {
     vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test///");
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), { status: 200 })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
     await apiRequest("/api/v1/health/");
@@ -141,9 +144,11 @@ describe("apiRequest", () => {
       )
     );
 
-    await expect(apiRequest("/api/v1/reader/sessions/", {
-      method: "POST"
-    })).rejects.toMatchObject({ status: 401 });
+    await expect(
+      apiRequest("/api/v1/reader/sessions/", {
+        method: "POST"
+      })
+    ).rejects.toMatchObject({ status: 401 });
     expect(listener).not.toHaveBeenCalled();
     window.removeEventListener("bibliogabon:unauthorized", listener);
   });

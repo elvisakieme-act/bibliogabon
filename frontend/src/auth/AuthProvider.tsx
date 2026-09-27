@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { getCurrentUser, logout as logoutRequest } from "@/api/auth";
 import { UNAUTHORIZED_EVENT } from "@/api/client";
@@ -56,27 +49,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsHydrating(false));
   }, [clearSession]);
 
-  const value = useMemo<AuthContextValue>(() => ({
-    user,
-    tokens,
-    isHydrating,
-    setSession(session) {
-      tokenStore.set(session.tokens);
-      setTokens(session.tokens);
-      setUser(session.user);
-      setIsHydrating(false);
-    },
-    clearSession,
-    async logout() {
-      try {
-        if (tokens) {
-          await logoutRequest(tokens.refresh, tokens.access);
+  // Stable : un consommateur doit pouvoir mettre `setSession` dans les
+  // dependances d'un effet sans provoquer de boucle. Recree a chaque
+  // recalcul du memo, il rendait toute dependance correcte impossible.
+  const setSession = useCallback((session: { user: ApiUser; tokens: AuthTokens }) => {
+    tokenStore.set(session.tokens);
+    setTokens(session.tokens);
+    setUser(session.user);
+    setIsHydrating(false);
+  }, []);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      tokens,
+      isHydrating,
+      setSession,
+      clearSession,
+      async logout() {
+        try {
+          if (tokens) {
+            await logoutRequest(tokens.refresh, tokens.access);
+          }
+        } finally {
+          clearSession();
         }
-      } finally {
-        clearSession();
       }
-    }
-  }), [clearSession, isHydrating, tokens, user]);
+    }),
+    [clearSession, isHydrating, setSession, tokens, user]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

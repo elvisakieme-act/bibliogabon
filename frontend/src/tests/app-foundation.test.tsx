@@ -25,9 +25,7 @@ describe("app foundation", () => {
   it("renders the discovery home route", async () => {
     renderAt("/");
 
-    expect(
-      await screen.findByRole("heading", { name: /BiblioGABON/i })
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /BiblioGABON/i })).toBeInTheDocument();
   });
 
   it("renders the route-level not-found state for unknown URLs", async () => {

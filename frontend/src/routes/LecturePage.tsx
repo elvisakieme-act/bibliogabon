@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Link,
-  useLocation,
-  useNavigate,
-  useParams
-} from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthProvider";
@@ -80,12 +75,7 @@ export function LecturePage() {
     } catch {
       // The mutation state supplies the route's access and retry UI.
     }
-  }, [
-    closeSessionMutate,
-    createSessionMutateAsync,
-    documentId,
-    initialPageNumber
-  ]);
+  }, [closeSessionMutate, createSessionMutateAsync, documentId, initialPageNumber]);
 
   useEffect(() => {
     void startSession();
@@ -102,12 +92,7 @@ export function LecturePage() {
       documentId,
       lastPageNumber: loadedPageNumber
     });
-  }, [
-    documentId,
-    page.data?.page_number,
-    tokens?.access,
-    updateProgressMutate
-  ]);
+  }, [documentId, page.data?.page_number, tokens?.access, updateProgressMutate]);
 
   async function returnToDocument() {
     endSession();
@@ -119,36 +104,100 @@ export function LecturePage() {
   const errorStatus = sessionErrorStatus ?? pageErrorStatus;
 
   if (errorStatus === 401) {
-    return <SiteLayout><main className="container-editorial py-10 sm:py-16"><EmptyState title="Connexion requise" description="Connectez-vous pour acceder a ce document." /><Link to="/connexion" search={{ next: `/lecture/${documentId}${location.searchStr}` }} className="mt-6 inline-flex rounded-lg bg-[var(--navy)] px-5 py-3 text-sm font-semibold text-white">Se connecter</Link></main></SiteLayout>;
+    return (
+      <SiteLayout>
+        <main className="container-editorial py-10 sm:py-16">
+          <EmptyState
+            title="Connexion requise"
+            description="Connectez-vous pour acceder a ce document."
+          />
+          <Link
+            to="/connexion"
+            search={{ next: `/lecture/${documentId}${location.searchStr}` }}
+            className="mt-6 inline-flex rounded-lg bg-[var(--navy)] px-5 py-3 text-sm font-semibold text-white"
+          >
+            Se connecter
+          </Link>
+        </main>
+      </SiteLayout>
+    );
   }
 
   if (errorStatus === 403) {
-    return <SiteLayout><main className="container-editorial py-10 sm:py-16"><EmptyState title="Acces requis" description="Un droit de lecture actif est necessaire pour ce document." /></main></SiteLayout>;
+    return (
+      <SiteLayout>
+        <main className="container-editorial py-10 sm:py-16">
+          <EmptyState
+            title="Acces requis"
+            description="Un droit de lecture actif est necessaire pour ce document."
+          />
+        </main>
+      </SiteLayout>
+    );
   }
 
   if (errorStatus === 404) {
-    return <SiteLayout><main className="container-editorial py-10 sm:py-16"><EmptyState title="Document introuvable" description="Ce document est introuvable ou indisponible." /></main></SiteLayout>;
+    return (
+      <SiteLayout>
+        <main className="container-editorial py-10 sm:py-16">
+          <EmptyState
+            title="Document introuvable"
+            description="Ce document est introuvable ou indisponible."
+          />
+        </main>
+      </SiteLayout>
+    );
   }
 
   if (createSession.isError || page.isError) {
-    return <SiteLayout><main className="container-editorial py-10 sm:py-16"><EmptyState title="Lecture indisponible" description="La page ne peut pas etre chargee pour le moment." /><button type="button" onClick={() => void startSession()} className="mt-6 rounded-lg bg-[var(--navy)] px-5 py-3 text-sm font-semibold text-white">Reessayer</button></main></SiteLayout>;
+    return (
+      <SiteLayout>
+        <main className="container-editorial py-10 sm:py-16">
+          <EmptyState
+            title="Lecture indisponible"
+            description="La page ne peut pas etre chargee pour le moment."
+          />
+          <button
+            type="button"
+            onClick={() => void startSession()}
+            className="mt-6 rounded-lg bg-[var(--navy)] px-5 py-3 text-sm font-semibold text-white"
+          >
+            Reessayer
+          </button>
+        </main>
+      </SiteLayout>
+    );
   }
 
   if (createSession.isPending || !sessionKey || page.isPending || !page.data) {
-    return <SiteLayout><main className="container-editorial py-10 sm:py-16"><Skeleton label="Chargement de la lecture" /></main></SiteLayout>;
+    return (
+      <SiteLayout>
+        <main className="container-editorial py-10 sm:py-16">
+          <Skeleton label="Chargement de la lecture" />
+        </main>
+      </SiteLayout>
+    );
   }
 
   return (
     <SiteLayout>
       <main className="container-editorial py-8 sm:py-12">
-        <button type="button" onClick={returnToDocument} className="mb-6 text-sm font-semibold text-[var(--green)] hover:underline">Retour au document</button>
+        <button
+          type="button"
+          onClick={returnToDocument}
+          className="mb-6 text-sm font-semibold text-[var(--green)] hover:underline"
+        >
+          Retour au document
+        </button>
         <ReaderPage title={document.data?.title ?? "Lecture"} page={page.data} />
         <div className="mt-6">
           <ReaderControls
             pageNumber={page.data.page_number}
             pageCount={page.data.page_count}
             onPrevious={() => setPageNumber((currentPage) => Math.max(1, currentPage - 1))}
-            onNext={() => setPageNumber((currentPage) => Math.min(page.data.page_count, currentPage + 1))}
+            onNext={() =>
+              setPageNumber((currentPage) => Math.min(page.data.page_count, currentPage + 1))
+            }
           />
         </div>
       </main>

@@ -36,7 +36,11 @@ function renderLectureRoute({
 } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createAppRouter({ history: createMemoryHistory({ initialEntries: [path] }) });
-  const route = <QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>;
+  const route = (
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  );
   return render(strict ? <StrictMode>{route}</StrictMode> : route);
 }
 
@@ -52,7 +56,15 @@ describe("reader components", () => {
     render(
       <ReaderPage
         title="Droit public"
-        page={{ session_key: "550e8400-e29b-41d4-a716-446655440000", document_id: 1, version_id: 1, page_number: 2, page_count: 5, language_code: "fr", text: "Page securisee" }}
+        page={{
+          session_key: "550e8400-e29b-41d4-a716-446655440000",
+          document_id: 1,
+          version_id: 1,
+          page_number: 2,
+          page_count: 5,
+          language_code: "fr",
+          text: "Page securisee"
+        }}
       />
     );
 
@@ -63,14 +75,7 @@ describe("reader components", () => {
   it("calls previous and next controls", async () => {
     const previous = vi.fn();
     const next = vi.fn();
-    render(
-      <ReaderControls
-        pageNumber={2}
-        pageCount={5}
-        onPrevious={previous}
-        onNext={next}
-      />
-    );
+    render(<ReaderControls pageNumber={2} pageCount={5} onPrevious={previous} onNext={next} />);
 
     await userEvent.click(screen.getByRole("button", { name: /Page precedente/i }));
     await userEvent.click(screen.getByRole("button", { name: /Page suivante/i }));
@@ -88,23 +93,28 @@ describe("secure reader route", () => {
         return new Response(JSON.stringify(documentPayload));
       }
       if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
-        return new Response(JSON.stringify({
-          session_key: "session-resume",
-          document_id: 10,
-          version_id: 1,
-          expires_at: "2026-08-01T00:00:00Z"
-        }), { status: 201 });
+        return new Response(
+          JSON.stringify({
+            session_key: "session-resume",
+            document_id: 10,
+            version_id: 1,
+            expires_at: "2026-08-01T00:00:00Z"
+          }),
+          { status: 201 }
+        );
       }
       if (url.endsWith("/api/v1/reader/sessions/session-resume/pages/2/")) {
-        return new Response(JSON.stringify({
-          session_key: "session-resume",
-          document_id: 10,
-          version_id: 1,
-          page_number: 2,
-          page_count: 2,
-          language_code: "fr",
-          text: "Page reprise"
-        }));
+        return new Response(
+          JSON.stringify({
+            session_key: "session-resume",
+            document_id: 10,
+            version_id: 1,
+            page_number: 2,
+            page_count: 2,
+            language_code: "fr",
+            text: "Page reprise"
+          })
+        );
       }
       if (init?.method === "DELETE") return new Response(null, { status: 204 });
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
@@ -124,45 +134,54 @@ describe("secure reader route", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/api/v1/me/")) {
-        return new Response(JSON.stringify({
-          id: 1,
-          email: "reader@example.ga",
-          display_name: "Reader",
-          account_type: "individual"
-        }));
+        return new Response(
+          JSON.stringify({
+            id: 1,
+            email: "reader@example.ga",
+            display_name: "Reader",
+            account_type: "individual"
+          })
+        );
       }
       if (url.endsWith("/api/v1/catalog/documents/10/")) {
         return new Response(JSON.stringify(documentPayload));
       }
       if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
-        return new Response(JSON.stringify({
-          session_key: "session-progress",
-          document_id: 10,
-          version_id: 1,
-          expires_at: "2026-08-01T00:00:00Z"
-        }), { status: 201 });
+        return new Response(
+          JSON.stringify({
+            session_key: "session-progress",
+            document_id: 10,
+            version_id: 1,
+            expires_at: "2026-08-01T00:00:00Z"
+          }),
+          { status: 201 }
+        );
       }
       if (url.includes("/api/v1/reader/sessions/session-progress/pages/1/")) {
-        return new Response(JSON.stringify({
-          session_key: "session-progress",
-          document_id: 10,
-          version_id: 1,
-          page_number: 1,
-          page_count: 2,
-          language_code: "fr",
-          text: "Premiere page"
-        }));
+        return new Response(
+          JSON.stringify({
+            session_key: "session-progress",
+            document_id: 10,
+            version_id: 1,
+            page_number: 1,
+            page_count: 2,
+            language_code: "fr",
+            text: "Premiere page"
+          })
+        );
       }
       if (url.includes("/api/v1/reader/sessions/session-progress/pages/2/")) {
-        return new Response(JSON.stringify({
-          session_key: "session-progress",
-          document_id: 10,
-          version_id: 1,
-          page_number: 2,
-          page_count: 2,
-          language_code: "fr",
-          text: "Deuxieme page"
-        }));
+        return new Response(
+          JSON.stringify({
+            session_key: "session-progress",
+            document_id: 10,
+            version_id: 1,
+            page_number: 2,
+            page_count: 2,
+            language_code: "fr",
+            text: "Deuxieme page"
+          })
+        );
       }
       if (url.endsWith("/api/v1/me/reading-progress/10/") && init?.method === "PATCH") {
         return new Response(JSON.stringify({}));
@@ -178,12 +197,14 @@ describe("secure reader route", () => {
     expect(await screen.findByText("Deuxieme page")).toBeInTheDocument();
 
     await waitFor(() => {
-      const progressCall = fetchMock.mock.calls.find(([url, init]) =>
-        String(url).endsWith("/api/v1/me/reading-progress/10/")
-        && (init as RequestInit | undefined)?.method === "PATCH"
-        && (init as RequestInit | undefined)?.body === JSON.stringify({
-          last_page_number: 2
-        })
+      const progressCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/api/v1/me/reading-progress/10/") &&
+          (init as RequestInit | undefined)?.method === "PATCH" &&
+          (init as RequestInit | undefined)?.body ===
+            JSON.stringify({
+              last_page_number: 2
+            })
       );
       expect(progressCall).toBeDefined();
     });
@@ -197,14 +218,33 @@ describe("secure reader route", () => {
     });
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.endsWith("/api/v1/catalog/documents/10/")) return new Response(JSON.stringify(documentPayload));
+      if (url.endsWith("/api/v1/catalog/documents/10/"))
+        return new Response(JSON.stringify(documentPayload));
       if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
         sessionCount += 1;
         if (sessionCount === 1) return firstSession;
-        return new Response(JSON.stringify({ session_key: "session-current", document_id: 10, version_id: 1, expires_at: "2026-08-01T00:00:00Z" }), { status: 201 });
+        return new Response(
+          JSON.stringify({
+            session_key: "session-current",
+            document_id: 10,
+            version_id: 1,
+            expires_at: "2026-08-01T00:00:00Z"
+          }),
+          { status: 201 }
+        );
       }
       if (url.endsWith("/api/v1/reader/sessions/session-current/pages/1/")) {
-        return new Response(JSON.stringify({ session_key: "session-current", document_id: 10, version_id: 1, page_number: 1, page_count: 2, language_code: "fr", text: "Page actuelle" }));
+        return new Response(
+          JSON.stringify({
+            session_key: "session-current",
+            document_id: 10,
+            version_id: 1,
+            page_number: 1,
+            page_count: 2,
+            language_code: "fr",
+            text: "Page actuelle"
+          })
+        );
       }
       if (init?.method === "DELETE") return new Response(null, { status: 204 });
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
@@ -213,11 +253,26 @@ describe("secure reader route", () => {
 
     renderLectureRoute({ strict: true });
     await waitFor(() => expect(sessionCount).toBeGreaterThanOrEqual(2));
-    resolveFirstSession!(new Response(JSON.stringify({ session_key: "session-superseded", document_id: 10, version_id: 1, expires_at: "2026-08-01T00:00:00Z" }), { status: 201 }));
+    resolveFirstSession!(
+      new Response(
+        JSON.stringify({
+          session_key: "session-superseded",
+          document_id: 10,
+          version_id: 1,
+          expires_at: "2026-08-01T00:00:00Z"
+        }),
+        { status: 201 }
+      )
+    );
 
-    await waitFor(() => expect(fetchMock.mock.calls.map(([url, init]) => `${(init as RequestInit | undefined)?.method ?? "GET"} ${String(url)}`)).toContain(
-      "DELETE http://127.0.0.1:8000/api/v1/reader/sessions/session-superseded/"
-    ));
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.map(
+          ([url, init]) =>
+            `${(init as RequestInit | undefined)?.method ?? "GET"} ${String(url)}`
+        )
+      ).toContain("DELETE http://127.0.0.1:8000/api/v1/reader/sessions/session-superseded/")
+    );
   });
 
   it("closes the active session before retrying a failed page request", async () => {
@@ -229,13 +284,31 @@ describe("secure reader route", () => {
       }
       if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
         sessionCount += 1;
-        return new Response(JSON.stringify({ session_key: `session-${sessionCount}`, document_id: 10, version_id: 1, expires_at: "2026-08-01T00:00:00Z" }), { status: 201 });
+        return new Response(
+          JSON.stringify({
+            session_key: `session-${sessionCount}`,
+            document_id: 10,
+            version_id: 1,
+            expires_at: "2026-08-01T00:00:00Z"
+          }),
+          { status: 201 }
+        );
       }
       if (url.endsWith("/api/v1/reader/sessions/session-1/pages/1/")) {
         throw new TypeError("Network unavailable");
       }
       if (url.endsWith("/api/v1/reader/sessions/session-2/pages/1/")) {
-        return new Response(JSON.stringify({ session_key: "session-2", document_id: 10, version_id: 1, page_number: 1, page_count: 2, language_code: "fr", text: "Page securisee" }));
+        return new Response(
+          JSON.stringify({
+            session_key: "session-2",
+            document_id: 10,
+            version_id: 1,
+            page_number: 1,
+            page_count: 2,
+            language_code: "fr",
+            text: "Page securisee"
+          })
+        );
       }
       if (url.endsWith("/api/v1/reader/sessions/session-1/") && init?.method === "DELETE") {
         return new Response(null, { status: 204 });
@@ -248,19 +321,33 @@ describe("secure reader route", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Reessayer" }));
 
     await waitFor(() => expect(screen.getByText("Page securisee")).toBeInTheDocument());
-    const requests = fetchMock.mock.calls.map(([url, init]) => `${(init as RequestInit | undefined)?.method ?? "GET"} ${String(url)}`);
-    expect(requests).toContain("DELETE http://127.0.0.1:8000/api/v1/reader/sessions/session-1/");
-    expect(requests.indexOf("DELETE http://127.0.0.1:8000/api/v1/reader/sessions/session-1/")).toBeLessThan(
-      requests.lastIndexOf("POST http://127.0.0.1:8000/api/v1/reader/sessions/")
+    const requests = fetchMock.mock.calls.map(
+      ([url, init]) => `${(init as RequestInit | undefined)?.method ?? "GET"} ${String(url)}`
     );
+    expect(requests).toContain(
+      "DELETE http://127.0.0.1:8000/api/v1/reader/sessions/session-1/"
+    );
+    expect(
+      requests.indexOf("DELETE http://127.0.0.1:8000/api/v1/reader/sessions/session-1/")
+    ).toBeLessThan(requests.lastIndexOf("POST http://127.0.0.1:8000/api/v1/reader/sessions/"));
   });
 
   it("shows a login call to action when the reader session requires authentication", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.endsWith("/api/v1/catalog/documents/10/")) return new Response(JSON.stringify(documentPayload));
+      if (url.endsWith("/api/v1/catalog/documents/10/"))
+        return new Response(JSON.stringify(documentPayload));
       if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
-        return new Response(JSON.stringify({ error: { code: "authentication_required", message: "Authentication is required.", field_errors: {} } }), { status: 401 });
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: "authentication_required",
+              message: "Authentication is required.",
+              field_errors: {}
+            }
+          }),
+          { status: 401 }
+        );
       }
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
     });
@@ -268,7 +355,12 @@ describe("secure reader route", () => {
 
     renderLectureRoute();
 
-    expect(await screen.findByRole("heading", { name: "Connexion requise" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Se connecter" })).toHaveAttribute("href", "/connexion?next=%2Flecture%2F10");
+    expect(
+      await screen.findByRole("heading", { name: "Connexion requise" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Se connecter" })).toHaveAttribute(
+      "href",
+      "/connexion?next=%2Flecture%2F10"
+    );
   });
 });

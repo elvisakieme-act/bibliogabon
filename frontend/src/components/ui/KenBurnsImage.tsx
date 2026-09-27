@@ -4,11 +4,7 @@ interface KenBurnsImageProps {
   className?: string;
 }
 
-export function KenBurnsImage({
-  src,
-  alt,
-  className = ""
-}: KenBurnsImageProps) {
+export function KenBurnsImage({ src, alt, className = "" }: KenBurnsImageProps) {
   return (
     <img
       src={src}

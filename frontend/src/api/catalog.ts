@@ -19,10 +19,7 @@ function withQuery(path: string, params: Record<string, QueryValue> = {}) {
   return serialized ? `${path}?${serialized}` : path;
 }
 
-export function listDocuments(
-  params: Record<string, QueryValue> = {},
-  token?: string | null
-) {
+export function listDocuments(params: Record<string, QueryValue> = {}, token?: string | null) {
   return apiRequest<PaginatedResponse<DocumentMetadata>>(
     withQuery("/api/v1/catalog/documents/", params),
     { token }

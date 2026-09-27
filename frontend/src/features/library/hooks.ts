@@ -1,8 +1,4 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient
-} from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
   addFavorite,
@@ -22,11 +18,9 @@ export function useFavorites() {
   const { tokens } = useAuth();
   return useInfiniteQuery({
     queryKey: ["favorites", tokens?.access ?? null],
-    queryFn: ({ pageParam }) =>
-      listFavorites(requireAccessToken(tokens?.access), pageParam),
+    queryFn: ({ pageParam }) => listFavorites(requireAccessToken(tokens?.access), pageParam),
     initialPageParam: 1,
-    getNextPageParam: (lastPage, pages) =>
-      lastPage.next ? pages.length + 1 : undefined,
+    getNextPageParam: (lastPage, pages) => (lastPage.next ? pages.length + 1 : undefined),
     enabled: Boolean(tokens?.access)
   });
 }
@@ -58,8 +52,7 @@ export function useReadingProgress() {
     queryFn: ({ pageParam }) =>
       listReadingProgress(requireAccessToken(tokens?.access), pageParam),
     initialPageParam: 1,
-    getNextPageParam: (lastPage, pages) =>
-      lastPage.next ? pages.length + 1 : undefined,
+    getNextPageParam: (lastPage, pages) => (lastPage.next ? pages.length + 1 : undefined),
     enabled: Boolean(tokens?.access)
   });
 }
@@ -74,7 +67,6 @@ export function useUpdateReadingProgress() {
         input.documentId,
         input.lastPageNumber
       ),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["reading-progress"] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["reading-progress"] })
   });
 }

@@ -1,10 +1,4 @@
-import {
-  ArrowRight,
-  BookOpen,
-  LibraryBig,
-  Search,
-  ShieldCheck
-} from "lucide-react";
+import { ArrowRight, BookOpen, LibraryBig, Search, ShieldCheck } from "lucide-react";
 
 import type { DomainSummary } from "@/api/types";
 import { DocumentCard } from "@/components/catalog/DocumentCard";
@@ -22,13 +16,7 @@ const DOMAIN_TONES = [
   "bg-[var(--navy-deep)] text-white sm:col-span-2 lg:col-span-1"
 ];
 
-function DomainBento({
-  domains,
-  isPending
-}: {
-  domains: DomainSummary[];
-  isPending: boolean;
-}) {
+function DomainBento({ domains, isPending }: { domains: DomainSummary[]; isPending: boolean }) {
   if (isPending) {
     return (
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -58,10 +46,10 @@ function DomainBento({
         >
           <span className="h-1 w-12 gabon-stripe" aria-hidden="true" />
           <div className="mt-8">
-            <p className="text-xs font-semibold uppercase opacity-70">
-              Domaine academique
-            </p>
-            <h3 className={`mt-2 font-display font-semibold leading-tight ${index === 0 ? "text-3xl" : "text-xl"}`}>
+            <p className="text-xs font-semibold uppercase opacity-70">Domaine academique</p>
+            <h3
+              className={`mt-2 font-display font-semibold leading-tight ${index === 0 ? "text-3xl" : "text-xl"}`}
+            >
               {domain.name}
             </h3>
             <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
@@ -118,8 +106,8 @@ export function HomePage() {
                 BiblioGABON
               </h1>
               <p className="mt-5 max-w-2xl text-lg text-white/85">
-                Recherchez et lisez les ressources academiques produites au
-                Gabon, dans un catalogue pense pour les etudiants et chercheurs.
+                Recherchez et lisez les ressources academiques produites au Gabon, dans un
+                catalogue pense pour les etudiants et chercheurs.
               </p>
               <form
                 action="/recherche"
@@ -150,7 +138,10 @@ export function HomePage() {
           </div>
         </section>
 
-        <section aria-label="Impact de la bibliotheque" className="border-b border-border bg-white">
+        <section
+          aria-label="Impact de la bibliotheque"
+          className="border-b border-border bg-white"
+        >
           <Reveal className="container-editorial grid divide-y divide-border py-2 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             {impactCues.map(({ icon: Icon, value, label }) => (
               <div key={label} className="flex items-center gap-4 px-2 py-5 sm:px-5">
@@ -158,7 +149,9 @@ export function HomePage() {
                   <Icon className="size-5" />
                 </span>
                 <div>
-                  <p className="font-display text-2xl font-semibold text-[var(--navy)]">{value}</p>
+                  <p className="font-display text-2xl font-semibold text-[var(--navy)]">
+                    {value}
+                  </p>
                   <p className="text-sm text-muted-foreground">{label}</p>
                 </div>
               </div>
@@ -180,15 +173,15 @@ export function HomePage() {
                   Explorez le catalogue selon votre champ d'etude ou de recherche.
                 </p>
               </div>
-              <a href="/domaines" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--navy)] hover:text-[var(--green)]">
+              <a
+                href="/domaines"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--navy)] hover:text-[var(--green)]"
+              >
                 Tous les domaines
                 <ArrowRight className="size-4" />
               </a>
             </div>
-            <DomainBento
-              domains={domains.data?.results ?? []}
-              isPending={domains.isPending}
-            />
+            <DomainBento domains={domains.data?.results ?? []} isPending={domains.isPending} />
           </Reveal>
         </section>
 
@@ -196,14 +189,15 @@ export function HomePage() {
           <Reveal className="container-editorial py-14 sm:py-20">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-sm font-semibold uppercase text-[var(--green)]">
-                  Selection
-                </p>
+                <p className="text-sm font-semibold uppercase text-[var(--green)]">Selection</p>
                 <h2 className="mt-2 font-display text-3xl font-semibold text-[var(--navy)] sm:text-4xl">
                   Documents a la une
                 </h2>
               </div>
-              <a href="/catalogue" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--navy)] hover:text-[var(--green)]">
+              <a
+                href="/catalogue"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--navy)] hover:text-[var(--green)]"
+              >
                 Voir le catalogue
                 <ArrowRight className="size-4" />
               </a>

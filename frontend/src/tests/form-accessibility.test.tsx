@@ -14,7 +14,7 @@ afterEach(() => {
 function renderAt(path: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createAppRouter({
-    history: createMemoryHistory({ initialEntries: [path] }),
+    history: createMemoryHistory({ initialEntries: [path] })
   });
   return render(
     <QueryClientProvider client={queryClient}>
@@ -29,7 +29,11 @@ function refuseWithFieldErrors(fieldErrors: Record<string, string[]>) {
     vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
-          error: { code: "invalid_request", message: "Requête invalide.", field_errors: fieldErrors },
+          error: {
+            code: "invalid_request",
+            message: "Requête invalide.",
+            field_errors: fieldErrors
+          }
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       )

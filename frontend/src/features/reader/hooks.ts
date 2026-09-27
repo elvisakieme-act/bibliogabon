@@ -1,17 +1,12 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import {
-  closeReaderSession,
-  createReaderSession,
-  getReaderPage
-} from "@/api/reader";
+import { closeReaderSession, createReaderSession, getReaderPage } from "@/api/reader";
 import { useAuth } from "@/auth/AuthProvider";
 
 export function useCreateReaderSession() {
   const { tokens } = useAuth();
   return useMutation({
-    mutationFn: (documentId: number | string) =>
-      createReaderSession(documentId, tokens?.access)
+    mutationFn: (documentId: number | string) => createReaderSession(documentId, tokens?.access)
   });
 }
 

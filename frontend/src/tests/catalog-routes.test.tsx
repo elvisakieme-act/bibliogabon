@@ -39,10 +39,7 @@ describe("DocumentCard", () => {
 
     expect(screen.getByText("Droit public gabonais")).toBeInTheDocument();
     expect(screen.getByText("Droit")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Lire/i })).toHaveAttribute(
-      "href",
-      "/lecture/10"
-    );
+    expect(screen.getByRole("link", { name: /Lire/i })).toHaveAttribute("href", "/lecture/10");
     expect(screen.queryByText(/Telecharger/i)).not.toBeInTheDocument();
   });
 
@@ -67,8 +64,14 @@ describe("DocumentCard", () => {
 describe("document detail access", () => {
   it.each([
     [{ can_read: true, access_model: "free", reason: "free" }, "Lire maintenant"],
-    [{ can_read: false, access_model: "free", reason: "authentication_required" }, "Se connecter pour lire"],
-    [{ can_read: false, access_model: "institutional", reason: "entitlement_required" }, "Acces requis"]
+    [
+      { can_read: false, access_model: "free", reason: "authentication_required" },
+      "Se connecter pour lire"
+    ],
+    [
+      { can_read: false, access_model: "institutional", reason: "entitlement_required" },
+      "Acces requis"
+    ]
   ])("uses the required CTA label", (access, label) => {
     expect(documentDetailReadLabel({ ...document, access })).toBe(label);
   });
@@ -77,14 +80,16 @@ describe("document detail access", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({
-          ...document,
-          access: {
-            can_read: false,
-            access_model: "restricted",
-            reason: "authentication_required"
-          }
-        }))
+        new Response(
+          JSON.stringify({
+            ...document,
+            access: {
+              can_read: false,
+              access_model: "restricted",
+              reason: "authentication_required"
+            }
+          })
+        )
       )
     );
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -92,28 +97,33 @@ describe("document detail access", () => {
       history: createMemoryHistory({ initialEntries: ["/documents/10"] })
     });
 
-    render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
-
-    expect(await screen.findByRole("link", {
-      name: "Se connecter pour lire"
-    })).toHaveAttribute(
-      "href",
-      "/connexion?next=%2Fdocuments%2F10"
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
     );
+
+    expect(
+      await screen.findByRole("link", {
+        name: "Se connecter pour lire"
+      })
+    ).toHaveAttribute("href", "/connexion?next=%2Fdocuments%2F10");
   });
 
   it("keeps entitlement-required document detail states non-actionable", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({
-          ...document,
-          access: {
-            can_read: false,
-            access_model: "institution_only",
-            reason: "entitlement_required"
-          }
-        }))
+        new Response(
+          JSON.stringify({
+            ...document,
+            access: {
+              can_read: false,
+              access_model: "institution_only",
+              reason: "entitlement_required"
+            }
+          })
+        )
       )
     );
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -121,7 +131,11 @@ describe("document detail access", () => {
       history: createMemoryHistory({ initialEntries: ["/documents/10"] })
     });
 
-    render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
 
     expect(await screen.findByText("Acces requis")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Acces requis" })).not.toBeInTheDocument();
@@ -147,7 +161,10 @@ describe("SearchResultCard", () => {
 
     render(<SearchResultCard result={result} />);
 
-    expect(screen.getByRole("link", { name: "Recherche publique" })).toHaveAttribute("href", "/documents/20");
+    expect(screen.getByRole("link", { name: "Recherche publique" })).toHaveAttribute(
+      "href",
+      "/documents/20"
+    );
     expect(screen.queryByRole("link", { name: /Lire/i })).not.toBeInTheDocument();
   });
 });
@@ -160,18 +177,42 @@ describe("reader route", () => {
         return new Response(JSON.stringify(document));
       }
       if (url.endsWith("/api/v1/reader/sessions/") && init?.method === "POST") {
-        return new Response(JSON.stringify({ session_key: "session-10", document_id: 10, version_id: 1, expires_at: "2026-08-01T00:00:00Z" }), { status: 201 });
+        return new Response(
+          JSON.stringify({
+            session_key: "session-10",
+            document_id: 10,
+            version_id: 1,
+            expires_at: "2026-08-01T00:00:00Z"
+          }),
+          { status: 201 }
+        );
       }
       if (url.endsWith("/api/v1/reader/sessions/session-10/pages/1/")) {
-        return new Response(JSON.stringify({ session_key: "session-10", document_id: 10, version_id: 1, page_number: 1, page_count: 1, language_code: "fr", text: "Page de lecture" }));
+        return new Response(
+          JSON.stringify({
+            session_key: "session-10",
+            document_id: 10,
+            version_id: 1,
+            page_number: 1,
+            page_count: 1,
+            language_code: "fr",
+            text: "Page de lecture"
+          })
+        );
       }
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const router = createAppRouter({ history: createMemoryHistory({ initialEntries: ["/lecture/10"] }) });
+    const router = createAppRouter({
+      history: createMemoryHistory({ initialEntries: ["/lecture/10"] })
+    });
 
-    render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
 
     expect(await screen.findByText("Lecture")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: document.title })).toBeInTheDocument();
@@ -182,12 +223,15 @@ describe("search route query parameters", () => {
   it("clamps invalid catalog page and oversized page_size URL values", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       void input;
-      return new Response(JSON.stringify({
-        count: 0,
-        next: null,
-        previous: null,
-        results: []
-      }), { status: 200 });
+      return new Response(
+        JSON.stringify({
+          count: 0,
+          next: null,
+          previous: null,
+          results: []
+        }),
+        { status: 200 }
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -197,7 +241,11 @@ describe("search route query parameters", () => {
       })
     });
 
-    render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
 
     await waitFor(() => {
       expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain(
@@ -209,17 +257,26 @@ describe("search route query parameters", () => {
   it("forwards supported search and pagination parameters to the search endpoint", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       void input;
-      return new Response(JSON.stringify({ count: 0, next: null, previous: null, results: [] }), { status: 200 });
+      return new Response(
+        JSON.stringify({ count: 0, next: null, previous: null, results: [] }),
+        { status: 200 }
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const router = createAppRouter({
       history: createMemoryHistory({
-        initialEntries: ["/recherche?q=droit+public&domain=droit&language=fr&access=free&year=2026&page=2&page_size=8"]
+        initialEntries: [
+          "/recherche?q=droit+public&domain=droit&language=fr&access=free&year=2026&page=2&page_size=8"
+        ]
       })
     });
 
-    render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
 
@@ -228,49 +285,56 @@ describe("search route query parameters", () => {
     );
   });
 
-  it.each([
-    "free",
-    "institution_only",
-    "subscription",
-    "sponsored",
-    "restricted"
-  ])("offers and forwards the supported %s access filter", async (accessModel) => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      void input;
-      return new Response(JSON.stringify({
-        count: 0,
-        next: null,
-        previous: null,
-        results: []
-      }), { status: 200 });
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const router = createAppRouter({
-      history: createMemoryHistory({
-        initialEntries: [`/recherche?access=${accessModel}`]
-      })
-    });
+  it.each(["free", "institution_only", "subscription", "sponsored", "restricted"])(
+    "offers and forwards the supported %s access filter",
+    async (accessModel) => {
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        void input;
+        return new Response(
+          JSON.stringify({
+            count: 0,
+            next: null,
+            previous: null,
+            results: []
+          }),
+          { status: 200 }
+        );
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const router = createAppRouter({
+        history: createMemoryHistory({
+          initialEntries: [`/recherche?access=${accessModel}`]
+        })
+      });
 
-    render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
-
-    expect(await screen.findByRole("combobox", { name: "Acces" })).toHaveValue(accessModel);
-    await waitFor(() => {
-      expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain(
-        `http://127.0.0.1:8000/api/v1/search/?access=${accessModel}&page=1&page_size=12`
+      render(
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
       );
-    });
-  });
+
+      expect(await screen.findByRole("combobox", { name: "Acces" })).toHaveValue(accessModel);
+      await waitFor(() => {
+        expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain(
+          `http://127.0.0.1:8000/api/v1/search/?access=${accessModel}&page=1&page_size=12`
+        );
+      });
+    }
+  );
 
   it("clamps invalid page and oversized page_size URL values", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       void input;
-      return new Response(JSON.stringify({
-        count: 0,
-        next: null,
-        previous: null,
-        results: []
-      }), { status: 200 });
+      return new Response(
+        JSON.stringify({
+          count: 0,
+          next: null,
+          previous: null,
+          results: []
+        }),
+        { status: 200 }
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -280,7 +344,11 @@ describe("search route query parameters", () => {
       })
     });
 
-    render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
 
     await waitFor(() => {
       expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain(

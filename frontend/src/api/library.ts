@@ -1,19 +1,12 @@
 import { apiRequest } from "@/api/client";
-import type {
-  FavoriteItem,
-  PaginatedResponse,
-  ReadingProgressItem
-} from "@/api/types";
+import type { FavoriteItem, PaginatedResponse, ReadingProgressItem } from "@/api/types";
 
 function pagePath(path: string, page: number) {
   return `${path}?${new URLSearchParams({ page: String(page) }).toString()}`;
 }
 
 export function listFavorites(access: string, page = 1) {
-  return apiRequest<PaginatedResponse<FavoriteItem>>(pagePath(
-    "/api/v1/me/favorites/",
-    page
-  ), {
+  return apiRequest<PaginatedResponse<FavoriteItem>>(pagePath("/api/v1/me/favorites/", page), {
     token: access
   });
 }
@@ -45,12 +38,9 @@ export function updateReadingProgress(
   documentId: number | string,
   lastPageNumber: number
 ) {
-  return apiRequest<ReadingProgressItem>(
-    `/api/v1/me/reading-progress/${documentId}/`,
-    {
-      method: "PATCH",
-      token: access,
-      body: { last_page_number: lastPageNumber }
-    }
-  );
+  return apiRequest<ReadingProgressItem>(`/api/v1/me/reading-progress/${documentId}/`, {
+    method: "PATCH",
+    token: access,
+    body: { last_page_number: lastPageNumber }
+  });
 }

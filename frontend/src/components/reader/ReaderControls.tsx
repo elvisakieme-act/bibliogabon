@@ -5,9 +5,17 @@ interface ReaderControlsProps {
   onNext(): void;
 }
 
-export function ReaderControls({ pageNumber, pageCount, onPrevious, onNext }: ReaderControlsProps) {
+export function ReaderControls({
+  pageNumber,
+  pageCount,
+  onPrevious,
+  onNext
+}: ReaderControlsProps) {
   return (
-    <nav aria-label="Navigation du lecteur" className="flex items-center justify-between border-t border-border pt-5">
+    <nav
+      aria-label="Navigation du lecteur"
+      className="flex items-center justify-between border-t border-border pt-5"
+    >
       <button
         type="button"
         onClick={onPrevious}
@@ -16,7 +24,9 @@ export function ReaderControls({ pageNumber, pageCount, onPrevious, onNext }: Re
       >
         Page precedente
       </button>
-      <p className="text-sm text-muted-foreground">Page {pageNumber} sur {pageCount}</p>
+      <p className="text-sm text-muted-foreground">
+        Page {pageNumber} sur {pageCount}
+      </p>
       <button
         type="button"
         onClick={onNext}

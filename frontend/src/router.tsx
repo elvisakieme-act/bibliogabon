@@ -1,9 +1,4 @@
-import {
-  Outlet,
-  createRootRoute,
-  createRoute,
-  createRouter
-} from "@tanstack/react-router";
+import { Outlet, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 
 import { AuthProvider } from "@/auth/AuthProvider";
 import { HomePage } from "@/routes/HomePage";
@@ -32,7 +27,11 @@ function NotFoundPage() {
 }
 
 const rootRoute = createRootRoute({
-  component: () => <AuthProvider><Outlet /></AuthProvider>,
+  component: () => (
+    <AuthProvider>
+      <Outlet />
+    </AuthProvider>
+  ),
   notFoundComponent: NotFoundPage
 });
 
@@ -69,18 +68,52 @@ const bibliothequeRoute = createRoute({
   component: BibliothequePage
 });
 
-const catalogueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/catalogue", component: CatalogPage });
-const rechercheRoute = createRoute({ getParentRoute: () => rootRoute, path: "/recherche", component: RecherchePage });
-const domainesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/domaines", component: DomainesPage });
-const domainDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: "/domaines/$slug", component: DomainDetailPage });
-const documentDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: "/documents/$id", component: DocumentDetailPage });
-const lectureRoute = createRoute({ getParentRoute: () => rootRoute, path: "/lecture/$documentId", component: LecturePage });
+const catalogueRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/catalogue",
+  component: CatalogPage
+});
+const rechercheRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/recherche",
+  component: RecherchePage
+});
+const domainesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/domaines",
+  component: DomainesPage
+});
+const domainDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/domaines/$slug",
+  component: DomainDetailPage
+});
+const documentDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/documents/$id",
+  component: DocumentDetailPage
+});
+const lectureRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lecture/$documentId",
+  component: LecturePage
+});
 
-const routeTree = rootRoute.addChildren([homeRoute, connexionRoute, inscriptionRoute, profilRoute, bibliothequeRoute, catalogueRoute, rechercheRoute, domainesRoute, domainDetailRoute, documentDetailRoute, lectureRoute]);
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  connexionRoute,
+  inscriptionRoute,
+  profilRoute,
+  bibliothequeRoute,
+  catalogueRoute,
+  rechercheRoute,
+  domainesRoute,
+  domainDetailRoute,
+  documentDetailRoute,
+  lectureRoute
+]);
 
-export function createAppRouter(
-  options: Partial<Parameters<typeof createRouter>[0]> = {}
-) {
+export function createAppRouter(options: Partial<Parameters<typeof createRouter>[0]> = {}) {
   return createRouter({
     routeTree,
     defaultPreload: "intent",

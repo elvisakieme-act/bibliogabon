@@ -9,15 +9,10 @@ export function createReaderSession(documentId: number | string, access?: string
   });
 }
 
-export function getReaderPage(
-  sessionKey: string,
-  pageNumber: number,
-  access?: string | null
-) {
-  return apiRequest<ReaderPage>(
-    `/api/v1/reader/sessions/${sessionKey}/pages/${pageNumber}/`,
-    { token: access }
-  );
+export function getReaderPage(sessionKey: string, pageNumber: number, access?: string | null) {
+  return apiRequest<ReaderPage>(`/api/v1/reader/sessions/${sessionKey}/pages/${pageNumber}/`, {
+    token: access
+  });
 }
 
 export function closeReaderSession(sessionKey: string, access?: string | null) {

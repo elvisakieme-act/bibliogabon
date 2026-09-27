@@ -36,10 +36,17 @@ function Probe() {
     <div>
       <span>{auth.user?.email ?? "anonymous"}</span>
       <button
-        onClick={() => auth.setSession({
-          user: { id: 1, email: "reader@example.ga", display_name: "Reader", account_type: "individual" },
-          tokens: { access: "access", refresh: "refresh" }
-        })}
+        onClick={() =>
+          auth.setSession({
+            user: {
+              id: 1,
+              email: "reader@example.ga",
+              display_name: "Reader",
+              account_type: "individual"
+            },
+            tokens: { access: "access", refresh: "refresh" }
+          })
+        }
       >
         set session
       </button>
@@ -117,12 +124,11 @@ describe("AuthProvider", () => {
   it("shows normalized profile field errors after a failed update", async () => {
     tokenStore.set({ access: "access", refresh: "refresh" });
     vi.mocked(getCurrentUser).mockResolvedValue(reader);
-    vi.mocked(updateCurrentUser).mockRejectedValue(new ApiError(
-      400,
-      "invalid_profile",
-      "Profile data is invalid.",
-      { display_name: ["Le nom affiche est obligatoire."] }
-    ));
+    vi.mocked(updateCurrentUser).mockRejectedValue(
+      new ApiError(400, "invalid_profile", "Profile data is invalid.", {
+        display_name: ["Le nom affiche est obligatoire."]
+      })
+    );
 
     renderAt("/profil");
 
@@ -146,7 +152,9 @@ describe("AuthProvider", () => {
   it("clears the session and redirects after a profile update 401", async () => {
     tokenStore.set({ access: "access", refresh: "refresh" });
     vi.mocked(getCurrentUser).mockResolvedValue(reader);
-    vi.mocked(updateCurrentUser).mockRejectedValue(new ApiError(401, "token_not_valid", "Token is invalid."));
+    vi.mocked(updateCurrentUser).mockRejectedValue(
+      new ApiError(401, "token_not_valid", "Token is invalid.")
+    );
 
     renderAt("/profil");
 

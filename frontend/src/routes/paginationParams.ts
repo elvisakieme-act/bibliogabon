@@ -14,10 +14,6 @@ export function paginationFromSearch(searchStr: string) {
   const search = new URLSearchParams(searchStr);
   return {
     page: clampedInteger(search.get("page"), DEFAULT_PAGE),
-    pageSize: clampedInteger(
-      search.get("page_size"),
-      DEFAULT_PAGE_SIZE,
-      MAX_PAGE_SIZE
-    )
+    pageSize: clampedInteger(search.get("page_size"), DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
   };
 }

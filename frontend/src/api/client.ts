@@ -54,10 +54,7 @@ async function parseError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, "request_failed", response.statusText);
 }
 
-export async function apiRequest<T>(
-  path: string,
-  options: ApiRequestOptions = {}
-): Promise<T> {
+export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
     Accept: "application/json"
   };
