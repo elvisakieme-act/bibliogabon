@@ -112,6 +112,11 @@ def can_submit_document(user) -> bool:
     return _account_type(user) == User.AccountType.TEACHER_AUTHOR or is_content_admin(user)
 
 
+def is_teacher_author(user) -> bool:
+    """Enseignant-auteur : dépose des ressources et suit les siennes."""
+    return _account_type(user) == User.AccountType.TEACHER_AUTHOR
+
+
 def has_back_office_access(user) -> bool:
     """Plancher du back-office : qui peut seulement y entrer.
 

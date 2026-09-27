@@ -84,11 +84,14 @@ backend/
 **Interfaces:**
 - Produces `documents_visible_to(user) -> QuerySet`.
 
-- [ ] Write failing tests: a content admin sees documents in every state, including `draft` and `private`; a teacher sees only documents they authored, in any state; a teacher sees nothing authored by someone else; a student and an anonymous caller see nothing.
-- [ ] Write a failing test proving the reader-facing catalog is unaffected: the public list still excludes unpublished and private documents for the same content admin. The staff surface widens visibility for staff endpoints only.
-- [ ] Implement the queryset, deriving authorship through `Author.linked_user` as the predicates do.
-- [ ] Run `pytest api/staff -q`.
-- [ ] Commit `feat: scope staff document visibility by role`.
+- [x] Write failing tests: a content admin sees documents in every state, including `draft` and `private`; a teacher sees only documents they authored, in any state; a teacher sees nothing authored by someone else; a student and an anonymous caller see nothing.
+- [x] Write a failing test proving the reader-facing catalog is unaffected: the public list still excludes unpublished and private documents for the same content admin. The staff surface widens visibility for staff endpoints only.
+- [x] Implement the queryset, deriving authorship through `Author.linked_user` as the predicates do, with
+      `distinct()`: an author attached twice (author then co-author) would otherwise duplicate the row
+      through the join.
+- [x] Expose `is_teacher_author` rather than reading the private `_account_type` from another module.
+- [x] Run `pytest api/staff -q`.
+- [x] Commit `feat: scope staff document visibility by role`.
 
 ---
 
