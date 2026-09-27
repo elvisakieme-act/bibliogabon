@@ -104,12 +104,18 @@ backend/
 **Interfaces:**
 - Produces `GET/POST /api/staff/v1/documents/`, `GET/PATCH /api/staff/v1/documents/{id}/`, `POST /api/staff/v1/documents/{id}/submit/`.
 
-- [ ] Write failing tests: a teacher creates a document and it lands in `draft` with them as author; the payload exposes publication state, rights presence and ingestion state, and no storage key; a teacher cannot patch a document they did not author; a content admin can; filters on state, domain and type work; the list is paginated with the standard envelope.
-- [ ] Write failing tests for `submit`: `draft → submitted` records an audit event naming the actor; submitting twice is idempotent; submitting a document with no author or no rights agreement is refused with a typed error naming what is missing.
-- [ ] Implement the views on the scoped queryset, reusing `StandardResultsSetPagination` and `error_response`.
-- [ ] Reuse `document_is_publishable` for the readiness check rather than restating its rules.
-- [ ] Run `pytest api/staff -q`.
-- [ ] Commit `feat: add staff document endpoints`.
+- [x] Write failing tests: a teacher creates a document and it lands in `draft` with them as author; the payload exposes publication state, rights presence and ingestion state, and no storage key; a teacher cannot patch a document they did not author; a content admin can; filters on state, domain and type work; the list is paginated with the standard envelope.
+- [x] Write failing tests for `submit`: `draft → submitted` records an audit event naming the actor; submitting twice is idempotent; submitting a document with no author or no rights agreement is refused with a typed error naming what is missing.
+- [x] Implement the views on the scoped queryset, reusing `StandardResultsSetPagination` and `error_response`.
+- [x] Refactor `document_is_publishable` onto `missing_publication_requirements`, which returns *which*
+      requirements are unmet. A boolean could not tell a depositor what is blocking, and restating the list
+      in the API would have guaranteed divergence. The 18 catalog tests pass unchanged.
+- [x] A document out of scope returns 404, not 403: answering "forbidden" would confirm it exists, and for
+      someone else's draft that alone is a leak.
+- [x] `publication_status` is absent from the write serializer. Leaving it writable would let a PATCH bypass
+      the audited transitions entirely.
+- [x] Run `pytest api/staff -q`.
+- [x] Commit `feat: add staff document endpoints`.
 
 ---
 
