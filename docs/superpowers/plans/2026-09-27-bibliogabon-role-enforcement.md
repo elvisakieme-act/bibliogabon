@@ -146,10 +146,13 @@ backend/
 **Interfaces:**
 - Produces audited membership changes.
 
-- [ ] Write failing tests: adding, suspending and removing a member records an `AuditLog` event naming the actor, the organization and the member; an entitlement granted under a role records one too.
-- [ ] Implement the service functions that perform those changes, calling `record_audit_event`. Direct model saves stay possible but are not the path the admin uses.
-- [ ] Run `pytest accounts/tests operations/tests -q`.
-- [ ] Commit `feat: audit membership and entitlement changes`.
+- [x] Write failing tests: adding, suspending and removing a member records an `AuditLog` event naming the actor, the organization and the member; an entitlement granted under a role records one too.
+- [x] Implement the service functions, calling `record_audit_event` through a deferred import: `operations`
+      depends on `accounts`, so importing it at module level would invert the dependency.
+- [x] Require a reason on an administrative grant. A derogation without one is not auditable, and the motive
+      is the only thing separating a decision from an accident.
+- [x] Run `pytest accounts/tests operations/tests -q`.
+- [x] Commit `feat: audit membership and entitlement changes`.
 
 ---
 
