@@ -128,11 +128,20 @@ backend/
 **Interfaces:**
 - Produces `POST/DELETE /api/staff/v1/documents/{id}/authors/...` and `PUT /api/staff/v1/documents/{id}/rights/`.
 
-- [ ] Write failing tests: attaching an author sets its position and role; attaching the same author twice is refused rather than duplicated; detaching leaves the ordering contiguous; the rights agreement can be created then replaced, and an invalid authorisation status is refused.
-- [ ] Write a failing test proving a document cannot reach `submitted` without a valid rights agreement — the governance rule that no document is published without rights review starts here.
-- [ ] Implement, reusing the catalog models and validation.
-- [ ] Run `pytest api/staff catalog/tests -q`.
-- [ ] Commit `feat: manage document authors and rights from the staff API`.
+- [x] Write failing tests: attaching an author sets its position and role; attaching the same author twice is refused rather than duplicated; detaching leaves the ordering contiguous; the rights agreement can be created then replaced, and an invalid authorisation status is refused.
+- [x] Separation of duties, decided with the product owner: the depositor declares, the moderator verifies.
+      Structural, not conventional — the declaration serializer simply does not expose the decision fields,
+      and the decision endpoint is closed to non-moderators. A depositor who sends `approved` is capped to
+      `pending_review`.
+- [x] **Fixed a defect introduced in Task 3.** The submit gate required a *publishable* document, so it
+      required an *approved* rights agreement — but approval is the reviewer's act and comes after
+      submission. No teacher could ever submit. `missing_deposit_requirements` (declaration complete) and
+      `missing_publication_requirements` (declaration approved) are now two gates. The Task 3 test passed
+      only because its fixture pre-approved the agreement: the setup was hiding the flaw.
+- [x] Student work requires an explicit consent reference, per the governance document.
+- [x] Implement, reusing the catalog models and validation.
+- [x] Run `pytest api/staff catalog/tests -q`.
+- [x] Commit `feat: manage document authors and rights from the staff API`.
 
 ---
 

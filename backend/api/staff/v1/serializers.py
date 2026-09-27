@@ -10,7 +10,10 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from catalog.models import Document, DocumentAuthor
-from catalog.services import missing_publication_requirements
+from catalog.services import (
+    missing_deposit_requirements,
+    missing_publication_requirements,
+)
 
 
 class StaffAuthorSerializer(serializers.Serializer):
@@ -119,6 +122,7 @@ def serialize_staff_document(document: Document) -> dict:
         ],
         "rights": serialize_rights(document),
         "ingestion": serialize_ingestion(document),
+        "missing_for_submission": missing_deposit_requirements(document),
         "missing_for_publication": missing_publication_requirements(document),
         "created_at": document.created_at,
         "updated_at": document.updated_at,

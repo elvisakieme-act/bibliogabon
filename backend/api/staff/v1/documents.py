@@ -17,7 +17,7 @@ from api.staff.v1.views import StaffAPIView
 from api.v1.errors import error_response
 from api.v1.pagination import StandardResultsSetPagination
 from catalog.models import Author, Document, DocumentAuthor
-from catalog.services import missing_publication_requirements
+from catalog.services import missing_deposit_requirements, missing_publication_requirements
 from operations.services import record_audit_event
 
 
@@ -178,9 +178,9 @@ class StaffDocumentSubmitView(StaffAPIView):
                 409,
             )
 
-        # Le dépôt doit être complet avant la revue : « aucun document ne peut
-        # être publié sans propriétaire, catégorie, règle d'accès et de retrait ».
-        missing = missing_publication_requirements(document)
+        # Soumettre exige une *déclaration* complète, pas une déclaration
+        # approuvée : l'approbation est l'acte du relecteur et vient après.
+        missing = missing_deposit_requirements(document)
         if missing:
             return error_response(
                 "incomplete_document",

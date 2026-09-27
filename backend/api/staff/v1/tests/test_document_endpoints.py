@@ -93,6 +93,7 @@ def test_the_payload_reports_rights_and_ingestion_state(api, teacher, reference)
     assert body["ingestion"] is None
     # L'enseignant est rattaché comme auteur à la création : seul l'accord
     # de droits manque encore.
+    assert body["missing_for_submission"] == ["rights_agreement"]
     assert body["missing_for_publication"] == ["rights_agreement"]
 
 
@@ -228,18 +229,13 @@ def complete(document, author_user):
     DocumentAuthor.objects.create(
         document=document, author=entry, role=DocumentAuthor.Role.AUTHOR
     )
-    from django.utils import timezone
-
     RightsAgreement.objects.create(
         document=document,
         agreement_type=RightsAgreement.AgreementType.TEACHER_VOLUNTARY,
         rights_holder_name="Auteur",
-        authorization_status=RightsAgreement.AuthorizationStatus.APPROVED,
-        authorization_date=timezone.now().date(),
+        authorization_status=RightsAgreement.AuthorizationStatus.PENDING_REVIEW,
         access_model=document.access_model,
         withdrawal_rule=RightsAgreement.WithdrawalRule.AUTHOR_REQUEST,
-        reviewer_decision="Approuvé",
-        audit_reference="BG-TEST-1",
     )
     return document
 
