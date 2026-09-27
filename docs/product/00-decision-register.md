@@ -26,6 +26,8 @@ Each decision should include:
 - The reason the decision was made.
 - The expected impact.
 - The owner responsible for revisiting it if assumptions change.
+| D014 | 2026-09-27 | Le workflow de publication porte les cinq états du plan directeur §8.2, plus le rejet — six valeurs, contre dix | Les trois états de revue dupliquaient des barrières déjà tenues ailleurs, et mieux : les droits par `RightsAgreement.authorization_status`, que `missing_publication_requirements` exige approuvé ; le traitement par `DocumentVersion.status` et `ProcessingJob`, qu'agrège l'endpoint d'ingestion. Deux représentations du même verrou finissent par se contredire, et c'est alors la publication qui devient imprévisible. `suspended` partait avec, `withdrawn` portant déjà le même sens | `PublicationStatus` compte six valeurs ; migration `catalog.0006` reprend les lignes existantes (les trois revues vers `submitted`, `suspended` vers `withdrawn`) et refuse le retour arrière, qui serait une invention. La gouvernance des droits est corrigée : elle énonçait la chaîne à dix | Product |
+| D015 | 2026-09-27 | Seule la modération crée un auteur ; le registre des contributeurs n'est pas ouvert aux déposants | Un registre national où chacun ajoute librement se remplit de doublons et de variantes orthographiques en quelques mois, et les fusionner après coup coûte bien plus qu'un aller-retour | `/api/staff/v1/authors/` reste en lecture pour un enseignant ; la création s'ouvre au `content_admin` en tranche 3. L'écran de dépôt dit déjà qu'un auteur absent doit être demandé à la modération | Product |
 
 ## Open Decision Areas
 

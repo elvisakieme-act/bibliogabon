@@ -30,8 +30,25 @@ Publication ownership is not the same as access sponsorship. An organization can
 Status sequence:
 
 ```text
-draft -> submitted -> rights_review -> technical_processing -> editorial_review -> published -> withdrawn -> archived
+draft -> submitted -> published -> withdrawn -> archived
+            |
+            +-------> rejected
 ```
+
+`submitted` est le « en vérification » du plan directeur §8.2. Ce document
+énonçait auparavant une chaîne à dix états, en désaccord avec le plan
+directeur ; D014 tranche pour les cinq, plus le rejet.
+
+Les trois vérifications restent des barrières obligatoires, mais chacune est
+tenue là où elle est déjà la plus fiable, et à un seul endroit :
+
+| Vérification | Où elle est tenue | Ce qui l'exige |
+|---|---|---|
+| Droits | `RightsAgreement.authorization_status` | `missing_publication_requirements` refuse la publication sans approbation |
+| Traitement technique | `DocumentVersion.status` et `ProcessingJob.status` | agrégés par `/api/staff/v1/documents/<id>/ingestion/` |
+| Relecture éditoriale | la décision de publication elle-même | `record_publication_decision`, auditée |
+
+Aucune barrière n'est perdue : elles cessent d'être représentées deux fois.
 
 Rules:
 

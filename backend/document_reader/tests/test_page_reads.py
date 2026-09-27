@@ -144,7 +144,7 @@ def test_get_reader_page_rechecks_expired_entitlement_after_session_start():
     ("publication_status", "access_model"),
     [
         (Document.PublicationStatus.WITHDRAWN, Document.AccessModel.FREE),
-        (Document.PublicationStatus.SUSPENDED, Document.AccessModel.FREE),
+        (Document.PublicationStatus.ARCHIVED, Document.AccessModel.FREE),
         (Document.PublicationStatus.PUBLISHED, Document.AccessModel.PRIVATE),
     ],
 )

@@ -35,10 +35,15 @@ qu'avec un test qui l'empêche de revenir.
 
 | # | Question | Ce qui la bloque | Conséquence actuelle |
 |---|---|---|---|
-| B1 | Qui peut créer un auteur, et comment traite-t-on les doublons ? | Le registre des contributeurs est commun à tout le catalogue ; l'autorité et la déduplication sont des choix de gouvernance. | `/api/staff/v1/authors/` est en lecture seule. L'écran indique qu'un auteur absent doit être ajouté par la modération. Un co-auteur inconnu du registre bloque le dépôt. |
 | B2 | Trie-t-on les auteurs par nom de famille, comme l'usage académique ? | Déduire le nom de famille d'un nom affiché est peu fiable (noms composés, institutions, « Université Omar Bongo »). Cela demanderait un champ `sort_name` distinct. | **A1 rend l'ordre cohérent, pas savant** : il porte sur le nom affiché, donc « Aline NZE » se classe sous A et non sous N. Un test le dit explicitement. Trancher B2 demanderait un champ dédié et une règle de saisie. |
 | B3 | Quel fournisseur S3 héberge les documents privés ? (D007) | Dépend du volume réel et de l'arbitrage souveraineté / coût de bande passante. | Tout parle S3 via `DOCUMENT_STORAGE_ENDPOINT_URL` ; le choix n'est encodé nulle part. |
-| B4 | Le workflow de publication pilote-t-il les dix états de `PublicationStatus` ou les cinq du §8.2 ? | Tranché par la tranche 3 du back-office. | Les dix états existent et sont traduits ; seuls `draft` et `submitted` sont atteignables par l'interface. |
+
+## Décisions tranchées
+
+| # | Question | Décision | Consigné |
+|---|---|---|---|
+| B1 | Qui peut créer un auteur ? | La modération seule. L'ouverture aux déposants remplirait le registre national de doublons, plus coûteux à fusionner qu'un aller-retour. | D015 |
+| B4 | Combien d'états pour le workflow ? | Cinq, plus le rejet. Les trois états de revue dupliquaient des barrières tenues ailleurs et mieux ; aucune barrière n'est perdue. | D014 |
 
 ## Reporté en phase 2, sciemment
 

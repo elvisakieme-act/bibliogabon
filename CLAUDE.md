@@ -146,8 +146,15 @@ is wrong:
   stub from lying.
 - `test_openapi_staff` — the two schemas stay on their own URL perimeters.
 
-Enum values the screen does not know degrade visibly: an unknown publication
-status or completeness code renders raw rather than vanishing. A row with no
+`PublicationStatus` carries six values — the five of plan directeur §8.2 plus
+rejected (D014). The three review states it used to carry duplicated gates
+held better elsewhere: rights by `RightsAgreement.authorization_status`,
+processing by `DocumentVersion.status` and `ProcessingJob`. Two
+representations of one lock drift apart, and publication is what becomes
+unpredictable. No gate was lost.
+
+Enum values the screen does not know still degrade visibly: an unknown
+publication status or completeness code renders raw rather than vanishing. A row with no
 badge would read as "no state", and a checklist that drops a code would tell a
 depositor nothing is missing while submission gets refused.
 

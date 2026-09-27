@@ -160,16 +160,30 @@ class Document(models.Model):
         PRIVATE = "private", "Private"
 
     class PublicationStatus(models.TextChoices):
+        """Les cinq états du plan directeur §8.2, plus le rejet (D014).
+
+        `submitted` est le « en vérification » du plan directeur. Les trois
+        états de revue qui existaient ici — `rights_review`,
+        `technical_processing`, `editorial_review` — ont été retirés parce
+        qu'ils dupliquaient des barrières tenues ailleurs, et mieux :
+
+        - les droits, par `RightsAgreement.authorization_status`, que
+          `missing_publication_requirements` exige déjà approuvé ;
+        - le traitement, par `DocumentVersion.status` et `ProcessingJob`,
+          qu'agrège `/api/staff/v1/documents/<id>/ingestion/`.
+
+        Deux représentations du même verrou finissent par se contredire, et
+        c'est alors la publication qui devient imprévisible. `suspended` est
+        parti aussi : `withdrawn` couvre déjà « non lisible, traçable,
+        republiable sur nouvelle décision ».
+        """
+
         DRAFT = "draft", "Draft"
         SUBMITTED = "submitted", "Submitted"
-        RIGHTS_REVIEW = "rights_review", "Rights review"
-        TECHNICAL_PROCESSING = "technical_processing", "Technical processing"
-        EDITORIAL_REVIEW = "editorial_review", "Editorial review"
         PUBLISHED = "published", "Published"
         WITHDRAWN = "withdrawn", "Withdrawn"
         ARCHIVED = "archived", "Archived"
         REJECTED = "rejected", "Rejected"
-        SUSPENDED = "suspended", "Suspended"
 
     title = models.CharField(max_length=260)
     slug = models.SlugField(unique=True)

@@ -119,7 +119,7 @@ def test_rebuild_document_search_index_copies_published_metadata_and_ordered_aut
     [
         (Document.PublicationStatus.DRAFT, Document.AccessModel.FREE),
         (Document.PublicationStatus.WITHDRAWN, Document.AccessModel.FREE),
-        (Document.PublicationStatus.SUSPENDED, Document.AccessModel.FREE),
+        (Document.PublicationStatus.ARCHIVED, Document.AccessModel.FREE),
         (Document.PublicationStatus.PUBLISHED, Document.AccessModel.PRIVATE),
     ],
 )

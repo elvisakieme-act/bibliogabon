@@ -51,7 +51,7 @@ def corpus(db):
         ),
         "private_mine": make_document(
             slug="prive-a-moi",
-            status=Document.PublicationStatus.TECHNICAL_PROCESSING,
+            status=Document.PublicationStatus.SUBMITTED,
             access_model=Document.AccessModel.PRIVATE,
             author=teacher,
         ),

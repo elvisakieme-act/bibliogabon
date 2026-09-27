@@ -1,7 +1,8 @@
 /**
  * Etats de publication, traduits en un seul endroit.
  *
- * Les dix valeurs de `catalog.Document.PublicationStatus`. Un etat ajoute au
+ * Les six valeurs de `catalog.Document.PublicationStatus` : les cinq du plan
+ * directeur §8.2, plus le rejet (D014). Un etat ajoute au
  * serveur et absent d'ici s'affiche tel quel, en clair : une ligne sans badge
  * se lirait comme « pas d'etat », et le nouvel etat disparaitrait
  * silencieusement de l'ecran.
@@ -13,27 +14,19 @@
 export const PUBLICATION_STATUS_LABELS: Record<string, string> = {
   draft: "Brouillon",
   submitted: "Soumis",
-  rights_review: "Examen des droits",
-  technical_processing: "Traitement technique",
-  editorial_review: "Relecture editoriale",
   published: "Publie",
   withdrawn: "Retire",
   archived: "Archive",
-  rejected: "Rejete",
-  suspended: "Suspendu"
+  rejected: "Rejete"
 };
 
 export const PUBLICATION_STATUS_TONES: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700",
   submitted: "bg-blue-100 text-blue-800",
-  rights_review: "bg-amber-100 text-amber-900",
-  technical_processing: "bg-amber-100 text-amber-900",
-  editorial_review: "bg-amber-100 text-amber-900",
   published: "bg-emerald-100 text-emerald-800",
   withdrawn: "bg-orange-100 text-orange-900",
   archived: "bg-slate-200 text-slate-700",
-  rejected: "bg-red-100 text-red-800",
-  suspended: "bg-red-100 text-red-800"
+  rejected: "bg-red-100 text-red-800"
 };
 
 export function publicationStatusLabel(status: string): string {

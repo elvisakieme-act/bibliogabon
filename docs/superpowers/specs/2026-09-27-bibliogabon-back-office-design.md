@@ -27,7 +27,14 @@ Every state change is audited. The workflow exists to be traceable, so a transit
 
 Nothing in the back-office grants reading access. A reviewer looking at a document sees it because their role allows review, not because an entitlement was silently created.
 
-## A Discrepancy To Settle
+## A Discrepancy — Settled By D014
+
+> **Tranché le 27/09/2026 : cinq états, plus le rejet.** Ce qui suit reste
+> pour la trace du raisonnement. La découverte décisive est venue plus tard :
+> le désaccord n'était pas entre le code et le plan directeur, mais entre le
+> plan directeur (cinq) et `docs/product/02-content-rights-governance.md`
+> (dix), qui a été écrit pendant la conception. Et les trois états de revue
+> dupliquaient des verrous déjà tenus ailleurs, et mieux.
 
 `catalog.Document.PublicationStatus` carries ten states:
 
