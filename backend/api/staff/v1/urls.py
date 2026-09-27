@@ -13,6 +13,12 @@ from api.staff.v1.documents import (
     StaffDocumentListView,
     StaffDocumentSubmitView,
 )
+from api.staff.v1.reviews import (
+    ReviewAssignView,
+    ReviewDecisionView,
+    ReviewDetailView,
+    ReviewListView,
+)
 from api.staff.v1.views import StaffIndexView
 
 app_name = "api-staff-v1"
@@ -20,6 +26,18 @@ app_name = "api-staff-v1"
 urlpatterns = [
     path("", StaffIndexView.as_view(), name="index"),
     path("authors/", StaffAuthorListView.as_view(), name="author-list"),
+    path("reviews/", ReviewListView.as_view(), name="review-list"),
+    path("reviews/<int:review_id>/", ReviewDetailView.as_view(), name="review-detail"),
+    path(
+        "reviews/<int:review_id>/assign/",
+        ReviewAssignView.as_view(),
+        name="review-assign",
+    ),
+    path(
+        "reviews/<int:review_id>/decision/",
+        ReviewDecisionView.as_view(),
+        name="review-decision",
+    ),
     path("documents/", StaffDocumentListView.as_view(), name="document-list"),
     path(
         "documents/<int:document_id>/",

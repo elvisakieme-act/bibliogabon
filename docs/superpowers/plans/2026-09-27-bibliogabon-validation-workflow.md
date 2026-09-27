@@ -52,13 +52,13 @@ Design: `docs/superpowers/specs/2026-09-27-bibliogabon-validation-workflow-desig
 **Interfaces:**
 - Produces `GET/POST /api/staff/v1/reviews/`, `GET /reviews/<id>/`, `POST /reviews/<id>/assign/`, `POST /reviews/<id>/decision/`.
 
-- [ ] Write failing tests: a teacher-author is refused on every review endpoint; a content admin lists open reviews with what each document still misses for publication; opening a review on a document that is not submitted is refused; assigning sets the reviewer; a decision closes the review and moves the document.
-- [ ] Write a failing test that a content admin who authored the document is refused on its decision, and that the refusal is a typed error and not a 500.
-- [ ] Write a failing test that approving a document with unapproved rights is refused at the endpoint, with the blocking requirement named in the response.
-- [ ] Write a failing test that a rejection without a reason is refused with `field_errors` on the right field.
-- [ ] Implement on `StaffAPIView`, delegating to the existing services.
-- [ ] Run `python -m pytest api/staff/v1 -q`.
-- [ ] Commit `feat: expose the publication review queue`.
+- [x] Write failing tests: a teacher-author is refused on every review endpoint; a content admin lists open reviews with what each document still misses for publication; opening a review on a document that is not submitted is refused; assigning sets the reviewer; a decision closes the review and moves the document.
+- [x] Write a failing test that a content admin who authored the document is refused on its decision, and that the refusal is a typed error and not a 500.
+- [x] Write a failing test that approving a document with unapproved rights is refused at the endpoint, with the blocking requirement named in the response.
+- [x] Write a failing test that a rejection without a reason is refused with `field_errors` on the right field.
+- [x] Implement on `StaffAPIView`, delegating to the existing services.
+- [x] Run `python -m pytest api/staff/v1 -q`.
+- [x] Commit `feat: expose the publication review queue`.
 
 ---
 
