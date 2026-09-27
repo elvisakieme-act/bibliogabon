@@ -71,12 +71,14 @@ backend/
 **Interfaces:**
 - Produces `is_platform_staff`, `is_content_admin`, `administers_organization`, `administered_organization_ids`, `can_submit_document`, `can_review_publication`, `can_withdraw_document`, `can_manage_organization_members`, `can_view_organization_reports`, `can_manage_billing`.
 
-- [ ] Write a failing table-driven test covering all seven actors against every predicate, including the anonymous visitor and the plain student, which must answer False everywhere.
-- [ ] Write failing tests for `can_withdraw_document`: a teacher may withdraw their own voluntary deposit; the same teacher may not withdraw an institutional-fund document; a content admin may withdraw either.
-- [ ] Implement the predicates as pure reads with no HTTP and no DRF import.
-- [ ] Reuse `active_organization_ids_for_user` for organization scope, so membership status and identity verification govern administrative authority exactly as they govern reading.
-- [ ] Run `pytest accounts/tests/test_permissions.py -q`.
-- [ ] Commit `feat: add role permission predicates`.
+- [x] Write a failing table-driven test covering all seven actors against every predicate, including the anonymous visitor and the plain student, which must answer False everywhere.
+- [x] Write failing tests for `can_withdraw_document`: a teacher may withdraw their own voluntary deposit; the same teacher may not withdraw an institutional-fund document; a content admin may withdraw either.
+- [x] Implement the predicates as pure reads with no HTTP and no DRF import.
+- [x] Keep the contract-bound categories as string literals: `catalog` depends on `accounts`, so importing
+      `Document` here would invert the dependency. A test locks the literals against `Document.Category`.
+- [x] Reuse `active_organization_ids_for_user` for organization scope, so membership status and identity verification govern administrative authority exactly as they govern reading.
+- [x] Run `pytest accounts/tests/test_permissions.py -q`.
+- [x] Commit `feat: add role permission predicates`.
 
 ---
 
