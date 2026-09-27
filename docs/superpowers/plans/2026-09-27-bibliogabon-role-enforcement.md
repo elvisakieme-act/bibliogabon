@@ -106,11 +106,11 @@ backend/
 **Interfaces:**
 - Produces `IsContentAdmin`, `IsTeacherOrContentAdmin`, `AdministersOrganization`.
 
-- [ ] Write failing tests exercising the classes through a throwaway view: each refuses the wrong actor with HTTP 403 and the standard envelope code `permission_denied`, and an anonymous caller gets 401 rather than 403.
-- [ ] Implement the classes as thin wrappers over the predicates, with no logic of their own.
-- [ ] Note in the module docstring that the current V1 surface is reader-facing and has no management endpoint yet: these classes exist for the deposit slice, which is the first real consumer. Wiring them to endpoints that do not need them would be noise.
-- [ ] Run `pytest api/v1/tests -q`.
-- [ ] Commit `feat: add API permission classes for roles`.
+- [x] Write failing tests exercising the classes through a throwaway view: each refuses the wrong actor with HTTP 403 and the standard envelope code `permission_denied`, and an anonymous caller gets 401 rather than 403.
+- [x] Implement the classes as thin wrappers over the predicates, with no logic of their own.
+- [x] Note in the module docstring that the current V1 surface is reader-facing and has no management endpoint yet: these classes exist for the deposit slice, which is the first real consumer. Wiring them to endpoints that do not need them would be noise.
+- [x] Run `pytest api/v1/tests -q`.
+- [x] Commit `feat: add API permission classes for roles`.
 
 ---
 
