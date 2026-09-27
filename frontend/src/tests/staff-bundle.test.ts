@@ -26,12 +26,21 @@ describe("decoupage du bundle", () => {
     const entries = chunks.filter((chunk) => chunk.type === "chunk" && chunk.isEntry);
 
     expect(entries.length).toBeGreaterThan(0);
-    const staffModules = entries.flatMap((entry) =>
-      Object.keys(entry.modules ?? {}).filter(
-        (id) => id.includes("routes/gestion") || id.includes("features/staff")
-      )
+    const entryModules = entries.flatMap((entry) => Object.keys(entry.modules ?? {}));
+    const staffModules = entryModules.filter(
+      (id) => id.includes("routes/gestion") || id.includes("features/staff")
     );
 
     expect(staffModules).toEqual([]);
+
+    // D013 promet que react-hook-form reste confine a /gestion. Sans cette
+    // verification, la promesse ne serait qu'une intention : un usage depuis
+    // un composant partage la ferait entrer dans le fragment du lecteur, qui
+    // paierait 32 ko pour des formulaires qu'il ne voit jamais.
+    //
+    // Un import inutilise ne suffit pas a la declencher : rolldown l'elimine.
+    // Ce qui compte, et ce que la verification attrape, est un usage
+    // reellement atteignable depuis le rendu.
+    expect(entryModules.filter((id) => id.includes("react-hook-form"))).toEqual([]);
   }, 120_000);
 });

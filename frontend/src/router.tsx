@@ -119,6 +119,24 @@ const gestionIndexRoute = createRoute({
   path: "/",
   component: lazyRouteComponent(() => import("@/routes/gestion/DashboardPage"), "DashboardPage")
 });
+const gestionDocumentCreateRoute = createRoute({
+  getParentRoute: () => gestionRoute,
+  // Statique avant dynamique : « nouveau » ne doit jamais etre lu comme un
+  // identifiant de document.
+  path: "documents/nouveau",
+  component: lazyRouteComponent(
+    () => import("@/routes/gestion/DocumentCreatePage"),
+    "DocumentCreatePage"
+  )
+});
+const gestionDocumentDetailRoute = createRoute({
+  getParentRoute: () => gestionRoute,
+  path: "documents/$documentId",
+  component: lazyRouteComponent(
+    () => import("@/routes/gestion/DocumentDetailPage"),
+    "DocumentDetailPage"
+  )
+});
 const gestionDocumentsRoute = createRoute({
   getParentRoute: () => gestionRoute,
   path: "documents",
@@ -137,7 +155,12 @@ const routeTree = rootRoute.addChildren([
   domainDetailRoute,
   documentDetailRoute,
   lectureRoute,
-  gestionRoute.addChildren([gestionIndexRoute, gestionDocumentsRoute])
+  gestionRoute.addChildren([
+    gestionIndexRoute,
+    gestionDocumentsRoute,
+    gestionDocumentCreateRoute,
+    gestionDocumentDetailRoute
+  ])
 ]);
 
 export function createAppRouter(options: Partial<Parameters<typeof createRouter>[0]> = {}) {

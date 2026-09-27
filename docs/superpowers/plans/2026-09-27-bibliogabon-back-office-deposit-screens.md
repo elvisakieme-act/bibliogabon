@@ -146,12 +146,12 @@ mapping, not a second error component.
 **Interfaces:**
 - Produces `/gestion/documents/nouveau` and `/gestion/documents/:id`.
 
-- [ ] Write failing tests: creating a draft with the minimum fields navigates to its detail page; a server `field_errors` refusal lands on the right inputs; the metadata section saves and reflects the response.
-- [ ] Write failing tests for the checklist: it renders each entry of `missing_for_submission` in French, the submit action is disabled while it is non-empty, and it disappears when the list empties.
-- [ ] Implement the pages, keeping each section a short independent form.
-- [ ] Translate the completeness codes in one place, so a new server code surfaces as an untranslated code rather than silently vanishing from the checklist.
-- [ ] Run `npm run test`.
-- [ ] Commit `feat: add draft creation and metadata editing`.
+- [x] Write failing tests: creating a draft with the minimum fields navigates to its detail page; a server `field_errors` refusal lands on the right inputs; the metadata section saves and reflects the response.
+- [x] Write failing tests for the checklist: it renders each entry of `missing_for_submission` in French, the submit action is disabled while it is non-empty, and it disappears when the list empties.
+- [x] Implement the pages, keeping each section a short independent form.
+- [x] Translate the completeness codes in one place, so a new server code surfaces as an untranslated code rather than silently vanishing from the checklist.
+- [x] Run `npm run test`.
+- [x] Commit `feat: add draft creation and metadata editing`.
 
 ---
 

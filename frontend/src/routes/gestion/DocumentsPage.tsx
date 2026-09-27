@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { ApiError } from "@/api/client";
@@ -32,7 +33,15 @@ export function DocumentsPage() {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-xl font-semibold">Documents</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold">Documents</h2>
+        <Link
+          to="/gestion/documents/nouveau"
+          className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
+        >
+          Nouveau document
+        </Link>
+      </div>
 
       <form
         className="grid gap-3 rounded border border-slate-200 bg-white p-4 sm:grid-cols-4"
@@ -193,7 +202,13 @@ function DocumentsResult({ query }: { query: ReturnType<typeof useStaffDocuments
           {rows.map((document) => (
             <tr key={document.id} className="border-t border-slate-100">
               <th scope="row" className="px-4 py-2 text-left font-normal">
-                {document.title}
+                <Link
+                  to="/gestion/documents/$documentId"
+                  params={{ documentId: String(document.id) }}
+                  className="text-slate-900 underline decoration-slate-300 hover:decoration-slate-900"
+                >
+                  {document.title}
+                </Link>
               </th>
               <td className="px-4 py-2">
                 <DocumentStateBadge status={document.publication_status} />
