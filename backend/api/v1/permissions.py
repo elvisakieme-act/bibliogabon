@@ -50,3 +50,10 @@ class AdministersOrganization(BasePermission):
     def has_object_permission(self, request, view, obj) -> bool:
         organization = getattr(obj, "organization", obj)
         return roles.administers_organization(request.user, organization)
+
+
+class HasBackOfficeAccess(BasePermission):
+    """Plancher de l'API staff : un lecteur n'y entre pas."""
+
+    def has_permission(self, request, view) -> bool:
+        return roles.has_back_office_access(request.user)

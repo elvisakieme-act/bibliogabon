@@ -63,12 +63,16 @@ backend/
 - Produces `GET /api/staff/v1/` and `GET /api/staff/v1/schema/`.
 - Produces a base view that refuses anyone without a staff role.
 
-- [ ] Write failing tests: the index refuses an anonymous caller with 401 and a student with 403 and the standard envelope; a content admin gets 200; the schema endpoint serves a document listing staff paths.
-- [ ] Write a failing test asserting the **public** schema at `/api/v1/schema/` contains no path starting with `/api/staff/`. Two audiences, two contracts — a staff endpoint leaking into the public schema is the failure this slice must not commit.
-- [ ] Add the app, route the namespace, and register a second `SpectacularAPIView` scoped to the staff URLs.
-- [ ] Add `api/staff/v1/tests` to both pytest testpath declarations, or the tests silently never run.
-- [ ] Run `pytest api/staff -q` and `pytest api/v1/tests -q`.
-- [ ] Commit `feat: add the staff API namespace`.
+- [x] Write failing tests: the index refuses an anonymous caller with 401 and a student with 403 and the standard envelope; a content admin gets 200; the schema endpoint serves a document listing staff paths.
+- [x] Write a failing test asserting the **public** schema at `/api/v1/schema/` contains no path starting with `/api/staff/`. Two audiences, two contracts — a staff endpoint leaking into the public schema is the failure this slice must not commit.
+- [x] Route the namespace and give **each** schema its own URL perimeter (`config/schema_public.py`,
+      `config/schema_staff.py`). Scoping only the staff schema would have left the public one generating from
+      the root urlconf, which now contains the staff paths — the leak would have happened by default.
+- [x] Add `has_back_office_access` and a `StaffAPIView` base class: the project default permission is
+      `AllowAny`, so inheriting `APIView` directly would make a forgotten permission silently public.
+- [x] Add `api/staff/v1/tests` to both pytest testpath declarations, or the tests silently never run.
+- [x] Run `pytest api/staff -q` and `pytest api/v1/tests -q`.
+- [x] Commit `feat: add the staff API namespace`.
 
 ---
 

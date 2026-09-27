@@ -50,6 +50,7 @@ DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py", "*_test.py"]
 testpaths = [
   "api/v1/tests",
+  "api/staff/v1/tests",
   "accounts/tests",
   "config/tests",
   "catalog/tests",

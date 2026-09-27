@@ -112,6 +112,22 @@ def can_submit_document(user) -> bool:
     return _account_type(user) == User.AccountType.TEACHER_AUTHOR or is_content_admin(user)
 
 
+def has_back_office_access(user) -> bool:
+    """Plancher du back-office : qui peut seulement y entrer.
+
+    Chaque endpoint resserre ensuite. Un lecteur — étudiant ou visiteur —
+    n'y a rien à faire ; un enseignant y dépose, un administrateur
+    d'organisation y gère ses membres, un modérateur y valide.
+    """
+    if is_platform_staff(user):
+        return True
+    return _account_type(user) in {
+        User.AccountType.TEACHER_AUTHOR,
+        User.AccountType.ORGANIZATION_ADMIN,
+        User.AccountType.CONTENT_ADMIN,
+    }
+
+
 def can_review_publication(user) -> bool:
     """Valider métadonnées, droits, statut et publication."""
     return is_content_admin(user)
