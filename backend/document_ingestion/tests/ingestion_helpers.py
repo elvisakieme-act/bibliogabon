@@ -42,3 +42,24 @@ def ingest_source_only(document, payload: bytes, *, version_label: str = "v1"):
         idempotency_key=f"ingest:{document.pk}:{version_label}:{checksum}"
     )
     return process_ingest_job(job)
+
+
+def tesseract_marker():
+    """Marqueur partagé pour les tests qui ont besoin du vrai binaire OCR.
+
+    `REQUIRE_OCR=1` transforme le saut en échec. La CI le positionne parce
+    qu'elle installe tesseract : si le binaire disparaît de l'image, la
+    suite doit le dire bruyamment. Sans ce garde-fou, huit tests d'OCR se
+    sautaient en silence et un neuvième est resté rouge pendant vingt-huit
+    exécutions sans que personne le remarque.
+    """
+    import os
+    import shutil
+
+    import pytest
+
+    missing = shutil.which("tesseract") is None
+    return pytest.mark.skipif(
+        missing and os.environ.get("REQUIRE_OCR") != "1",
+        reason="le binaire tesseract n'est pas installé sur cette machine",
+    )

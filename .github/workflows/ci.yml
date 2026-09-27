@@ -14,6 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # L'OCR est au coeur du produit : sans le binaire, huit tests se
+      # sautaient en silence et la CI ne validait jamais la reconnaissance
+      # de texte. REQUIRE_OCR transforme un saut en echec, pour qu'une image
+      # amputee se signale au lieu de reduire la couverture sans bruit.
+      - name: Install tesseract
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-fra
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -40,6 +49,8 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+        env:
+          REQUIRE_OCR: "1"
 
   frontend:
     runs-on: ubuntu-latest

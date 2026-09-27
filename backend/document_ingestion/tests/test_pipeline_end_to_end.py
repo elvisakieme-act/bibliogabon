@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 import pytest
@@ -9,15 +8,13 @@ from django.urls import reverse
 from catalog.models import AcademicDomain, Document
 from document_ingestion.models import DocumentAsset, ProcessingJob
 from document_ingestion.pipeline import ingest_document_file
+from document_ingestion.tests.ingestion_helpers import tesseract_marker
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
 from search_discovery.services import search_documents
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "sample-3-pages.pdf"
 
-needs_tesseract = pytest.mark.skipif(
-    shutil.which("tesseract") is None,
-    reason="le binaire tesseract n'est pas installé sur cette machine",
-)
+needs_tesseract = tesseract_marker()
 
 
 @pytest.fixture

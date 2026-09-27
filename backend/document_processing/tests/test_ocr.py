@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 from decimal import Decimal
 from pathlib import Path
 
@@ -8,7 +7,10 @@ import pytest
 
 from catalog.models import AcademicDomain, Document
 from document_ingestion import tasks
-from document_ingestion.tests.ingestion_helpers import ingest_source_only
+from document_ingestion.tests.ingestion_helpers import (
+    ingest_source_only,
+    tesseract_marker,
+)
 from document_processing.models import DocumentPage, ExtractedText, SearchIndexRecord
 
 FIXTURE = (
@@ -19,10 +21,7 @@ FIXTURE = (
     / "sample-3-pages.pdf"
 )
 
-needs_tesseract = pytest.mark.skipif(
-    shutil.which("tesseract") is None,
-    reason="le binaire tesseract n'est pas installé sur cette machine",
-)
+needs_tesseract = tesseract_marker()
 
 
 @pytest.fixture
@@ -136,7 +135,13 @@ def test_ocr_skips_a_page_that_already_has_a_text_layer(scanned_version):
 def test_an_unreadable_page_keeps_its_placeholder_and_fails_its_index_record(
     scanned_version, monkeypatch
 ):
+    """Le cas vise est « l'OCR a tourne et n'a rien reconnu », pas « le
+    binaire manque » — ce dernier est couvert par le test suivant, et sort
+    plus tot sans marquer l'index en echec. Sans ce `which` force, le test
+    passait sur une machine equipee et echouait en CI, qui n'installait pas
+    tesseract : rouge pendant vingt-huit executions."""
     page = DocumentPage.objects.get(version=scanned_version, page_number=3)
+    monkeypatch.setattr(tasks.shutil, "which", lambda name: "/usr/bin/tesseract")
     monkeypatch.setattr(tasks, "recognise_page", lambda *a, **k: ("", None))
 
     tasks.ocr_page.apply(args=[page.pk]).get()
