@@ -127,6 +127,14 @@ class Command(BaseCommand):
         learners = [self._get_user(email, name, User.AccountType.INDIVIDUAL) for email, name in LEARNERS]
         org_admin = self._get_user(ORG_ADMIN[0], ORG_ADMIN[1], User.AccountType.ORGANIZATION_ADMIN)
         staff = self._get_user("demo.staff@bibliogabon.ga", "Démo Staff", User.AccountType.PLATFORM_STAFF, is_staff=True)
+        # Moderateur de contenu : la tranche depot a besoin d'un relecteur
+        # dont le perimetre s'arrete au contenu, sans la facturation.
+        self._get_user(
+            "demo.moderation@bibliogabon.ga",
+            "Démo Modération",
+            User.AccountType.CONTENT_ADMIN,
+            is_staff=True,
+        )
 
         # --- Organisations ---
         orgs: dict[str, Organization] = {}
@@ -309,6 +317,7 @@ class Command(BaseCommand):
         self.stdout.write("Comptes de démo (mot de passe : demo1234) :")
         self.stdout.write("  - Enseignants : levis.andongui@bibliogabon.ga, mpiga.jess@bibliogabon.ga, elvis.oyono@bibliogabon.ga, ulrich.essone@bibliogabon.ga …")
         self.stdout.write("  - Apprenants  : sarah.moussavou@example.ga (UOB vérifié + accès global), yannick.boulingui@example.ga (UOB non vérifié)")
+        self.stdout.write("  - Back-office : demo.staff@bibliogabon.ga (super admin), demo.moderation@bibliogabon.ga (modération contenu, sans facturation)")
         self.stdout.write("")
         self.stdout.write(
             "Les documents n'ont encore aucune page : le catalogue est peuplé, "

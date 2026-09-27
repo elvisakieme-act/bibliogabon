@@ -161,26 +161,26 @@ backend/
 **Files:**
 - Modify: `backend/document_ingestion/management/commands/seed_demo.py`, `CLAUDE.md`, `AGENTS.md`, `docs/product/00-decision-register.md`
 
-- [ ] Add a content-admin account to `seed_demo`, so the deposit slice has a reviewer to work with, and print it with the other demo accounts.
-- [ ] Document the actor-to-storage mapping in `CLAUDE.md`: roles govern actions, entitlements govern content, and organization scope comes from an active verified membership.
-- [ ] Record in the decision register that Content Admin became its own account type, and that Sponsor Partner is an organization admin of a sponsor organization rather than a fifth type.
-- [ ] Run full verification: `pytest -q`, `manage.py check`, `manage.py makemigrations --check --dry-run`, `git diff --check`.
-- [ ] Commit `docs: document the role matrix`.
+- [x] Add a content-admin account to `seed_demo`, so the deposit slice has a reviewer to work with, and print it with the other demo accounts.
+- [x] Document the actor-to-storage mapping in `CLAUDE.md`: roles govern actions, entitlements govern content, and organization scope comes from an active verified membership.
+- [x] Record in the decision register that Content Admin became its own account type, and that Sponsor Partner is an organization admin of a sponsor organization rather than a fifth type.
+- [x] Run full verification: `pytest -q`, `manage.py check`, `manage.py makemigrations --check --dry-run`, `git diff --check`.
+- [x] Commit `docs: document the role matrix`.
 
 ---
 
 ## Self-Review Checklist
 
-- [ ] Every predicate has a test per actor, including the two that must answer False everywhere.
-- [ ] Organization scope is an argument, never a post-hoc filter.
-- [ ] Suspended, ended and unverified memberships grant no administrative authority.
-- [ ] No role grants reading access; the existing reader and entitlement tests pass untouched.
-- [ ] A teacher cannot approve their own submission.
-- [ ] An institution admin cannot publish, withdraw, change rights, alter pricing, modify platform roles, or see private processing states.
-- [ ] A content admin cannot manage billing or platform configuration.
-- [ ] Role-bearing state changes record an audit event naming the actor.
-- [ ] `AuditLog` remains append-only.
-- [ ] No upload endpoint, deposit screen, dashboard, invitation flow or reader hardening was added.
+- [x] Every predicate has a test per actor, including the two that must answer False everywhere.
+- [x] Organization scope is an argument, never a post-hoc filter.
+- [x] Suspended, ended and unverified memberships grant no administrative authority.
+- [x] No role grants reading access; the existing reader and entitlement tests pass untouched.
+- [x] A teacher cannot approve their own submission.
+- [x] An institution admin cannot publish, withdraw, change rights, alter pricing, modify platform roles, or see private processing states.
+- [x] A content admin cannot manage billing or platform configuration.
+- [x] Role-bearing state changes record an audit event naming the actor.
+- [x] `AuditLog` remains append-only.
+- [x] No upload endpoint, deposit screen, dashboard, invitation flow or reader hardening was added.
 
 ## Execution Handoff
 

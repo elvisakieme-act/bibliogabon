@@ -43,6 +43,18 @@ Business logic lives in `<app>/services.py`, never in views. Views are thin: par
 
 The app sequence mirrors the plan sequence in `docs/technical/00-subsystem-plan-index.md`: identity → catalog → ingestion → processing → reader → search → billing → operations → analytics → hardening. Dependencies flow in that direction (e.g. `document_reader` imports `accounts`/`catalog`; never the reverse).
 
+### Roles and entitlements are two different axes
+
+Identity says who authenticates, **roles** say which actions are allowed, **entitlements** say which content is readable. A role never grants reading access and an entitlement never grants a management action; a test asserts both directions.
+
+Role predicates live in `accounts/permissions.py` and are the single source of truth. `api/v1/permissions.py` wraps them for DRF and `accounts/admin_mixins.py` for Django Admin, so all three surfaces answer the same question. Organization scope is an *argument* to the predicate, never a filter applied afterwards, and reuses `active_organization_ids_for_user` — so a suspended, ended or unverified membership removes administrative authority exactly as it removes reading access.
+
+The seven product actors map onto five account types plus the membership role: Sponsor Partner is an `ORGANIZATION_ADMIN` of an organization typed `sponsor`, not a type of its own. `CONTENT_ADMIN` is deliberately distinct from `PLATFORM_STAFF` so moderating content does not confer billing.
+
+A Django model permission alone grants nothing in the admin — authority is role-only, otherwise assigning a permission would bypass the matrix. `is_staff` still decides whether the admin site opens at all; the mixins decide what is usable inside it, and `is_platform_staff` accepts `is_superuser` so a root account with a drifted `account_type` cannot lock itself out.
+
+Membership changes and administrative grants go through audited services in `accounts/services.py` (`add_organization_member`, `suspend_organization_membership`, `end_organization_membership`, `grant_entitlement`). A grant refuses an empty reason.
+
 ### Entitlements are the access-control core
 
 `accounts.Entitlement` is the single gate for restricted reads. It is scoped (`GLOBAL` / `DOMAIN` / `DOCUMENT` / `COLLECTION`) and time-bounded (`starts_at`, `ends_at`, `revoked_at`), and can be attached to a **user** or to an **organization** (org entitlements reach a user through an active, identity-verified `OrganizationMembership` — see `accounts.services.active_organization_ids_for_user`).
