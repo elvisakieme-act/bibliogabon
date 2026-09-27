@@ -1,5 +1,6 @@
 from django.urls import path
 
+from api.staff.v1.authors import StaffAuthorListView
 from api.staff.v1.contributors import (
     DocumentAuthorDetailView,
     DocumentAuthorListView,
@@ -18,6 +19,7 @@ app_name = "api-staff-v1"
 
 urlpatterns = [
     path("", StaffIndexView.as_view(), name="index"),
+    path("authors/", StaffAuthorListView.as_view(), name="author-list"),
     path("documents/", StaffDocumentListView.as_view(), name="document-list"),
     path(
         "documents/<int:document_id>/",

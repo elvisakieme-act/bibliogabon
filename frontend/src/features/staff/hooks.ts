@@ -9,6 +9,7 @@ import {
   getStaffDocument,
   listStaffDocuments,
   removeDocumentAuthor,
+  searchStaffAuthors,
   submitStaffDocument,
   updateStaffDocument
 } from "@/api/staff";
@@ -31,6 +32,15 @@ export function useStaffDocuments(filters: StaffDocumentFilters) {
   return useQuery({
     queryKey: ["staff", "documents", filters, token],
     queryFn: ({ signal }) => listStaffDocuments({ token: token as string, filters, signal }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useStaffAuthors(q: string) {
+  const token = useStaffToken();
+  return useQuery({
+    queryKey: ["staff", "authors", q, token],
+    queryFn: ({ signal }) => searchStaffAuthors({ token: token as string, q, signal }),
     enabled: Boolean(token)
   });
 }

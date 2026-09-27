@@ -159,13 +159,15 @@ mapping, not a second error component.
 
 **Files:**
 - Modify: `frontend/src/routes/gestion/DocumentDetailPage.tsx`
+- Create: `frontend/src/components/staff/AuthorsSection.tsx`, `.../RightsSection.tsx`, `.../rightsOptions.ts`
 - Modify: `frontend/src/tests/staff-deposit.test.tsx`
+- Create: `backend/api/staff/v1/authors.py` + tests — écart assumé au périmètre de la tranche, expliqué dans le commit : l'endpoint public ne liste que les auteurs de documents publiés, donc l'écran ne pouvait pas rattacher un co-auteur au moment du dépôt.
 
-- [ ] Write failing tests: attaching an author appends it with its role; detaching removes it; the rights form saves a declaration and shows its status as pending review.
-- [ ] Write a failing test asserting the rights form exposes **no** approval control: approval belongs to the moderator, and a disabled button would still tell the depositor to ask for one.
-- [ ] Implement both sections.
-- [ ] Run `npm run test`.
-- [ ] Commit `feat: add author and rights sections to the deposit screen`.
+- [x] Write failing tests: attaching an author appends it with its role; detaching removes it; the rights form saves a declaration and shows its status as pending review.
+- [x] Write a failing test asserting the rights form exposes **no** approval control: approval belongs to the moderator, and a disabled button would still tell the depositor to ask for one.
+- [x] Implement both sections.
+- [x] Run `npm run test`.
+- [x] Commit `feat: add author and rights sections to the deposit screen`.
 
 ---
 

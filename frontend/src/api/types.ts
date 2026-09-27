@@ -132,6 +132,13 @@ export interface StaffAuthor {
   position: number;
 }
 
+export interface StaffAuthorProfile {
+  id: number;
+  display_name: string;
+  author_type: string;
+  affiliation: string;
+}
+
 export interface StaffRights {
   agreement_type: string;
   rights_holder_name: string;

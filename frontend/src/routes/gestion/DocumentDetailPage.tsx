@@ -4,9 +4,11 @@ import { useForm } from "react-hook-form";
 
 import { ApiError } from "@/api/client";
 import type { StaffDocument } from "@/api/types";
+import { AuthorsSection } from "@/components/staff/AuthorsSection";
 import { CompletenessChecklist } from "@/components/staff/CompletenessChecklist";
 import { DocumentStateBadge } from "@/components/staff/DocumentStateBadge";
 import { ACCESS_MODEL_OPTIONS, CATEGORY_OPTIONS } from "@/components/staff/options";
+import { RightsSection } from "@/components/staff/RightsSection";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldErrors, fieldErrorProps } from "@/components/ui/FieldErrors";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -62,6 +64,10 @@ function DocumentDetail({
       <CompletenessChecklist codes={missing} />
 
       <MetadataSection document={document} documentId={documentId} />
+
+      <AuthorsSection document={document} documentId={documentId} />
+
+      <RightsSection document={document} documentId={documentId} />
 
       <section className="space-y-2">
         <button

@@ -3,6 +3,7 @@ import type {
   PaginatedResponse,
   RightsDecision,
   RightsDeclaration,
+  StaffAuthorProfile,
   StaffDocument,
   StaffDocumentFilters,
   StaffIngestionStatus
@@ -48,6 +49,27 @@ export function listStaffDocuments({
 }) {
   return apiRequest<PaginatedResponse<StaffDocument>>(
     `${BASE}/documents/${staffDocumentsQueryString(filters)}`,
+    { token, signal }
+  );
+}
+
+/**
+ * Registre des auteurs, vu depuis le back-office.
+ *
+ * L'endpoint public ne liste que les auteurs de documents publies : au
+ * moment du depot, c'est exactement le cas qui manque.
+ */
+export function searchStaffAuthors({
+  token,
+  q,
+  signal
+}: {
+  token: string;
+  q?: string;
+  signal?: AbortSignal;
+}) {
+  return apiRequest<PaginatedResponse<StaffAuthorProfile>>(
+    `${BASE}/authors/${q ? `?q=${encodeURIComponent(q)}` : ""}`,
     { token, signal }
   );
 }

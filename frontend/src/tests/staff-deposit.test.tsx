@@ -49,6 +49,9 @@ interface Handlers {
   detail?: () => Response;
   patch?: (body: unknown) => Response;
   submit?: () => Response;
+  attachAuthor?: (body: unknown) => Response;
+  detachAuthor?: () => Response;
+  rights?: (body: unknown) => Response;
 }
 
 function stubApi(handlers: Handlers = {}) {
@@ -95,6 +98,56 @@ function stubApi(handlers: Handlers = {}) {
         return (
           handlers.create?.(body) ??
           new Response(JSON.stringify(staffDocument()), { status: 201 })
+        );
+      }
+      if (url.pathname === "/api/staff/v1/authors/") {
+        return new Response(
+          JSON.stringify({
+            count: 2,
+            next: null,
+            previous: null,
+            results: [
+              { id: 9, display_name: "Aline NZE", author_type: "person", affiliation: "UOB" },
+              { id: 10, display_name: "Brice ONDO", author_type: "person", affiliation: "USTM" }
+            ]
+          })
+        );
+      }
+      if (url.pathname === "/api/staff/v1/documents/77/authors/" && method === "POST") {
+        return (
+          handlers.attachAuthor?.(body) ??
+          new Response(
+            JSON.stringify(
+              staffDocument({
+                authors: [{ id: 9, display_name: "Aline NZE", role: "coauthor", position: 1 }]
+              })
+            ),
+            { status: 201 }
+          )
+        );
+      }
+      if (
+        url.pathname.startsWith("/api/staff/v1/documents/77/authors/") &&
+        method === "DELETE"
+      ) {
+        return handlers.detachAuthor?.() ?? new Response(null, { status: 204 });
+      }
+      if (url.pathname === "/api/staff/v1/documents/77/rights/" && method === "PUT") {
+        return (
+          handlers.rights?.(body) ??
+          new Response(
+            JSON.stringify(
+              staffDocument({
+                rights: {
+                  agreement_type: "teacher_voluntary",
+                  rights_holder_name: "Aline NZE",
+                  authorization_status: "pending_review",
+                  withdrawal_rule: "author_request",
+                  valid_for_publication: false
+                }
+              })
+            )
+          )
         );
       }
       if (url.pathname === "/api/staff/v1/documents/77/submit/") {
@@ -197,7 +250,7 @@ describe("fiche d'un document", () => {
     await userEvent.type(title, "Algebre lineaire avancee");
     await screen.findByRole("option", { name: "Mathematiques" });
     await userEvent.selectOptions(screen.getByLabelText(/^Domaine/), "3");
-    await userEvent.selectOptions(screen.getByLabelText(/^Type/), "1");
+    await userEvent.selectOptions(screen.getByLabelText(/^Type de document/), "1");
     await userEvent.click(screen.getByRole("button", { name: /enregistrer les metadonnees/i }));
 
     await waitFor(() => {
@@ -303,5 +356,124 @@ describe("liste de completude", () => {
     expect(rendered).not.toMatch(/\.pdf/i);
     expect(rendered).not.toMatch(/:\/\//);
     expect(rendered.toLowerCase()).not.toContain("storage");
+  });
+});
+
+describe("section des auteurs", () => {
+  it("rattache un auteur avec son role", async () => {
+    const { bodies } = stubApi();
+    renderAt("/gestion/documents/77");
+
+    await screen.findByRole("option", { name: /Aline NZE/ });
+    await userEvent.selectOptions(screen.getByLabelText(/Auteur a rattacher/i), "9");
+    await userEvent.selectOptions(screen.getByLabelText(/^Role/), "coauthor");
+    await userEvent.click(screen.getByRole("button", { name: /rattacher/i }));
+
+    await waitFor(() => {
+      expect(bodies.at(-1)).toMatchObject({ author: 9, role: "coauthor" });
+    });
+  });
+
+  it("propose un auteur qui n'a jamais ete publie", async () => {
+    // Le registre staff voit tout le catalogue d'auteurs, contrairement a
+    // l'endpoint public, qui n'en montre que les auteurs deja parus.
+    stubApi();
+    renderAt("/gestion/documents/77");
+
+    expect(await screen.findByRole("option", { name: /Brice ONDO/ })).toBeInTheDocument();
+  });
+
+  it("detache un auteur deja rattache", async () => {
+    const detachAuthor = vi.fn(() => new Response(null, { status: 204 }));
+    stubApi({
+      detachAuthor,
+      detail: () =>
+        new Response(
+          JSON.stringify(
+            staffDocument({
+              authors: [{ id: 9, display_name: "Aline NZE", role: "author", position: 1 }]
+            })
+          )
+        )
+    });
+    renderAt("/gestion/documents/77");
+
+    await userEvent.click(await screen.findByRole("button", { name: /detacher Aline NZE/i }));
+
+    await waitFor(() => expect(detachAuthor).toHaveBeenCalled());
+  });
+});
+
+describe("section des droits", () => {
+  it("enregistre une declaration et affiche son statut en attente de revue", async () => {
+    const { bodies } = stubApi();
+    renderAt("/gestion/documents/77");
+
+    await userEvent.selectOptions(
+      await screen.findByLabelText(/Type d'accord/i),
+      "teacher_voluntary"
+    );
+    await userEvent.type(screen.getByLabelText(/Titulaire des droits/i), "Aline NZE");
+    await userEvent.selectOptions(screen.getByLabelText(/Regle de retrait/i), "author_request");
+    await userEvent.click(screen.getByRole("button", { name: /enregistrer la declaration/i }));
+
+    await waitFor(() => {
+      expect(bodies.at(-1)).toMatchObject({
+        agreement_type: "teacher_voluntary",
+        rights_holder_name: "Aline NZE",
+        withdrawal_rule: "author_request"
+      });
+    });
+    expect(await screen.findByText(/en attente de revue/i)).toBeInTheDocument();
+  });
+
+  it("reprend le modele d'acces du document, que le serveur exige identique", async () => {
+    // Declarer une diffusion libre puis vendre le document par abonnement est
+    // precisement la faute que la regle serveur empeche. L'ecran ne doit pas
+    // permettre de la commettre par inadvertance.
+    const { bodies } = stubApi();
+    renderAt("/gestion/documents/77");
+
+    await userEvent.selectOptions(
+      await screen.findByLabelText(/Type d'accord/i),
+      "open_license"
+    );
+    await userEvent.type(screen.getByLabelText(/Titulaire des droits/i), "BiblioGABON");
+    await userEvent.selectOptions(screen.getByLabelText(/Regle de retrait/i), "author_request");
+    await userEvent.click(screen.getByRole("button", { name: /enregistrer la declaration/i }));
+
+    await waitFor(() => {
+      expect(bodies.at(-1)).toMatchObject({ access_model: "free" });
+    });
+  });
+
+  it("n'expose aucune commande d'approbation au deposant", async () => {
+    // L'approbation appartient au moderateur. Meme desactive, un bouton
+    // « approuver » dirait au deposant qu'il peut la demander ici, et la
+    // separation des pouvoirs deviendrait une convention d'interface plutot
+    // qu'une regle.
+    stubApi({
+      detail: () =>
+        new Response(
+          JSON.stringify(
+            staffDocument({
+              rights: {
+                agreement_type: "teacher_voluntary",
+                rights_holder_name: "Aline NZE",
+                authorization_status: "pending_review",
+                withdrawal_rule: "author_request",
+                valid_for_publication: false
+              }
+            })
+          )
+        )
+    });
+    renderAt("/gestion/documents/77");
+    await screen.findByLabelText(/Titulaire des droits/i);
+
+    expect(screen.queryByRole("button", { name: /approuver/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /rejeter/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/reference d'audit/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/decision/i)).not.toBeInTheDocument();
   });
 });
