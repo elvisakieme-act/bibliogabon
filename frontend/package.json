@@ -29,6 +29,7 @@
     "lucide-react": "^0.575.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-hook-form": "^7.89.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1"
   },
@@ -51,6 +52,6 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.16",
-    "vitest": "^3.2.4"
+    "vitest": "^5.0.2"
   }
 }

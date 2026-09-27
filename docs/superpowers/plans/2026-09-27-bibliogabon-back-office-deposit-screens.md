@@ -112,11 +112,11 @@ mapping, not a second error component.
 **Interfaces:**
 - Produces `applyApiErrors(error, setError) => string`, returning the form-level message.
 
-- [ ] Write failing tests: an `ApiError` with `field_errors` calls `setError` for each named field; a field the form does not own does not vanish silently but joins the form-level message; an error with only a message becomes a form-level message; a non-`ApiError` becomes a generic message rather than leaking an exception string to the user; submitting again clears the previous refusal.
-- [ ] Write a failing test on a throwaway form: after a refusal, the offending input carries `aria-invalid` and an `aria-describedby` that resolves to the visible message, and focus moves to the first field in error.
-- [ ] Install `react-hook-form`, implement the mapping.
-- [ ] Run `npm run test` and `npm run format:check`.
-- [ ] Commit `feat: map API field errors onto form inputs`.
+- [x] Write failing tests: an `ApiError` with `field_errors` calls `setError` for each named field; a field the form does not own does not vanish silently but joins the form-level message; an error with only a message becomes a form-level message; a non-`ApiError` becomes a generic message rather than leaking an exception string to the user; submitting again clears the previous refusal.
+- [x] Write a failing test on a throwaway form: after a refusal, the offending input carries `aria-invalid` and an `aria-describedby` that resolves to the visible message, and focus moves to the first field in error.
+- [x] Install `react-hook-form`, implement the mapping.
+- [x] Run `npm run test` and `npm run format:check`.
+- [x] Commit `feat: map API field errors onto form inputs`.
 
 ---
 
