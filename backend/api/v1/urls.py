@@ -16,6 +16,7 @@ from api.v1.catalog import (
     SearchView,
 )
 from api.v1.reader import ReaderPageView, ReaderSessionCreateView, ReaderSessionDeleteView
+from api.v1.reports import DocumentReportView, DocumentWithdrawalRequestView
 from api.v1.user_library import (
     FavoriteDeleteView,
     FavoriteListCreateView,
@@ -54,6 +55,16 @@ urlpatterns = [
     path("catalog/domains/", DomainListView.as_view(), name="catalog-domains"),
     path("catalog/types/", DocumentTypeListView.as_view(), name="catalog-types"),
     path("catalog/authors/", AuthorListView.as_view(), name="catalog-authors"),
+    path(
+        "documents/<int:document_id>/report/",
+        DocumentReportView.as_view(),
+        name="document-report",
+    ),
+    path(
+        "documents/<int:document_id>/withdrawal-request/",
+        DocumentWithdrawalRequestView.as_view(),
+        name="document-withdrawal-request",
+    ),
     path("search/", SearchView.as_view(), name="search"),
     path("reader/sessions/", ReaderSessionCreateView.as_view(), name="reader-session-create"),
     path(

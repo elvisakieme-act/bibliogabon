@@ -43,12 +43,12 @@ Slice 4 of 4. Design: `docs/superpowers/specs/2026-09-27-bibliogabon-organizatio
 - Create: `backend/api/v1/reports.py`, `backend/api/v1/tests/test_reports.py`
 - Modify: `backend/api/v1/urls.py`
 
-- [ ] Write failing tests: an authenticated reader reports a published document; an anonymous visitor is refused; reporting a draft returns **404, not 403** — answering "forbidden" would confirm the draft exists.
-- [ ] Write failing tests: an author requests withdrawal of their own published deposit; a reader who is not its author is refused; the response carries the ticket, never the document's storage details.
-- [ ] Write a failing test that the public OpenAPI schema documents both, and that the staff schema still does not.
-- [ ] Implement on the existing error envelope and permissions.
-- [ ] Run `python -m pytest api/v1 -q`.
-- [ ] Commit `feat: let readers report a document and authors request withdrawal`.
+- [x] Write failing tests: an authenticated reader reports a published document; an anonymous visitor is refused; reporting a draft returns **404, not 403** — answering "forbidden" would confirm the draft exists.
+- [x] Write failing tests: an author requests withdrawal of their own published deposit; a reader who is not its author is refused; the response carries the ticket, never the document's storage details.
+- [x] Write a failing test that the public OpenAPI schema documents both, and that the staff schema still does not.
+- [x] Implement on the existing error envelope and permissions.
+- [x] Run `python -m pytest api/v1 -q`.
+- [x] Commit `feat: let readers report a document and authors request withdrawal`.
 
 ---
 
