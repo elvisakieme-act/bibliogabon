@@ -1,4 +1,6 @@
 from django.contrib import admin
+
+from accounts.admin_mixins import ContentAdminArea
 from django.contrib import messages
 from django.db import transaction
 
@@ -7,7 +9,7 @@ from operations.services import record_publication_decision, resolve_support_tic
 
 
 @admin.register(AuditLog)
-class AuditLogAdmin(admin.ModelAdmin):
+class AuditLogAdmin(ContentAdminArea, admin.ModelAdmin):
     list_display = ["created_at", "event_type", "actor", "target", "summary"]
     list_filter = ["event_type", "target_app", "target_model", "created_at"]
     search_fields = ["actor__email", "summary", "target_app", "target_model", "target_id"]
@@ -30,7 +32,7 @@ class AuditLogAdmin(admin.ModelAdmin):
 
 
 @admin.register(PublicationReview)
-class PublicationReviewAdmin(admin.ModelAdmin):
+class PublicationReviewAdmin(ContentAdminArea, admin.ModelAdmin):
     actions = ["approve_reviews", "reject_reviews", "cancel_reviews"]
     list_display = ["document", "status", "reviewer", "opened_by", "decided_by", "opened_at", "decided_at"]
     list_filter = ["status", "opened_at", "decided_at"]
@@ -65,7 +67,7 @@ class PublicationReviewAdmin(admin.ModelAdmin):
 
 
 @admin.register(SupportTicket)
-class SupportTicketAdmin(admin.ModelAdmin):
+class SupportTicketAdmin(ContentAdminArea, admin.ModelAdmin):
     actions = ["resolve_tickets"]
     list_display = ["title", "status", "priority", "assigned_to", "user", "organization", "opened_at", "resolved_at"]
     list_filter = ["status", "priority", "opened_at", "resolved_at"]

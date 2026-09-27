@@ -40,12 +40,13 @@ def test_operations_admin_search_filter_and_readonly_configuration():
 
 
 @pytest.mark.django_db
-def test_workflow_admin_actions_are_registered_for_users_with_change_permission():
+def test_workflow_admin_actions_are_registered_for_a_content_admin():
+    """L'autorite vient du role, plus d'une permission Django isolee."""
+    from accounts.models import User
+
     actor = create_user(email="admin-action-user@example.ga", is_staff=True)
-    actor.user_permissions.add(
-        Permission.objects.get(codename="change_publicationreview"),
-        Permission.objects.get(codename="change_supportticket"),
-    )
+    actor.account_type = User.AccountType.CONTENT_ADMIN
+    actor.save(update_fields=["account_type"])
     request = RequestFactory().get("/admin/operations/")
     request.user = actor
 
@@ -54,6 +55,22 @@ def test_workflow_admin_actions_are_registered_for_users_with_change_permission(
 
     assert {"approve_reviews", "reject_reviews", "cancel_reviews"} <= review_actions.keys()
     assert "resolve_tickets" in ticket_actions
+
+
+@pytest.mark.django_db
+def test_a_django_permission_alone_grants_no_workflow_action():
+    """Sans ce verrou, attribuer `change_publicationreview` a n'importe qui
+    contournerait toute la matrice de roles."""
+    actor = create_user(email="permission-seule@example.ga", is_staff=True)
+    actor.user_permissions.add(
+        Permission.objects.get(codename="change_publicationreview"),
+        Permission.objects.get(codename="change_supportticket"),
+    )
+    request = RequestFactory().get("/admin/operations/")
+    request.user = actor
+
+    assert admin.site._registry[PublicationReview].get_actions(request) == {}
+    assert admin.site._registry[SupportTicket].get_actions(request) == {}
 
 
 @pytest.mark.django_db

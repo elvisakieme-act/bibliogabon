@@ -1,5 +1,7 @@
 from django.contrib import admin
 
+from accounts.admin_mixins import ContentAdminArea
+
 from catalog.models import (
     AcademicDomain,
     Author,
@@ -13,7 +15,7 @@ from catalog.models import (
 
 
 @admin.register(AcademicDomain)
-class AcademicDomainAdmin(admin.ModelAdmin):
+class AcademicDomainAdmin(ContentAdminArea, admin.ModelAdmin):
     list_display = ["name", "slug", "parent", "is_active"]
     list_filter = ["is_active"]
     search_fields = ["name", "slug"]
@@ -21,7 +23,7 @@ class AcademicDomainAdmin(admin.ModelAdmin):
 
 
 @admin.register(DocumentType)
-class DocumentTypeAdmin(admin.ModelAdmin):
+class DocumentTypeAdmin(ContentAdminArea, admin.ModelAdmin):
     list_display = ["name", "slug", "icon", "color", "display_order", "is_active"]
     list_filter = ["is_active"]
     search_fields = ["name", "slug"]
@@ -29,7 +31,7 @@ class DocumentTypeAdmin(admin.ModelAdmin):
 
 
 @admin.register(Author)
-class AuthorAdmin(admin.ModelAdmin):
+class AuthorAdmin(ContentAdminArea, admin.ModelAdmin):
     list_display = ["display_name", "author_type", "affiliation", "linked_user"]
     list_filter = ["author_type"]
     search_fields = [
@@ -48,7 +50,7 @@ class DocumentAuthorInline(admin.TabularInline):
 
 
 @admin.register(Document)
-class DocumentAdmin(admin.ModelAdmin):
+class DocumentAdmin(ContentAdminArea, admin.ModelAdmin):
     list_display = [
         "title",
         "document_type",
@@ -73,7 +75,7 @@ class DocumentAdmin(admin.ModelAdmin):
 
 
 @admin.register(DocumentAuthor)
-class DocumentAuthorAdmin(admin.ModelAdmin):
+class DocumentAuthorAdmin(ContentAdminArea, admin.ModelAdmin):
     list_display = ["document", "author", "role", "position"]
     list_filter = ["role"]
     search_fields = ["document__title", "author__display_name"]
@@ -87,7 +89,7 @@ class CollectionItemInline(admin.TabularInline):
 
 
 @admin.register(Collection)
-class CollectionAdmin(admin.ModelAdmin):
+class CollectionAdmin(ContentAdminArea, admin.ModelAdmin):
     list_display = [
         "name",
         "slug",
@@ -104,14 +106,14 @@ class CollectionAdmin(admin.ModelAdmin):
 
 
 @admin.register(CollectionItem)
-class CollectionItemAdmin(admin.ModelAdmin):
+class CollectionItemAdmin(ContentAdminArea, admin.ModelAdmin):
     list_display = ["collection", "document", "position"]
     search_fields = ["collection__name", "document__title"]
     autocomplete_fields = ["collection", "document"]
 
 
 @admin.register(RightsAgreement)
-class RightsAgreementAdmin(admin.ModelAdmin):
+class RightsAgreementAdmin(ContentAdminArea, admin.ModelAdmin):
     list_display = [
         "document",
         "rights_holder_name",

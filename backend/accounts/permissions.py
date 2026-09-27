@@ -34,7 +34,17 @@ def _account_type(user) -> str:
 
 
 def is_platform_staff(user) -> bool:
-    """Super administrateur : configuration, facturation, opérations sensibles."""
+    """Super administrateur : configuration, facturation, opérations sensibles.
+
+    `is_superuser` compte aussi. Les surcharges `has_*_permission` d'un
+    ModelAdmin court-circuitent le bypass superuser de Django : un compte
+    racine dont le `account_type` aurait dérivé se retrouverait enfermé
+    dehors, sans recours par l'interface. Le filet est délibéré.
+    """
+    if not _is_authenticated(user):
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
     return _account_type(user) == User.AccountType.PLATFORM_STAFF
 
 

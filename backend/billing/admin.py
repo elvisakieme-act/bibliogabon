@@ -1,5 +1,7 @@
 from django.contrib import admin
 
+from accounts.admin_mixins import PlatformStaffArea
+
 from billing.models import (
     CommercialOffer,
     OrganizationQuota,
@@ -10,7 +12,7 @@ from billing.models import (
 
 
 @admin.register(CommercialOffer)
-class CommercialOfferAdmin(admin.ModelAdmin):
+class CommercialOfferAdmin(PlatformStaffArea, admin.ModelAdmin):
     list_display = ["name", "offer_type", "billing_period", "price_xaf", "duration_days", "is_active"]
     list_filter = ["offer_type", "billing_period", "access_right", "scope_type", "is_active"]
     search_fields = ["name", "slug", "scope_id"]
@@ -19,7 +21,7 @@ class CommercialOfferAdmin(admin.ModelAdmin):
 
 
 @admin.register(Subscription)
-class SubscriptionAdmin(admin.ModelAdmin):
+class SubscriptionAdmin(PlatformStaffArea, admin.ModelAdmin):
     list_display = ["target", "offer", "status", "starts_at", "ends_at", "entitlement"]
     list_filter = ["status", "offer__offer_type", "offer__access_right"]
     search_fields = ["user__email", "user__display_name", "organization__name", "external_reference"]
@@ -34,7 +36,7 @@ class SubscriptionAdmin(admin.ModelAdmin):
 
 
 @admin.register(PaymentTransaction)
-class PaymentTransactionAdmin(admin.ModelAdmin):
+class PaymentTransactionAdmin(PlatformStaffArea, admin.ModelAdmin):
     list_display = ["idempotency_key", "provider", "status", "amount_xaf", "currency", "created_at"]
     list_filter = ["provider", "status", "currency"]
     search_fields = [
@@ -56,7 +58,7 @@ class PaymentTransactionAdmin(admin.ModelAdmin):
 
 
 @admin.register(OrganizationQuota)
-class OrganizationQuotaAdmin(admin.ModelAdmin):
+class OrganizationQuotaAdmin(PlatformStaffArea, admin.ModelAdmin):
     list_display = ["organization", "offer", "status", "seat_limit", "starts_at", "ends_at"]
     list_filter = ["status", "offer__access_right", "offer__scope_type"]
     search_fields = ["organization__name", "contract_reference", "offer__name"]
@@ -65,7 +67,7 @@ class OrganizationQuotaAdmin(admin.ModelAdmin):
 
 
 @admin.register(SponsoredCampaign)
-class SponsoredCampaignAdmin(admin.ModelAdmin):
+class SponsoredCampaignAdmin(PlatformStaffArea, admin.ModelAdmin):
     list_display = ["name", "sponsor", "status", "funded_seat_count", "starts_at", "ends_at"]
     list_filter = ["status", "access_right", "scope_type"]
     search_fields = ["name", "slug", "sponsor__name", "scope_id"]

@@ -123,11 +123,17 @@ backend/
 **Interfaces:**
 - Derives admin add/change/delete permissions from the predicates.
 
-- [ ] Write failing tests: a content admin may act on publication reviews and catalog records but is refused on billing models and on platform-role fields; a super admin may act on everything; an institution admin without `is_staff` cannot open the admin at all; `AuditLog` stays append-only for every actor.
-- [ ] Implement `has_add_permission`, `has_change_permission` and `has_delete_permission` from the predicates on the affected admin classes.
-- [ ] Leave the reader, ingestion and processing admins as staff-only inspection surfaces; they expose no role-bearing action.
-- [ ] Run `pytest operations/tests billing/tests catalog/tests accounts/tests -q`.
-- [ ] Commit `feat: derive admin authority from roles`.
+- [x] Write failing tests: a content admin may act on publication reviews and catalog records but is refused on billing models and on platform-role fields; a super admin may act on everything; an institution admin without `is_staff` cannot open the admin at all; `AuditLog` stays append-only for every actor.
+- [x] Implement the five permission methods from the predicates, through `ContentAdminArea` and `PlatformStaffArea`
+      mixins in `accounts/admin_mixins.py`, so twenty admin classes share one rule rather than twenty copies.
+- [x] Harden `is_platform_staff` to accept `is_superuser`: a `has_*_permission` override short-circuits Django's
+      superuser bypass, so a root account whose `account_type` had drifted would be locked out of its own admin.
+- [x] A Django model permission alone now grants nothing. The previous contract let `change_publicationreview`
+      confer moderator actions, which would have made the whole role matrix bypassable; the old test is updated
+      and a new one locks the bypass shut.
+- [x] Leave the reader, ingestion and processing admins as staff-only inspection surfaces; they expose no role-bearing action.
+- [x] Run `pytest operations/tests billing/tests catalog/tests accounts/tests -q`.
+- [x] Commit `feat: derive admin authority from roles`.
 
 ---
 

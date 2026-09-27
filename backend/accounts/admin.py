@@ -1,11 +1,13 @@
 from django.contrib import admin
+
+from accounts.admin_mixins import PlatformStaffArea
 from django.contrib.auth.admin import UserAdmin
 
 from accounts.models import Entitlement, Organization, OrganizationMembership, User
 
 
 @admin.register(User)
-class BiblioGabonUserAdmin(UserAdmin):
+class BiblioGabonUserAdmin(PlatformStaffArea, UserAdmin):
     ordering = ["email"]
     list_display = ["email", "display_name", "account_type", "is_active", "is_staff"]
     list_filter = ["account_type", "is_active", "is_staff"]
@@ -32,7 +34,7 @@ class BiblioGabonUserAdmin(UserAdmin):
 
 
 @admin.register(Organization)
-class OrganizationAdmin(admin.ModelAdmin):
+class OrganizationAdmin(PlatformStaffArea, admin.ModelAdmin):
     list_display = [
         "name",
         "slug",
@@ -47,7 +49,7 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 
 @admin.register(OrganizationMembership)
-class OrganizationMembershipAdmin(admin.ModelAdmin):
+class OrganizationMembershipAdmin(PlatformStaffArea, admin.ModelAdmin):
     list_display = [
         "user",
         "organization",
@@ -69,7 +71,7 @@ class OrganizationMembershipAdmin(admin.ModelAdmin):
 
 
 @admin.register(Entitlement)
-class EntitlementAdmin(admin.ModelAdmin):
+class EntitlementAdmin(PlatformStaffArea, admin.ModelAdmin):
     list_display = [
         "target",
         "source",
