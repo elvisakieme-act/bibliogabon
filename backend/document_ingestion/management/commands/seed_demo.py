@@ -1,7 +1,12 @@
 """Jeu de données de démonstration pour BiblioGabon.
 
-Ré-exécutable sans risque (get_or_create partout). À n'utiliser qu'en
-développement / démo — jamais en production.
+Ré-exécutable, et **réparateur** : chaque exécution remet les comptes et
+les adhésions de démonstration dans l'état voulu, mots de passe compris.
+Une démonstration qui suspend un membre ne laisse donc pas le jeu de
+données cassé — ce que `get_or_create` seul ne permettait pas, puisqu'il
+n'écrit jamais sur une ligne existante.
+
+À n'utiliser qu'en développement / démo — jamais en production.
 
     python manage.py seed_demo
 """
@@ -239,9 +244,16 @@ class Command(BaseCommand):
 
     def _seed_memberships(self, people: dict, uob: Organization, now) -> None:
         """Un membre vérifié, un membre non vérifié — pour démontrer la
-        barrière d'identité — et un administrateur d'organisation."""
+        barrière d'identité — et un administrateur d'organisation.
+
+        Les adhésions sont **remises** dans l'état voulu à chaque exécution, et
+        pas seulement créées. `get_or_create` ne répare jamais une ligne
+        existante : une démonstration qui suspend un membre laissait le jeu de
+        données cassé, et rejouer le seed n'y changeait rien — alors qu'il se
+        présente comme rejouable sans risque.
+        """
         learners, staff = people["learners"], people["staff"]
-        OrganizationMembership.objects.get_or_create(
+        OrganizationMembership.objects.update_or_create(
             organization=uob,
             user=learners[0],
             defaults={
@@ -252,18 +264,20 @@ class Command(BaseCommand):
                 "verified_by": staff,
                 "verified_at": now,
                 "proof_reference": "CARTE-ETU-UOB-0001",
+                "ends_at": None,
             },
         )
-        OrganizationMembership.objects.get_or_create(
+        OrganizationMembership.objects.update_or_create(
             organization=uob,
             user=learners[1],
             defaults={
                 "role": OrganizationMembership.Role.MEMBER,
                 "status": OrganizationMembership.Status.ACTIVE,
                 "verification_status": OrganizationMembership.VerificationStatus.UNVERIFIED,
+                "ends_at": None,
             },
         )
-        OrganizationMembership.objects.get_or_create(
+        OrganizationMembership.objects.update_or_create(
             organization=uob,
             user=people["org_admin"],
             defaults={
@@ -273,6 +287,7 @@ class Command(BaseCommand):
                 "verification_method": OrganizationMembership.VerificationMethod.STAFF_ID,
                 "verified_by": staff,
                 "verified_at": now,
+                "ends_at": None,
             },
         )
 
@@ -466,7 +481,7 @@ class Command(BaseCommand):
     def _get_user(
         self, email: str, display_name: str, account_type: str, is_staff: bool = False
     ) -> User:
-        user, created = User.objects.get_or_create(
+        user, _ = User.objects.get_or_create(
             email=email,
             defaults={
                 "display_name": display_name,
@@ -474,7 +489,13 @@ class Command(BaseCommand):
                 "is_staff": is_staff,
             },
         )
-        if created:
+        # Le mot de passe est (re)posé à chaque exécution, et non à la seule
+        # création. Un compte créé à moitié — seed interrompu, création par
+        # l'admin — gardait sinon un mot de passe inutilisable que rejouer le
+        # seed ne réparait jamais, alors qu'il se présente comme rejouable sans
+        # risque. Sur un jeu de démonstration, « rejouable » doit signifier
+        # « ramène les comptes dans un état utilisable ».
+        if not user.check_password(PASSWORD):
             user.set_password(PASSWORD)
             user.save(update_fields=["password"])
         return user

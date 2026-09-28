@@ -25,6 +25,7 @@ from pathlib import Path
 
 import pytest
 
+from accounts.models import OrganizationMembership
 from catalog.models import Document, DocumentAuthor, RightsAgreement
 from catalog.services import (
     INVALID_ACCESS_MODEL,
@@ -40,7 +41,7 @@ from catalog.services import (
     RIGHTS_ACCESS_MODEL_MISMATCH,
     RIGHTS_NOT_APPROVED,
 )
-from operations.models import PublicationReview
+from operations.models import PublicationReview, SupportTicket
 
 FRONTEND = Path(__file__).resolve().parents[5] / "frontend" / "src" / "components" / "staff"
 
@@ -50,6 +51,21 @@ CASES = [
         "../../routes/gestion/ReviewsPage.tsx",
         "REVIEW_STATUS_OPTIONS",
         PublicationReview.Status.values,
+    ),
+    ("ticketLabels.ts", "CATEGORY_LABELS", SupportTicket.Category.values),
+    ("ticketLabels.ts", "STATUS_LABELS", SupportTicket.Status.values),
+    ("ticketLabels.ts", "PRIORITY_LABELS", SupportTicket.Priority.values),
+    (
+        "membershipLabels.ts",
+        "MEMBERSHIP_STATUS_LABELS",
+        OrganizationMembership.Status.values,
+    ),
+    (
+        "membershipLabels.ts",
+        "VERIFICATION_STATUS_LABELS",
+        __import__(
+            "accounts.models", fromlist=["x"]
+        ).OrganizationMembership.VerificationStatus.values,
     ),
     ("options.ts", "ACCESS_MODEL_OPTIONS", Document.AccessModel.values),
     ("publicationStatus.ts", "PUBLICATION_STATUS_LABELS", Document.PublicationStatus.values),

@@ -248,3 +248,65 @@ def test_no_lifecycle_payload_names_a_stored_object(api, review, full_document):
     ):
         body = api.get(path).content.decode()
         assert not re.search(r"\.pdf|://|storage|bucket", body, re.I), path
+
+
+@pytest.fixture
+def organization(db, moderator):
+    from accounts.models import Organization, OrganizationMembership
+
+    org = Organization.objects.create(
+        name="UOB parite",
+        slug="uob-parite",
+        organization_type=Organization.OrganizationType.UNIVERSITY,
+    )
+    OrganizationMembership.objects.create(
+        organization=org,
+        user=moderator,
+        role=OrganizationMembership.Role.ADMIN,
+        status=OrganizationMembership.Status.ACTIVE,
+    )
+    return org
+
+
+def test_the_organization_matches_its_declared_type(api, organization):
+    payload = api.get(
+        reverse("api-staff-v1:organization-detail", kwargs={"organization_id": organization.pk})
+    ).json()
+
+    # `active_member_count` n'apparait que sur le detail : le type le declare
+    # optionnel, donc l'inclusion vaut ici plutot que l'egalite stricte.
+    assert set(payload) <= declared_fields("StaffOrganization")
+    assert "active_member_count" in payload
+
+
+def test_the_membership_matches_its_declared_type(api, organization, moderator):
+    payload = api.get(
+        reverse(
+            "api-staff-v1:organization-members", kwargs={"organization_id": organization.pk}
+        )
+    ).json()
+
+    assert set(payload["results"][0]) == declared_fields("StaffMembership")
+
+
+def test_the_institution_report_matches_its_declared_type(api, organization):
+    payload = api.get(
+        reverse(
+            "api-staff-v1:organization-report", kwargs={"organization_id": organization.pk}
+        ),
+        {"from": "2026-09-01", "to": "2026-09-02"},
+    ).json()
+
+    assert set(payload) == declared_fields("StaffInstitutionReport")
+
+
+def test_the_ticket_matches_its_declared_type(api, full_document, moderator):
+    from operations.services import report_document
+
+    full_document.publication_status = Document.PublicationStatus.PUBLISHED
+    full_document.save(update_fields=["publication_status", "updated_at"])
+    report_document(document=full_document, reason="Motif.", reported_by=moderator)
+
+    payload = api.get(reverse("api-staff-v1:ticket-list")).json()
+
+    assert set(payload["results"][0]) == declared_fields("StaffTicket")

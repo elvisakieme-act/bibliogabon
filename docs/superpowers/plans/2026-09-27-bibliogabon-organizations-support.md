@@ -118,26 +118,26 @@ Slice 4 of 4. Design: `docs/superpowers/specs/2026-09-27-bibliogabon-organizatio
 **Files:**
 - Modify: `CLAUDE.md`, `docs/product/02-phase-1-closure-register.md`, `README.md`
 
-- [ ] Extend both parity guards to the new payloads and to `SupportTicket.Category`.
-- [ ] Walk the flow against the running backend: report a document, request a withdrawal, triage both, manage a membership, read a usage report, confirm a suspended member loses access.
-- [ ] Re-assert the bundle split.
-- [ ] Run the whole CI locally, both sides, with `REQUIRE_OCR=1`.
-- [ ] Audit Phase 1 line by line against the plan directeur and record, honestly, what is done and what is not.
-- [ ] Commit `docs: close Phase 1`.
+- [x] Extend both parity guards to the new payloads and to `SupportTicket.Category`.
+- [x] Walk the flow against the running backend: report a document, request a withdrawal, triage both, manage a membership, read a usage report, confirm a suspended member loses access.
+- [x] Re-assert the bundle split.
+- [x] Run the whole CI locally, both sides, with `REQUIRE_OCR=1`.
+- [x] Audit Phase 1 line by line against the plan directeur and record, honestly, what is done and what is not.
+- [x] Commit `docs: close Phase 1`.
 
 ---
 
 ## Self-Review Checklist
 
-- [ ] An institution admin is refused on another organization at every endpoint.
-- [ ] No payload or screen names who read what.
-- [ ] A withdrawal request withdraws nothing, and the screen says so.
-- [ ] Reporting a draft returns 404, not 403.
-- [ ] Every membership and quota change is audited.
-- [ ] A suspended membership removes reading access immediately.
-- [ ] The report payload is scanned for per-user fields.
-- [ ] Parity guards cover the new surface.
-- [ ] Reader routes, components and tests are unchanged.
+- [x] An institution admin is refused on another organization at every endpoint.
+- [x] No payload or screen names who read what.
+- [x] A withdrawal request withdraws nothing, and the screen says so.
+- [x] Reporting a draft returns 404, not 403.
+- [x] Every membership and quota change is audited.
+- [x] A suspended membership removes reading access immediately.
+- [x] The report payload is scanned for per-user fields.
+- [x] Parity guards cover the new surface.
+- [x] Reader routes, components and tests are unchanged.
 
 ## Execution Handoff
 

@@ -3,6 +3,10 @@
 Ce document existe pour qu'aucun point repéré ne se perde. **La phase 1 ne
 peut être déclarée close qu'avec la section « À traiter » vide.**
 
+> **Au 28/09/2026 : la section « À traiter » est vide et la phase 1 est
+> close.** L'audit ligne par ligne, avec ce qui n'est pas fait, vit dans
+> `docs/product/03-phase-1-audit.md`.
+
 Trois catégories, délibérément distinctes :
 
 - **À traiter** — de la dette ou une incohérence. Se corrige, ne se discute pas.
@@ -39,6 +43,12 @@ qu'avec un test qui l'empêche de revenir.
 | B3 | Quel fournisseur S3 héberge les documents privés ? (D007) | Dépend du volume réel et de l'arbitrage souveraineté / coût de bande passante. | Tout parle S3 via `DOCUMENT_STORAGE_ENDPOINT_URL` ; le choix n'est encodé nulle part. |
 
 ## Traité (suite)
+
+| # | Point | Correction | Ce qui l'empêche de revenir |
+|---|---|---|---|
+| A5 | `seed_demo` ne réparait pas ce qu'il prétendait garantir | Le mot de passe n'était posé qu'à la création, et les adhésions créées par `get_or_create` n'étaient jamais remises dans l'état voulu. Une démonstration qui suspendait un membre laissait le jeu de données cassé sans recours. | Quatre tests d'idempotence, dont un qui rend un mot de passe inutilisable et un qui suspend le recteur, puis rejouent le seed. |
+| A6 | Le motif était facultatif sur la suspension et la fin d'adhésion | Une suspension sans raison enregistrée est le même défaut qu'un retrait sans motif : un acte dont personne ne peut rendre compte. | Test paramétré sur les deux routes. |
+
 
 | # | Point | Correction | Ce qui l'empêche de revenir |
 |---|---|---|---|

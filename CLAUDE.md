@@ -199,6 +199,32 @@ poisoned event.
 covered by the enum-parity guard — which is exactly why an unknown type renders
 raw instead of vanishing.
 
+### Organizations and support
+
+Organization scope is an **argument** to the predicate, never a filter applied
+afterwards: every organization endpoint goes through one `_get_organization`
+that asks `administers_organization(user, organization)`. A divergent filter
+would expose one institution's members to another while the nominal case kept
+working, which is what makes that defect invisible. Out of scope, an
+organization is **404, not 403**.
+
+No payload or screen names who read what. Not deferred — excluded. The usage
+report is built from `DailyUsageAggregate`, never `PageAccessLog`, and a test
+walks the report's keys against an exact per-user denylist. Substring matching
+was tried and rejected: it flagged `reader_session_count`, a legitimate
+aggregate, and a false test pushes toward weakening the rule.
+
+`SupportTicket.category` splits support, document reports and withdrawal
+requests. A withdrawal *request* withdraws nothing — it opens a high-priority
+ticket a moderator acts on, so contract-bound categories keep the protection
+`can_withdraw_document` gives them, and the screen says so in as many words.
+
+`seed_demo` is **reparative**, not merely idempotent: it re-applies demo
+passwords and membership states on every run. `get_or_create` never writes to an
+existing row, so a demo that suspended a member left the dataset broken with no
+way back. Beware `manage.py seed_demo | head`: SIGPIPE kills it mid-transaction
+and nothing is committed.
+
 ### Frontend
 
 TanStack Router routes declared centrally in `src/router.tsx` (French URL segments: `/connexion`, `/recherche`, `/lecture/...`, `/bibliotheque`). Layers: `src/api/` (typed fetch wrappers over `apiRequest`, which unwraps the error envelope into `ApiError`), `src/features/<domain>/hooks.ts` (TanStack Query hooks), `src/routes/` (pages), `src/components/` (presentational). Auth state lives in `src/auth/` — `AuthProvider.tsx` holds the provider, `authContext.ts` the context and `useAuth.ts` the hook. They are three files on purpose: a module exporting both a component and a value breaks hot-reload granularity, and `npm run lint` is silent so a new mix shows up immediately. JWT access/refresh live in `localStorage` via `tokenStore`; a 401 dispatches `UNAUTHORIZED_EVENT` so the provider can clear the session, and `guards.tsx` redirects to `/connexion?next=...`. Import alias `@/` → `src/`.
