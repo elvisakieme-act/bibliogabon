@@ -48,7 +48,7 @@ export function OrganizationDetailPage() {
         description={
           organization.error instanceof ApiError
             ? organization.error.message
-            : "Cette organisation n'a pas pu etre chargee."
+            : "Cette organisation n'a pas pu être chargee."
         }
       />
     );
@@ -110,7 +110,7 @@ function MembersSection({ organizationId }: { organizationId: number }) {
         <p className="text-sm text-slate-600">
           {members.error instanceof ApiError
             ? members.error.message
-            : "Les membres n'ont pas pu etre charges."}
+            : "Les membres n'ont pas pu être charges."}
         </p>
       ) : null}
 
@@ -378,7 +378,7 @@ function ReportSection({ organizationId }: { organizationId: number }) {
         <p role="alert" className="text-sm text-red-800">
           {report.error instanceof ApiError
             ? report.error.message
-            : "Le rapport n'a pas pu etre genere."}
+            : "Le rapport n'a pas pu être généré."}
         </p>
       ) : null}
       {report.data ? (

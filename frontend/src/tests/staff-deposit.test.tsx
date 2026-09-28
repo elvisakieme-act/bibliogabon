@@ -45,6 +45,7 @@ function staffDocument(overrides: Partial<StaffDocument> = {}): StaffDocument {
 }
 
 interface Handlers {
+  account?: string;
   index?: () => Response;
   audit?: () => Response;
   withdraw?: (body: unknown) => Response;
@@ -59,11 +60,13 @@ interface Handlers {
 }
 
 function stubApi(handlers: Handlers = {}) {
+  const calls: URL[] = [];
   const bodies: unknown[] = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(String(input));
+      calls.push(url);
       const method = init?.method ?? "GET";
       const body = init?.body ? JSON.parse(String(init.body)) : undefined;
       if (body !== undefined) bodies.push(body);
@@ -74,7 +77,7 @@ function stubApi(handlers: Handlers = {}) {
             id: 5,
             email: "prof@bibliogabon.ga",
             display_name: "Enseignant",
-            account_type: "teacher_author"
+            account_type: handlers.account ?? "teacher_author"
           })
         );
       }
@@ -199,7 +202,7 @@ function stubApi(handlers: Handlers = {}) {
       );
     })
   );
-  return { bodies };
+  return { calls, bodies };
 }
 
 function renderAt(path: string) {
@@ -228,10 +231,10 @@ describe("creation d'un brouillon", () => {
     await userEvent.type(await screen.findByLabelText(/^Titre/), "Algebre lineaire");
     await userEvent.type(screen.getByLabelText(/^Identifiant/), "algebre-lineaire");
     await userEvent.selectOptions(
-      screen.getByLabelText(/^Categorie/),
+      screen.getByLabelText(/^Catégorie/),
       "voluntary_teacher_deposit"
     );
-    await userEvent.selectOptions(screen.getByLabelText(/^Modele d'acces/), "free");
+    await userEvent.selectOptions(screen.getByLabelText(/^Modèle d'accès/), "free");
     await userEvent.click(screen.getByRole("button", { name: /creer le brouillon/i }));
 
     await waitFor(() => {
@@ -251,8 +254,8 @@ describe("creation d'un brouillon", () => {
 
     await userEvent.type(await screen.findByLabelText(/^Titre/), "Doublon");
     await userEvent.type(screen.getByLabelText(/^Identifiant/), "algebre-lineaire");
-    await userEvent.selectOptions(screen.getByLabelText(/^Categorie/), "open_resource");
-    await userEvent.selectOptions(screen.getByLabelText(/^Modele d'acces/), "free");
+    await userEvent.selectOptions(screen.getByLabelText(/^Catégorie/), "open_resource");
+    await userEvent.selectOptions(screen.getByLabelText(/^Modèle d'accès/), "free");
     await userEvent.click(screen.getByRole("button", { name: /creer le brouillon/i }));
 
     const input = await screen.findByLabelText(/^Identifiant/);
@@ -433,7 +436,7 @@ describe("section des auteurs", () => {
     });
     renderAt("/gestion/documents/77");
 
-    await userEvent.click(await screen.findByRole("button", { name: /detacher Aline NZE/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /détacher Aline NZE/i }));
 
     await waitFor(() => expect(detachAuthor).toHaveBeenCalled());
   });
@@ -449,8 +452,8 @@ describe("section des droits", () => {
       "teacher_voluntary"
     );
     await userEvent.type(screen.getByLabelText(/Titulaire des droits/i), "Aline NZE");
-    await userEvent.selectOptions(screen.getByLabelText(/Regle de retrait/i), "author_request");
-    await userEvent.click(screen.getByRole("button", { name: /enregistrer la declaration/i }));
+    await userEvent.selectOptions(screen.getByLabelText(/Règle de retrait/i), "author_request");
+    await userEvent.click(screen.getByRole("button", { name: /enregistrer la déclaration/i }));
 
     await waitFor(() => {
       expect(bodies.at(-1)).toMatchObject({
@@ -474,8 +477,8 @@ describe("section des droits", () => {
       "open_license"
     );
     await userEvent.type(screen.getByLabelText(/Titulaire des droits/i), "BiblioGABON");
-    await userEvent.selectOptions(screen.getByLabelText(/Regle de retrait/i), "author_request");
-    await userEvent.click(screen.getByRole("button", { name: /enregistrer la declaration/i }));
+    await userEvent.selectOptions(screen.getByLabelText(/Règle de retrait/i), "author_request");
+    await userEvent.click(screen.getByRole("button", { name: /enregistrer la déclaration/i }));
 
     await waitFor(() => {
       expect(bodies.at(-1)).toMatchObject({ access_model: "free" });
@@ -609,6 +612,10 @@ describe("fin de vie du document", () => {
 });
 
 describe("journal d'audit", () => {
+  // Le journal est une surface de modération : ces tests s'exécutent donc sous
+  // un administrateur de contenu, comme à l'écran.
+  const asModerator = { account: "content_admin" } as const;
+
   function event(overrides: Record<string, unknown> = {}) {
     return {
       id: 1,
@@ -623,6 +630,7 @@ describe("journal d'audit", () => {
 
   it("rend qui, quoi, quand et pourquoi", async () => {
     stubApi({
+      ...asModerator,
       audit: () =>
         new Response(
           JSON.stringify({ count: 1, next: null, previous: null, results: [event()] })
@@ -640,6 +648,7 @@ describe("journal d'audit", () => {
     // Le serveur filtre `metadata` par liste blanche : un événement peut
     // arriver sans motif, et l'écran ne doit pas tomber pour autant.
     stubApi({
+      ...asModerator,
       audit: () =>
         new Response(
           JSON.stringify({
@@ -658,6 +667,7 @@ describe("journal d'audit", () => {
 
   it("affiche un type d'événement inconnu tel quel plutôt que de le masquer", async () => {
     stubApi({
+      ...asModerator,
       audit: () =>
         new Response(
           JSON.stringify({
@@ -676,6 +686,7 @@ describe("journal d'audit", () => {
 
   it("n'affiche ni clé de stockage ni URL dans le journal", async () => {
     stubApi({
+      ...asModerator,
       audit: () =>
         new Response(
           JSON.stringify({ count: 1, next: null, previous: null, results: [event()] })
@@ -688,5 +699,35 @@ describe("journal d'audit", () => {
     expect(rendered).not.toMatch(/\.pdf/i);
     expect(rendered).not.toMatch(/:\/\//);
     expect(rendered.toLowerCase()).not.toContain("storage");
+  });
+});
+
+describe("ce que l'écran ne demande pas au serveur", () => {
+  it("ne demande pas le journal d'audit à un déposant", async () => {
+    // Le journal est réservé à la modération côté serveur. Le demander depuis
+    // l'écran d'un enseignant enchaînait des 403 à chaque rendu. Une requête
+    // dont on sait qu'elle échouera n'est pas une vérification, c'est du bruit
+    // — dans la console, dans les journaux du serveur, et dans la tête de qui
+    // diagnostique.
+    const { calls } = stubApi();
+    renderAt("/gestion/documents/77");
+    await screen.findByLabelText(/^Titre/);
+
+    expect(calls.filter((url) => url.pathname.endsWith("/audit/"))).toHaveLength(0);
+    expect(screen.queryByRole("list", { name: /journal/i })).not.toBeInTheDocument();
+  });
+
+  it("refuse une déclaration de droits incomplète avant l'aller-retour", async () => {
+    // Le serveur refuse aussi, mais avec « «  » n'est pas un choix valide »,
+    // qui ne dit rien à personne.
+    const { calls } = stubApi();
+    renderAt("/gestion/documents/77");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /enregistrer la déclaration/i })
+    );
+
+    expect(await screen.findByText(/Choisissez le type d'accord/i)).toBeInTheDocument();
+    expect(calls.filter((url) => url.pathname.endsWith("/rights/"))).toHaveLength(0);
   });
 });

@@ -29,7 +29,27 @@ export default defineConfig(({ mode }) => {
     server: {
       host: env.VITE_DEV_HOST || "127.0.0.1",
       port: Number(env.VITE_DEV_PORT || 5173),
-      allowedHosts: [...DEFAULT_ALLOWED_HOSTS, ...extraAllowedHosts]
+      allowedHosts: [...DEFAULT_ALLOWED_HOSTS, ...extraAllowedHosts],
+      // Relais de l'API, quand VITE_DEV_API_PROXY est renseigné.
+      //
+      // Derrière un proxy de développement en nuage, le navigateur parle à un
+      // hôte et l'API à un autre : chaque écriture déclenche donc un
+      // préliminaire CORS. Le proxy Lightning réécrit les en-têtes avec les
+      // siens, et sa liste de méthodes **ne contient pas PATCH** — toute
+      // modification de métadonnées était bloquée avant d'être envoyée.
+      //
+      // Relayer /api depuis Vite rend les requêtes de même origine : plus de
+      // préliminaire, donc plus de liste de méthodes imposée par un tiers. Le
+      // contrat de l'API ne bouge pas pour s'accommoder d'un outil de
+      // développement.
+      proxy: env.VITE_DEV_API_PROXY
+        ? {
+            "/api": {
+              target: env.VITE_DEV_API_PROXY,
+              changeOrigin: true
+            }
+          }
+        : undefined
     },
     // Vitest adds this property to the Vite config at runtime.
     test: {

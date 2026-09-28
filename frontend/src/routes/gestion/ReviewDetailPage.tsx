@@ -32,7 +32,7 @@ export function ReviewDetailPage() {
         description={
           query.error instanceof ApiError
             ? query.error.message
-            : "Ce dossier n'a pas pu etre charge."
+            : "Ce dossier n'a pas pu être charge."
         }
       />
     );

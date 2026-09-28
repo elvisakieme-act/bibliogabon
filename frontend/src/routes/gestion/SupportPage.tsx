@@ -56,11 +56,11 @@ export function SupportPage() {
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <label htmlFor="ticket-etat" className="text-sm font-medium">
+          <label htmlFor="ticket-état" className="text-sm font-medium">
             État
           </label>
           <select
-            id="ticket-etat"
+            id="ticket-état"
             className="rounded border border-slate-300 px-2 py-1.5 text-sm"
             value={filters.status ?? ""}
             onChange={(event) => setFilter("status", event.target.value)}
@@ -91,7 +91,7 @@ function TicketsResult({ query }: { query: ReturnType<typeof useStaffTickets> })
         description={
           query.error instanceof ApiError
             ? query.error.message
-            : "La file de support n'a pas pu etre chargee."
+            : "La file de support n'a pas pu être chargee."
         }
       />
     );

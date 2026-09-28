@@ -18,7 +18,7 @@ export function OrganizationsPage() {
         description={
           query.error instanceof ApiError
             ? query.error.message
-            : "La liste des organisations n'a pas pu etre chargee."
+            : "La liste des organisations n'a pas pu être chargee."
         }
       />
     );

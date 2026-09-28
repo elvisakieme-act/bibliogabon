@@ -48,11 +48,11 @@ export function DocumentsPage() {
         onSubmit={(event) => event.preventDefault()}
       >
         <div className="flex flex-col gap-1">
-          <label htmlFor="filtre-etat" className="text-sm font-medium">
-            Etat
+          <label htmlFor="filtre-état" className="text-sm font-medium">
+            État
           </label>
           <select
-            id="filtre-etat"
+            id="filtre-état"
             className="rounded border border-slate-300 px-2 py-1.5 text-sm"
             value={filters.status ?? ""}
             onChange={(event) => setFilter("status", event.target.value)}
@@ -160,7 +160,7 @@ function DocumentsResult({ query }: { query: ReturnType<typeof useStaffDocuments
         description={
           error instanceof ApiError
             ? error.message
-            : "La liste des documents n'a pas pu etre chargee."
+            : "La liste des documents n'a pas pu être chargee."
         }
       />
     );
@@ -178,14 +178,14 @@ function DocumentsResult({ query }: { query: ReturnType<typeof useStaffDocuments
   return (
     <div className="overflow-x-auto rounded border border-slate-200 bg-white">
       <table className="w-full min-w-3xl border-collapse text-sm">
-        <caption className="sr-only">Documents de votre perimetre</caption>
+        <caption className="sr-only">Documents de votre périmètre</caption>
         <thead className="bg-slate-50 text-left">
           <tr>
             <th scope="col" className="px-4 py-2 font-medium">
               Titre
             </th>
             <th scope="col" className="px-4 py-2 font-medium">
-              Etat
+              État
             </th>
             <th scope="col" className="px-4 py-2 font-medium">
               Domaine
@@ -216,7 +216,7 @@ function DocumentsResult({ query }: { query: ReturnType<typeof useStaffDocuments
               <td className="px-4 py-2">{document.academic_domain?.name ?? "—"}</td>
               <td className="px-4 py-2">{document.document_type?.name ?? "—"}</td>
               {/* Le nombre de pages, jamais le libelle de version ni rien qui
-                  approche d'une cle de stockage. */}
+                  approche d'une clé de stockage. */}
               <td className="px-4 py-2">{document.ingestion?.page_count ?? "—"}</td>
             </tr>
           ))}

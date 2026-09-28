@@ -28,7 +28,7 @@ export function AuditTrail({ documentId }: { documentId: number }) {
         <p className="mt-2 text-sm text-slate-600">
           {query.error instanceof ApiError
             ? query.error.message
-            : "Le journal n'a pas pu etre charge."}
+            : "Le journal n'a pas pu être charge."}
         </p>
       </section>
     );

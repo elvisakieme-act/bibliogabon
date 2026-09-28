@@ -41,7 +41,7 @@ export function AuthorsSection({
       setError(
         caught instanceof ApiError
           ? caught.message
-          : "L'operation n'a pas pu aboutir. Reessayez."
+          : "L'operation n'a pas pu aboutir. Réessayez."
       );
     }
   }
@@ -65,19 +65,19 @@ export function AuthorsSection({
               </span>
               <button
                 type="button"
-                aria-label={`Detacher ${entry.display_name}`}
+                aria-label={`Détacher ${entry.display_name}`}
                 className="rounded border border-slate-300 px-2 py-1 text-xs"
                 disabled={detach.isPending}
                 onClick={() => run(() => detach.mutateAsync(entry.id))}
               >
-                Detacher
+                Détacher
               </button>
             </li>
           ))}
         </ul>
       ) : (
         <p className="text-sm text-slate-600">
-          Aucun auteur rattache. Le document ne pourra pas etre soumis sans au moins un auteur
+          Aucun auteur rattache. Le document ne pourra pas être soumis sans au moins un auteur
           ou co-auteur.
         </p>
       )}
@@ -147,7 +147,7 @@ export function AuthorsSection({
         Rattacher l&apos;auteur
       </button>
       <p className="text-xs text-slate-500">
-        Un auteur absent du registre doit y etre ajoute par la moderation : le registre des
+        Un auteur absent du registre doit y être ajoute par la moderation : le registre des
         contributeurs est commun a tout le catalogue.
       </p>
     </section>

@@ -107,7 +107,7 @@ export function RightsSection({
       className="space-y-4 rounded border border-slate-200 bg-white p-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="font-semibold">Declaration de droits</h3>
+        <h3 className="font-semibold">Déclaration de droits</h3>
         {document.rights ? (
           <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
             {authorizationStatusLabel(document.rights.authorization_status)}
@@ -116,7 +116,7 @@ export function RightsSection({
       </div>
       <p className="text-sm text-slate-600">
         Vous declarez. Un moderateur decide ensuite, au vu du contrat ou de l&apos;autorisation
-        signee. Toute modification de la declaration la remet en attente de revue.
+        signee. Toute modification de la déclaration la remet en attente de revue.
       </p>
 
       {formError ? (
@@ -133,7 +133,9 @@ export function RightsSection({
           <select
             id="droits-type"
             className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("agreement_type")}
+            {...register("agreement_type", {
+              required: "Choisissez le type d'accord qui couvre ce document."
+            })}
             {...fieldErrorProps("droits", "agreement_type", fieldErrors)}
           >
             <option value="">Choisir</option>
@@ -153,7 +155,9 @@ export function RightsSection({
           <input
             id="droits-titulaire"
             className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("rights_holder_name")}
+            {...register("rights_holder_name", {
+              required: "Le nom du titulaire des droits est obligatoire."
+            })}
             {...fieldErrorProps("droits", "rights_holder_name", fieldErrors)}
           />
           <FieldErrors form="droits" field="rights_holder_name" fieldErrors={fieldErrors} />
@@ -161,12 +165,14 @@ export function RightsSection({
 
         <div className="flex flex-col gap-1">
           <label htmlFor="droits-retrait" className="text-sm font-medium">
-            Regle de retrait
+            Règle de retrait
           </label>
           <select
             id="droits-retrait"
             className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("withdrawal_rule")}
+            {...register("withdrawal_rule", {
+              required: "Choisissez la règle de retrait applicable."
+            })}
             {...fieldErrorProps("droits", "withdrawal_rule", fieldErrors)}
           >
             <option value="">Choisir</option>
@@ -182,7 +188,7 @@ export function RightsSection({
         {document.category === "student_work" ? (
           <div className="flex flex-col gap-1">
             <label htmlFor="droits-consentement" className="text-sm font-medium">
-              Reference du consentement
+              Référence du consentement
             </label>
             <input
               id="droits-consentement"
@@ -200,7 +206,7 @@ export function RightsSection({
         {agreementType === "commercial_distribution" ? (
           <div className="flex flex-col gap-1">
             <label htmlFor="droits-partage" className="text-sm font-medium">
-              Regle de partage des revenus
+              Règle de partage des revenus
             </label>
             <input
               id="droits-partage"
@@ -218,7 +224,7 @@ export function RightsSection({
         disabled={isSubmitting}
         className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
       >
-        Enregistrer la declaration
+        Enregistrer la déclaration
       </button>
     </form>
   );

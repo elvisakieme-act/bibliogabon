@@ -70,7 +70,7 @@ export function LifecycleActions({
       setError(
         caught instanceof ApiError
           ? caught.message
-          : "L'operation n'a pas pu aboutir. Reessayez."
+          : "L'operation n'a pas pu aboutir. Réessayez."
       );
     }
   }

@@ -180,7 +180,7 @@ describe("liste des documents du back-office", () => {
     renderDocuments();
     await screen.findByRole("row", { name: /Reseaux informatiques/ });
 
-    await userEvent.selectOptions(screen.getByLabelText("Etat"), "submitted");
+    await userEvent.selectOptions(screen.getByLabelText("État"), "submitted");
     await waitFor(() => {
       expect(staffCalls(calls).at(-1)?.searchParams.get("status")).toBe("submitted");
     });
@@ -223,7 +223,7 @@ describe("liste des documents du back-office", () => {
       expect(staffCalls(calls).at(-1)?.searchParams.get("page")).toBe("2");
     });
 
-    await userEvent.selectOptions(screen.getByLabelText("Etat"), "submitted");
+    await userEvent.selectOptions(screen.getByLabelText("État"), "submitted");
 
     await waitFor(() => {
       const last = staffCalls(calls).at(-1);

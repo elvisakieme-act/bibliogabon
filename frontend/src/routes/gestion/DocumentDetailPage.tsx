@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { ApiError } from "@/api/client";
+import { useAuth } from "@/auth/useAuth";
+import { isContentAdmin } from "@/auth/roles";
 import type { StaffDocument } from "@/api/types";
 import { AuditTrail } from "@/components/staff/AuditTrail";
 import { AuthorsSection } from "@/components/staff/AuthorsSection";
@@ -42,7 +44,7 @@ export function DocumentDetailPage() {
         description={
           query.error instanceof ApiError
             ? query.error.message
-            : "Ce document n'a pas pu etre charge."
+            : "Ce document n'a pas pu être charge."
         }
       />
     );
@@ -60,6 +62,7 @@ function DocumentDetail({
 }) {
   const submit = useSubmitStaffDocument(documentId);
   const index = useStaffIndex();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const missing = document.missing_for_submission;
 
@@ -96,7 +99,10 @@ function DocumentDetail({
 
       <LifecycleActions document={document} documentId={documentId} />
 
-      <AuditTrail documentId={documentId} />
+      {/* Le journal est réservé à la modération côté serveur. L'afficher à un
+          déposant ne lui montrerait rien et ferait échouer une requête à
+          chaque rendu. */}
+      {isContentAdmin(user?.account_type) ? <AuditTrail documentId={documentId} /> : null}
 
       <section className="space-y-2">
         <button
@@ -245,11 +251,11 @@ function MetadataSection({
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="meta-resume" className="text-sm font-medium">
-          Resume
+        <label htmlFor="meta-résumé" className="text-sm font-medium">
+          Résumé
         </label>
         <textarea
-          id="meta-resume"
+          id="meta-résumé"
           rows={4}
           className="rounded border border-slate-300 px-2 py-1.5"
           {...register("abstract")}
@@ -261,7 +267,7 @@ function MetadataSection({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="meta-domaine" className="text-sm font-medium">
-            Domaine academique
+            Domaine académique
           </label>
           <select
             id="meta-domaine"
@@ -301,7 +307,7 @@ function MetadataSection({
 
         <div className="flex flex-col gap-1">
           <label htmlFor="meta-categorie" className="text-sm font-medium">
-            Categorie de contenu
+            Catégorie de contenu
           </label>
           <select
             id="meta-categorie"
@@ -319,11 +325,11 @@ function MetadataSection({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="meta-acces" className="text-sm font-medium">
-            Modele d&apos;acces
+          <label htmlFor="meta-accès" className="text-sm font-medium">
+            Modèle d&apos;accès
           </label>
           <select
-            id="meta-acces"
+            id="meta-accès"
             className="rounded border border-slate-300 px-2 py-1.5"
             {...register("access_model")}
             {...fieldErrorProps("meta", "access_model", fieldErrors)}
@@ -352,7 +358,7 @@ function MetadataSection({
 
         <div className="flex flex-col gap-1">
           <label htmlFor="meta-annee" className="text-sm font-medium">
-            Annee de publication
+            Année de publication
           </label>
           <input
             id="meta-annee"

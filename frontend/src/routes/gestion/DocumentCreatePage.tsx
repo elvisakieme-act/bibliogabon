@@ -97,7 +97,7 @@ export function DocumentCreatePage() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="creation-categorie" className="text-sm font-medium">
-            Categorie de contenu
+            Catégorie de contenu
           </label>
           <select
             id="creation-categorie"
@@ -116,13 +116,13 @@ export function DocumentCreatePage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="creation-acces" className="text-sm font-medium">
-            Modele d&apos;acces
+          <label htmlFor="creation-accès" className="text-sm font-medium">
+            Modèle d&apos;accès
           </label>
           <select
-            id="creation-acces"
+            id="creation-accès"
             className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("access_model", { required: "Un modele d'acces est obligatoire." })}
+            {...register("access_model", { required: "Un modele d'accès est obligatoire." })}
             {...fieldErrorProps("creation", "access_model", fieldErrors)}
           >
             <option value="">Choisir</option>

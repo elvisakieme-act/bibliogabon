@@ -26,7 +26,7 @@ export function IngestionStatus({ documentId }: { documentId: number }) {
         <p className="mt-2 text-sm text-slate-600">
           {query.error instanceof ApiError
             ? query.error.message
-            : "Le suivi du traitement n'a pas pu etre charge."}
+            : "Le suivi du traitement n'a pas pu être charge."}
         </p>
       </section>
     );
@@ -47,12 +47,12 @@ export function IngestionStatus({ documentId }: { documentId: number }) {
       {state === "in_progress" ? (
         <div aria-live="polite" className="space-y-1">
           <p className="text-sm text-amber-900">
-            Traitement en cours. Decoupage des pages, extraction du texte, reconnaissance
-            optique si necessaire.
+            Traitement en cours. Découpage des pages, extraction du texte, reconnaissance
+            optique si nécessaire.
           </p>
           {job && job.retry_count > 0 ? (
             <p className="text-xs text-slate-600">
-              {job.retry_count} tentative{job.retry_count > 1 ? "s" : ""} apres echec.
+              {job.retry_count} tentative{job.retry_count > 1 ? "s" : ""} après echec.
             </p>
           ) : null}
         </div>
@@ -60,14 +60,14 @@ export function IngestionStatus({ documentId }: { documentId: number }) {
 
       {state === "ready" && version ? (
         <p className="text-sm text-emerald-800">
-          Version {version.version_label} traitee : {version.page_count ?? 0} page
+          Version {version.version_label} traitée : {version.page_count ?? 0} page
           {(version.page_count ?? 0) > 1 ? "s" : ""} lisibles et indexees.
         </p>
       ) : null}
 
       {state === "failed" ? (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-red-800">Le traitement a echoue.</p>
+          <p className="text-sm font-medium text-red-800">Le traitement a échoué.</p>
           {job?.error_message ? (
             <p className="text-sm text-red-800">{job.error_message}</p>
           ) : null}
@@ -77,7 +77,7 @@ export function IngestionStatus({ documentId }: { documentId: number }) {
             </p>
           ) : null}
           <p className="text-sm text-slate-600">
-            Deposez a nouveau le fichier source, en cochant le remplacement de la version.
+            Déposez a nouveau le fichier source, en cochant le remplacement de la version.
           </p>
         </div>
       ) : null}

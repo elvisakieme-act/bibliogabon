@@ -41,11 +41,11 @@ export function ReviewsPage() {
         onSubmit={(event) => event.preventDefault()}
       >
         <div className="flex flex-col gap-1">
-          <label htmlFor="revue-etat" className="text-sm font-medium">
+          <label htmlFor="revue-état" className="text-sm font-medium">
             État
           </label>
           <select
-            id="revue-etat"
+            id="revue-état"
             className="rounded border border-slate-300 px-2 py-1.5 text-sm"
             value={filters.status ?? "open"}
             onChange={(event) =>
@@ -104,7 +104,7 @@ function ReviewsResult({ query }: { query: ReturnType<typeof useStaffReviews> })
         description={
           query.error instanceof ApiError
             ? query.error.message
-            : "La file de revue n'a pas pu etre chargee."
+            : "La file de revue n'a pas pu être chargee."
         }
       />
     );
