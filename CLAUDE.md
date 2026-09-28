@@ -38,7 +38,7 @@ CI (`.github/workflows/ci.yml`) runs: backend `ruff check` → `ruff format --ch
 
 Layout belongs to the formatters — `ruff format` and Prettier. `E501` is disabled in `ruff.lint` on purpose: the formatter already keeps code within the width, and what remains are string literals it deliberately does not break. Splitting a message by hand makes it ungreppable for nothing. Node is pinned by `frontend/.nvmrc`, which CI reads too: `node-version: "20"` once resolved to the latest 20.x in CI while a local 20.9 failed on `node:util.styleText`.
 
-Local dev defaults to SQLite (`backend/db.sqlite3`, gitignored); set `DATABASE_URL` for Postgres. Both sides need a `.env` copied from `.env.example`. API docs at `/api/docs/` (Swagger) and `/api/v1/schema/`.
+Local dev defaults to SQLite (`backend/db.sqlite3`, gitignored); set `DATABASE_URL` for Postgres. Both sides need a `.env` copied from `.env.example`. The backend reads it at startup via `load_dotenv` in `config/settings.py` — it did **not** until 2026-09-28, so every local setting written there was silently inert, and a CORS symptom sent the diagnosis to the opposite end of the stack. A real environment variable always wins over the file; `DJANGO_ENV_FILE` points at another file, and empty loads none, which is how the tests observe default settings. API docs at `/api/docs/` (Swagger) and `/api/v1/schema/`.
 
 ## Architecture
 

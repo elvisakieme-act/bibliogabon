@@ -4,6 +4,7 @@ from pathlib import Path
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 from config.env import (
     DEFAULT_DEVELOPMENT_SECRET_KEY,
@@ -18,6 +19,27 @@ from config.env import (
 from config.logconfig import build_logging_config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# `backend/.env` est lu avant toute lecture de variable.
+#
+# Il ne l'était pas : les réglages n'appelaient que `os.getenv`, et rien ne
+# chargeait le fichier. Le README demandait pourtant de le créer — vrai pour
+# Vite, qui lit `.env` nativement, faux pour Django. Toute la configuration
+# locale y était donc écrite sans effet, et le diagnostic partait ailleurs.
+#
+# `override=False` : une vraie variable d'environnement l'emporte toujours sur
+# le fichier. C'est ce qui doit se passer en CI et en production, où la
+# configuration vient de l'orchestrateur et non d'un fichier sur disque.
+#
+# `DJANGO_ENV_FILE` désigne un autre fichier, et **vide** n'en charge aucun —
+# de quoi observer la configuration par défaut, ou faire tourner un processus
+# sur une configuration entièrement externe alors qu'un `.env` traîne sur le
+# disque.
+_env_file = os.getenv("DJANGO_ENV_FILE")
+if _env_file is None:
+    load_dotenv(BASE_DIR / ".env", override=False)
+elif _env_file.strip():
+    load_dotenv(_env_file, override=False)
 
 DJANGO_ENV = validate_django_env(os.getenv("DJANGO_ENV", "development"))
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", DEFAULT_DEVELOPMENT_SECRET_KEY)

@@ -143,6 +143,10 @@ def import_default_development_settings():
     env = os.environ.copy()
     for name in SETTINGS_ENVIRONMENT_NAMES:
         env.pop(name, None)
+    # Le processus enfant charge `backend/.env` comme tout démarrage réel ; le
+    # neutraliser est nécessaire pour observer la configuration *par défaut*,
+    # qui est ce que ce test mesure.
+    env["DJANGO_ENV_FILE"] = ""
     return subprocess.run(
         [
             sys.executable,
