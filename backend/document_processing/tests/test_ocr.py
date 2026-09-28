@@ -142,7 +142,7 @@ def test_an_unreadable_page_keeps_its_placeholder_and_fails_its_index_record(
     tesseract : rouge pendant vingt-huit executions."""
     page = DocumentPage.objects.get(version=scanned_version, page_number=3)
     monkeypatch.setattr(tasks.shutil, "which", lambda name: "/usr/bin/tesseract")
-    monkeypatch.setattr(tasks, "recognise_page", lambda *a, **k: ("", None))
+    monkeypatch.setattr(tasks, "recognise_page", lambda *a, **k: ("", None, []))
 
     tasks.ocr_page.apply(args=[page.pk]).get()
 

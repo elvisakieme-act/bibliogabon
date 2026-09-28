@@ -47,6 +47,7 @@ def attach_extracted_text(
     extraction_method: str = ExtractedText.ExtractionMethod.TEXT_LAYER,
     confidence=None,
     created_by_job=None,
+    word_boxes=None,
 ) -> ExtractedText:
     if not text or not text.strip():
         raise ValueError("text must not be blank")
@@ -67,6 +68,10 @@ def attach_extracted_text(
             "extraction_method": extraction_method,
             "confidence": confidence,
             "created_by_job": created_by_job,
+            # Une réextraction sans positions ne doit pas laisser en place
+            # celles de la passe précédente : elles décriraient un texte qui
+            # n'est plus là.
+            "word_boxes": list(word_boxes or []),
         },
     )
     return extracted_text

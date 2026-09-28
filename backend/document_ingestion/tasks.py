@@ -103,11 +103,17 @@ def page_needs_ocr(page: DocumentPage) -> bool:
     return len(text.text.strip()) < threshold
 
 
-def recognise_page(pdf_stream, page_number: int) -> tuple[str, float | None]:
+def recognise_page(pdf_stream, page_number: int) -> tuple[str, float | None, list[list]]:
     """Rend la page en image puis la soumet a Tesseract.
 
-    Renvoie le texte reconnu et une confiance moyenne ramenee sur 0..1, ou
-    une chaine vide si rien n'est lisible.
+    Renvoie le texte reconnu, une confiance moyenne ramenee sur 0..1, et la
+    position de chaque mot en fractions de la page.
+
+    Les positions ne coutent rien de plus : `image_to_data` les produisait
+    deja et cette fonction les jetait. Une page reconnue par OCR a donc la
+    meme couche texte selectionnable qu'une page a couche texte native, ce qui
+    importe d'autant plus qu'un document scanne est precisement celui dont
+    l'image seule serait inexploitable.
     """
     import pymupdf
     import pytesseract
@@ -129,11 +135,39 @@ def recognise_page(pdf_stream, page_number: int) -> tuple[str, float | None]:
     ]
     confidences = [int(c) for c in data["conf"] if int(c) >= 0]
     if not words:
-        return "", None
+        return "", None, []
 
     text = pytesseract.image_to_string(image, lang=languages)
     mean_confidence = sum(confidences) / len(confidences) / 100 if confidences else None
-    return text, mean_confidence
+    return text, mean_confidence, ocr_word_boxes(data, image.width, image.height)
+
+
+def ocr_word_boxes(data: dict, width: int, height: int) -> list[list]:
+    """Positions Tesseract ramenees en fractions de la page.
+
+    Tesseract repond en pixels de l'image qu'on lui a donnee, rendue a
+    OCR_RENDER_DPI — une resolution differente de celle du rendu de lecture.
+    Stocker ces pixels tels quels ferait decaler la couche texte des que l'une
+    des deux resolutions changerait.
+    """
+    if not width or not height:
+        return []
+    boxes = []
+    for index, word in enumerate(data["text"]):
+        if not word.strip() or int(data["conf"][index]) < 0:
+            continue
+        left = data["left"][index]
+        top = data["top"][index]
+        boxes.append(
+            [
+                round(min(max(left / width, 0.0), 1.0), 4),
+                round(min(max(top / height, 0.0), 1.0), 4),
+                round(min(max((left + data["width"][index]) / width, 0.0), 1.0), 4),
+                round(min(max((top + data["height"][index]) / height, 0.0), 1.0), 4),
+                word,
+            ]
+        )
+    return boxes
 
 
 @shared_task(bind=True, max_retries=MAX_RETRIES, acks_late=True)
@@ -172,7 +206,7 @@ def ocr_page(self, page_id: int) -> bool:
         return False
 
     with open_stream(source.storage_key) as handle:
-        text, confidence = recognise_page(handle, page.page_number)
+        text, confidence, word_boxes = recognise_page(handle, page.page_number)
 
     if not text.strip():
         logger.info("Page %s : aucun texte reconnu par l'OCR.", page_id)
@@ -187,6 +221,7 @@ def ocr_page(self, page_id: int) -> bool:
         language_code=page.version.document.language_code or "fr",
         extraction_method=ExtractedText.ExtractionMethod.OCR,
         confidence=round(confidence, 3) if confidence is not None else None,
+        word_boxes=word_boxes,
     )
     queue_page_index_record(page=page)
     return True

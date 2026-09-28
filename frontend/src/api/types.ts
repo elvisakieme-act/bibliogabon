@@ -85,6 +85,15 @@ export interface ReaderSession {
   expires_at: string;
 }
 
+/**
+ * Position d'un mot sur la page : [x0, y0, x1, y1, mot].
+ *
+ * En fractions de la largeur et de la hauteur, jamais en pixels — la largeur
+ * de rendu est un réglage du serveur, et des pixels se décaleraient en
+ * silence le jour où il change.
+ */
+export type WordBox = [number, number, number, number, string];
+
 export interface ReaderPage {
   session_key: string;
   document_id: number;
@@ -93,6 +102,9 @@ export interface ReaderPage {
   page_count: number;
   language_code: string;
   text: string;
+  words: WordBox[];
+  /** `null` quand la page n'a pas de rendu : le lecteur affiche le texte. */
+  image: string | null;
 }
 
 export interface SearchResult {

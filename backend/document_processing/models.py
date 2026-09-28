@@ -76,6 +76,19 @@ class ExtractedText(models.Model):
         default=ExtractionMethod.TEXT_LAYER,
     )
     confidence = models.DecimalField(max_digits=4, decimal_places=3, null=True, blank=True)
+    word_boxes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "Position de chaque mot sur la page, en fractions de la largeur et "
+            "de la hauteur : [[x0, y0, x1, y1, mot], …]. Des fractions et non "
+            "des pixels, pour que les positions survivent à un changement de "
+            "largeur de rendu — un stockage en pixels se décalerait en silence "
+            "le jour où DOCUMENT_PAGE_IMAGE_WIDTH change. Liste vide quand les "
+            "positions sont inconnues : le lecteur retombe alors sur le texte "
+            "à plat."
+        ),
+    )
     created_by_job = models.ForeignKey(
         "document_ingestion.ProcessingJob",
         null=True,
@@ -105,6 +118,32 @@ class ExtractedText(models.Model):
             raise ValidationError("Confidence must be between 0 and 1")
         if self.created_by_job_id and self.created_by_job.version_id != self.page.version_id:
             raise ValidationError("Processing job must belong to the same document version")
+        self._clean_word_boxes()
+
+    def _clean_word_boxes(self):
+        """Une boîte mal formée doit être refusée à l'écriture, pas au rendu.
+
+        Le lecteur positionne ces valeurs en CSS. Une coordonnée hors de
+        [0, 1] y produirait un mot placé hors de la page, et une boîte à cinq
+        éléments manquants une exception dans le navigateur — soit un défaut
+        qui n'apparaît qu'à la lecture, loin de sa cause.
+        """
+        if self.word_boxes in (None, ""):
+            self.word_boxes = []
+            return
+        if not isinstance(self.word_boxes, list):
+            raise ValidationError("word_boxes must be a list")
+        for box in self.word_boxes:
+            if not isinstance(box, list) or len(box) != 5:
+                raise ValidationError("Each word box must be [x0, y0, x1, y1, word]")
+            *coordinates, word = box
+            if not isinstance(word, str) or not word:
+                raise ValidationError("A word box must carry a non-empty word")
+            for value in coordinates:
+                if not isinstance(value, (int, float)) or isinstance(value, bool):
+                    raise ValidationError("Word box coordinates must be numbers")
+                if not 0 <= value <= 1:
+                    raise ValidationError("Word box coordinates must be fractions in [0, 1]")
 
 
 class SearchIndexRecord(models.Model):

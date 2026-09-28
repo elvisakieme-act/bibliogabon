@@ -75,7 +75,11 @@ Nothing creates entitlements ad hoc: `billing/services.py` mints and revokes the
 
 Both delegate to the same `document_reader/services.py`. A change to reader access rules must be made in the service and covered on both surfaces.
 
-Reading is page-at-a-time by design: a `ReaderSession` is opened against a specific processed `DocumentVersion` with a TTL (`READER_SESSION_TTL_MINUTES`), every page fetch re-validates session liveness *and* current entitlement, writes a `PageAccessLog`, and returns extracted text only. Raw files, storage keys and signed URLs must never appear in any response.
+Reading is page-at-a-time by design: a `ReaderSession` is opened against a specific processed `DocumentVersion` with a TTL (`READER_SESSION_TTL_MINUTES`), every page fetch re-validates session liveness *and* current entitlement, and writes a `PageAccessLog`. Raw files, storage keys and signed URLs must never appear in any response.
+
+A page is served in two parts, and both go through the same `_ensure_reader_session_can_read`: its **text** with the position of every word (`ExtractedText.word_boxes`, fractions of the page — never pixels, since the render width is a setting), and its **rendered image** at `…/pages/<n>/image/`. The image is the layout; the transparent word layer over it is what makes the page selectable, searchable and readable by a screen reader. Text and positions come from one PyMuPDF pass on purpose: two extractors would let a reader select a word absent from the indexed text. A page with no rendered image reports `"image": null` so the reader falls back to text rather than requesting a 404 per page.
+
+The image carries `private, no-store` where a **cover** carries `public, max-age` — a cover is a public thumbnail of a discoverable document, a page image is the content. Both log the access: an audit trail must not depend on which representation the client asked for. That is why `analytics` counts **distinct (session, page)** rather than `PageAccessLog` rows — two representations of one page are one page view, and the same dedup fixes an older defect where paging back inflated an institution's count.
 
 ### Ingestion pipeline
 

@@ -11,3 +11,19 @@ import { afterEach } from "vitest";
 afterEach(cleanup);
 
 window.scrollTo = () => {};
+
+/**
+ * jsdom n'implémente pas `ResizeObserver`.
+ *
+ * La couche texte du lecteur s'en sert pour réajuster la largeur des mots
+ * après un redimensionnement. C'est l'environnement de test qui est
+ * incomplet, pas le code : on le complète ici plutôt que d'ajouter au
+ * composant une garde qui n'aurait aucun sens dans un navigateur.
+ */
+if (!("ResizeObserver" in globalThis)) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}

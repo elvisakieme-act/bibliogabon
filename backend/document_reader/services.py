@@ -8,7 +8,7 @@ from django.utils import timezone
 from accounts.models import Entitlement
 from accounts.services import active_organization_ids_for_user, user_has_entitlement
 from catalog.models import Document
-from document_ingestion.models import DocumentVersion
+from document_ingestion.models import DocumentAsset, DocumentVersion
 from document_processing.models import DocumentPage, ExtractedText
 from document_reader.exceptions import (
     ReaderAccessDenied,
@@ -243,6 +243,31 @@ def get_reader_page(*, session: ReaderSession, page_number: int, at=None) -> dic
     except ExtractedText.DoesNotExist as exc:
         raise ReaderPageUnavailable("Page has no extracted text") from exc
 
+    _record_page_access(session=session, page=page, at=at)
+
+    return {
+        "session_key": str(session.session_key),
+        "document_id": session.document_id,
+        "version_id": session.version_id,
+        "page_number": page.page_number,
+        "page_count": session.version.page_count,
+        "language_code": extracted_text.language_code,
+        "text": extracted_text.text,
+        "words": list(extracted_text.word_boxes or []),
+    }
+
+
+def _record_page_access(*, session: ReaderSession, page: DocumentPage, at) -> None:
+    """Journalise une remise de contenu et rafraîchit la session.
+
+    Appelée par **toutes** les représentations d'une page — texte comme image.
+    Une représentation qui ne journaliserait pas offrirait un chemin de lecture
+    non tracé, et l'audit ne doit pas dépendre de ce que le client a demandé.
+
+    Comptabiliser ces lignes une par une gonflerait d'autant les rapports
+    institutionnels ; c'est l'agrégation qui dédoublonne par page, pas le
+    journal qui oublie.
+    """
     with transaction.atomic():
         PageAccessLog.objects.create(
             session=session,
@@ -256,12 +281,48 @@ def get_reader_page(*, session: ReaderSession, page_number: int, at=None) -> dic
         session.last_seen_at = at
         session.save(update_fields=["last_seen_at", "updated_at"])
 
-    return {
-        "session_key": str(session.session_key),
-        "document_id": session.document_id,
-        "version_id": session.version_id,
-        "page_number": page.page_number,
-        "page_count": session.version.page_count,
-        "language_code": extracted_text.language_code,
-        "text": extracted_text.text,
-    }
+
+def get_reader_page_image(*, session: ReaderSession, page_number: int, at=None):
+    """Image fidèle d'une page, sous les mêmes conditions que son texte.
+
+    L'image est produite à chaque ingestion et n'était jamais servie : le
+    lecteur rendait du texte à plat, et un mémoire y perdait ses titres, ses
+    tableaux, ses figures et ses formules.
+
+    L'autorisation n'est pas réécrite ici. C'est `_ensure_reader_session_can_read`,
+    la même fonction que pour le texte : une session vivante et un droit de
+    lecture valide au moment de la demande. Une seconde écriture de cette règle
+    finirait par diverger, et c'est l'image — le contenu lui-même — qui serait
+    du mauvais côté.
+    """
+    at = at or timezone.now()
+    if page_number < 1:
+        raise ReaderPageUnavailable("page_number must be positive")
+
+    session.refresh_from_db()
+    _ensure_reader_session_can_read(session, at=at)
+
+    if page_number > session.version.page_count:
+        raise ReaderPageUnavailable("Page is outside the readable document range")
+
+    try:
+        page = DocumentPage.objects.get(
+            version=session.version,
+            page_number=page_number,
+            status=DocumentPage.Status.PROCESSED,
+        )
+    except DocumentPage.DoesNotExist as exc:
+        raise ReaderPageUnavailable("Page is not available for reading") from exc
+
+    asset = (
+        DocumentAsset.objects.filter(page=page, asset_type=DocumentAsset.AssetType.PAGE_IMAGE)
+        .order_by("id")
+        .first()
+    )
+    if asset is None:
+        # Une page traitée dont le rendu manque : pas d'image, et surtout pas
+        # d'erreur serveur. Le lecteur retombe sur le texte.
+        raise ReaderPageUnavailable("Page has no rendered image")
+
+    _record_page_access(session=session, page=page, at=at)
+    return asset

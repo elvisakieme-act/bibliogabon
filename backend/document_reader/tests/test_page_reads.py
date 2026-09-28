@@ -84,6 +84,11 @@ def test_get_reader_page_returns_safe_payload_and_logs_success():
         "page_count": 1,
         "language_code": "fr",
         "text": "Texte lisible.",
+        # Pas de positions ici : ce texte est attaché à la main, sans passer
+        # par l'extraction. Une liste vide, pas une absence de clé — le
+        # lecteur doit pouvoir distinguer « aucune position connue » de
+        # « champ oublié par le serveur ».
+        "words": [],
     }
     log = PageAccessLog.objects.get()
     assert log.session == session

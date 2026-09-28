@@ -98,6 +98,8 @@ class ReaderPageSerializer(serializers.Serializer):
     page_count = serializers.IntegerField(read_only=True)
     language_code = serializers.CharField(read_only=True)
     text = serializers.CharField(read_only=True)
+    words = serializers.ListField(read_only=True)
+    image = serializers.CharField(read_only=True, allow_null=True)
 
 
 def document_metadata_prefetches(prefix: str = "") -> list[Prefetch]:

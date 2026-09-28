@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from drf_spectacular.utils import OpenApiExample, extend_schema
+from django.http import FileResponse
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -13,6 +14,8 @@ from api.v1.serializers import (
     ReaderSessionSerializer,
 )
 from catalog.models import Document
+from document_ingestion.blob_storage import open_stream
+from document_ingestion.models import DocumentAsset
 from document_reader.exceptions import (
     ReaderAccessDenied,
     ReaderPageUnavailable,
@@ -23,6 +26,7 @@ from document_reader.services import (
     document_requires_entitlement,
     end_reader_session,
     get_reader_page,
+    get_reader_page_image,
     start_reader_session,
 )
 
@@ -126,6 +130,26 @@ class ReaderSessionCreateView(APIView):
         )
 
 
+def _page_image_url(session: ReaderSession, page_number: int) -> str | None:
+    """Adresse de l'image de la page, ou `None` si elle n'a pas été rendue.
+
+    Annoncer une adresse pour une page sans rendu ferait demander au lecteur
+    une image inexistante à chaque page d'un document dont le rendu a échoué.
+    Mieux vaut qu'il sache d'avance et affiche le texte.
+
+    L'adresse est construite ici, dans la couche API, et non par le service :
+    celui-ci sert deux surfaces HTTP aux espaces d'URL différents.
+    """
+    has_image = DocumentAsset.objects.filter(
+        page__version=session.version,
+        page__page_number=page_number,
+        asset_type=DocumentAsset.AssetType.PAGE_IMAGE,
+    ).exists()
+    if not has_image:
+        return None
+    return f"/api/v1/reader/sessions/{session.session_key}/pages/{page_number}/image/"
+
+
 class ReaderPageView(APIView):
     @extend_schema(
         tags=["Reader"],
@@ -170,10 +194,9 @@ class ReaderPageView(APIView):
                 status.HTTP_403_FORBIDDEN,
             )
         try:
-            return Response(
-                get_reader_page(session=session, page_number=page_number),
-                status=status.HTTP_200_OK,
-            )
+            payload = get_reader_page(session=session, page_number=page_number)
+            payload["image"] = _page_image_url(session, payload["page_number"])
+            return Response(payload, status=status.HTTP_200_OK)
         except ReaderSessionInactive:
             return error_response(
                 "session_inactive", "Reader session is inactive.", status.HTTP_403_FORBIDDEN
@@ -186,6 +209,81 @@ class ReaderPageView(APIView):
             )
         except ReaderPageUnavailable:
             return error_response("not_found", "Page not found.", status.HTTP_404_NOT_FOUND)
+
+
+class ReaderPageImageView(APIView):
+    """Image fidèle d'une page, diffusée sous session de lecture.
+
+    Le rendu de la page est produit à chaque ingestion et n'était jamais servi.
+    Son docstring disait pourtant, depuis le premier jour, qu'il « n'est servi
+    qu'à travers une session de lecture autorisée » — c'est ce que cette vue
+    met enfin en œuvre.
+
+    Comme pour la couverture, l'adresse est opaque : ni clé de stockage, ni
+    seau, ni nom d'objet, ni dans l'URL ni dans les en-têtes. À la différence
+    de la couverture, elle exige une session vivante et un droit de lecture
+    valide, puisqu'elle livre le contenu lui-même et non une vignette
+    publique.
+    """
+
+    @extend_schema(
+        tags=["Reader"],
+        summary="Serve the rendered image of a reader page",
+        description=(
+            "The page as it was laid out, streamed through an opaque path under "
+            "the same authorisation as its text: a live reader session and a "
+            "valid read entitlement. No storage key, bucket or object name ever "
+            "appears in the URL or the headers. A page whose image is missing "
+            "returns 404, so the reader can fall back to text."
+        ),
+        operation_id="v1_reader_page_image",
+        responses={
+            200: OpenApiResponse(description="WebP image of the page"),
+            403: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+    )
+    def get(self, request, session_key, page_number: int):
+        try:
+            session = ReaderSession.objects.select_related("user", "document", "version").get(
+                session_key=session_key
+            )
+        except ReaderSession.DoesNotExist:
+            return error_response(
+                "not_found", "Reader session not found.", status.HTTP_404_NOT_FOUND
+            )
+        if session.user_id and session.user_id != getattr(request.user, "pk", None):
+            return error_response(
+                "access_denied",
+                "This session belongs to another user.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            asset = get_reader_page_image(session=session, page_number=page_number)
+        except ReaderSessionInactive:
+            return error_response(
+                "session_inactive", "Reader session is inactive.", status.HTTP_403_FORBIDDEN
+            )
+        except ReaderAccessDenied:
+            return error_response(
+                "entitlement_required",
+                "An active read entitlement is required.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        except ReaderPageUnavailable:
+            return error_response("not_found", "Page not found.", status.HTTP_404_NOT_FOUND)
+
+        response = FileResponse(
+            open_stream(asset.storage_key),
+            content_type=asset.mime_type or "image/webp",
+        )
+        # `FileResponse` nomme le fichier d'après le flux, ce qui ferait
+        # apparaître la clé de stockage dans un en-tête. On impose le nôtre.
+        response.headers["Content-Disposition"] = f'inline; filename="page-{page_number}.webp"'
+        # Privé : une page lue n'est pas une couverture publique, et un cache
+        # partagé la servirait à qui n'a pas de session.
+        response.headers["Cache-Control"] = "private, no-store"
+        return response
 
 
 class ReaderSessionDeleteView(APIView):

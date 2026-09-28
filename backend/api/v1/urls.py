@@ -16,7 +16,12 @@ from api.v1.catalog import (
     SearchView,
 )
 from api.v1.covers import DocumentCoverView
-from api.v1.reader import ReaderPageView, ReaderSessionCreateView, ReaderSessionDeleteView
+from api.v1.reader import (
+    ReaderPageImageView,
+    ReaderPageView,
+    ReaderSessionCreateView,
+    ReaderSessionDeleteView,
+)
 from api.v1.reports import DocumentReportView, DocumentWithdrawalRequestView
 from api.v1.user_library import (
     FavoriteDeleteView,
@@ -77,6 +82,11 @@ urlpatterns = [
         "reader/sessions/<uuid:session_key>/pages/<int:page_number>/",
         ReaderPageView.as_view(),
         name="reader-page",
+    ),
+    path(
+        "reader/sessions/<uuid:session_key>/pages/<int:page_number>/image/",
+        ReaderPageImageView.as_view(),
+        name="reader-page-image",
     ),
     path(
         "reader/sessions/<uuid:session_key>/",

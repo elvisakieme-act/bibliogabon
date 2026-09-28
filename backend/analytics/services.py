@@ -70,6 +70,39 @@ def _count_activity(rows, windows, counters, counter_name):
         counters[(organization_id, document_id, domain_id, access_model)][counter_name] += 1
 
 
+def _distinct_page_views(start, end):
+    """Une page lue compte une fois, quel que soit le nombre de requêtes.
+
+    Le journal enregistre **toute** remise de contenu : c'est une garantie
+    d'audit, et elle ne doit pas dépendre de la représentation demandée. Mais
+    le lecteur demande désormais le texte *et* l'image d'une même page, ce qui
+    produirait deux lignes pour une seule lecture et doublerait, en silence,
+    tous les rapports institutionnels.
+
+    Le dédoublonnage porte sur (session, page) : dans une même session de
+    lecture, la page 7 lue est la page 7 lue. Cela corrige au passage un défaut
+    antérieur — un lecteur qui revenait en arrière gonflait le compte de son
+    institution.
+
+    La première ligne est conservée, donc l'horodatage retenu est celui du
+    premier accès : c'est lui qui situe la lecture dans la fenêtre
+    d'appartenance à l'organisation.
+    """
+    seen = set()
+    rows = []
+    for row in (
+        PageAccessLog.objects.filter(accessed_at__gte=start, accessed_at__lt=end)
+        .order_by("accessed_at", "pk")
+        .values_list("session_id", "page_number", *_ACTIVITY_DIMENSIONS, "accessed_at")
+    ):
+        key = (row[0], row[1])
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append(row[2:])
+    return rows
+
+
 def _activity_counters(start, end):
     """Compte les sessions et les pages lues d'une journee, par dimension.
     N'ecrit rien : la lecture est separee de la persistance."""
@@ -78,11 +111,7 @@ def _activity_counters(start, end):
             *_ACTIVITY_DIMENSIONS, "started_at"
         )
     )
-    page_logs = list(
-        PageAccessLog.objects.filter(accessed_at__gte=start, accessed_at__lt=end).values_list(
-            *_ACTIVITY_DIMENSIONS, "accessed_at"
-        )
-    )
+    page_logs = _distinct_page_views(start, end)
     windows = _membership_windows({row[0] for row in sessions} | {row[0] for row in page_logs})
     counters = defaultdict(lambda: {"reader_session_count": 0, "page_view_count": 0})
     _count_activity(sessions, windows, counters, "reader_session_count")

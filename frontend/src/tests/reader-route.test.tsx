@@ -64,7 +64,9 @@ describe("reader components", () => {
           page_number: 2,
           page_count: 5,
           language_code: "fr",
-          text: "Page securisee"
+          text: "Page securisee",
+          words: [],
+          image: null
         }}
       />
     );
