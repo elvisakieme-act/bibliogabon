@@ -5,7 +5,6 @@ import { StrictMode } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ReaderControls } from "@/components/reader/ReaderControls";
 import { ReaderPage } from "@/components/reader/ReaderPage";
 import { tokenStore } from "@/auth/tokenStore";
 import { createAppRouter } from "@/router";
@@ -66,6 +65,7 @@ describe("reader components", () => {
           language_code: "fr",
           text: "Page securisee",
           words: [],
+          text_policy: "selectable",
           image: null
         }}
       />
@@ -73,18 +73,6 @@ describe("reader components", () => {
 
     expect(screen.getByText("Page securisee")).toBeInTheDocument();
     expect(screen.queryByText(/Telecharger/i)).not.toBeInTheDocument();
-  });
-
-  it("calls previous and next controls", async () => {
-    const previous = vi.fn();
-    const next = vi.fn();
-    render(<ReaderControls pageNumber={2} pageCount={5} onPrevious={previous} onNext={next} />);
-
-    await userEvent.click(screen.getByRole("button", { name: /Page precedente/i }));
-    await userEvent.click(screen.getByRole("button", { name: /Page suivante/i }));
-
-    expect(previous).toHaveBeenCalledTimes(1);
-    expect(next).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
+
 import type { ReaderPage as ReaderPagePayload } from "@/api/types";
 import { ReaderTextLayer } from "@/components/reader/ReaderTextLayer";
 import { reflowExtractedText } from "@/components/reader/reflowExtractedText";
+import { useReaderPageImage } from "@/features/reader/hooks";
 
 interface ReaderPageProps {
   title: string;
@@ -8,23 +11,21 @@ interface ReaderPageProps {
 }
 
 export function ReaderPage({ title, page }: ReaderPageProps) {
+  // Plus d'en-tête ici : la barre du lecteur porte le titre, et le répéter à
+  // chaque page le ferait relire à un lecteur d'écran autant de fois qu'il y
+  // a de pages. Le titre reste utilisé pour la légende accessible.
   return (
-    <article className="border border-border bg-white px-6 py-8 shadow-editorial sm:px-10 sm:py-12">
-      <header className="border-b border-border pb-5">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--green)]">
-          Lecture
-        </p>
-        <h1 className="mt-2 font-display text-3xl font-semibold text-[var(--navy)] sm:text-4xl">
-          {title}
-        </h1>
-      </header>
-      <div className="pt-8">
-        {page.image ? (
-          <PageImage page={page} />
-        ) : (
+    <article
+      className="bg-white shadow-editorial"
+      aria-label={`${title} — page ${page.page_number}`}
+    >
+      {page.image ? (
+        <PageImage page={page} />
+      ) : (
+        <div className="px-6 py-8 sm:px-10 sm:py-12">
           <FlatText text={page.text} pageNumber={page.page_number} />
-        )}
-      </div>
+        </div>
+      )}
     </article>
   );
 }
@@ -32,19 +33,48 @@ export function ReaderPage({ title, page }: ReaderPageProps) {
 /**
  * La page telle qu'elle a été mise en page, avec sa couche texte.
  *
- * L'image porte `alt=""` : le texte qui la décrit est juste au-dessus, dans la
- * couche transparente, et une alternative le répéterait à chaque page pour un
- * lecteur d'écran.
+ * Le cadre garde le format d'une page **avant** que l'image arrive. Sans
+ * cela, une image absente ou refusée laissait l'article sans hauteur : le
+ * lecteur affichait un vide, et rien ne disait pourquoi.
+ *
+ * L'image porte `alt=""` : le texte qui la décrit est juste au-dessus, dans
+ * la couche transparente, et une alternative le répéterait à chaque page.
  */
 function PageImage({ page }: { page: ReaderPagePayload }) {
+  const image = useReaderPageImage(page.image);
+  const [source, setSource] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!image.data) {
+      setSource(null);
+      return;
+    }
+    // Créée ici et révoquée à la sortie : une adresse `blob:` mise en cache
+    // survivrait à sa révocation, et la page reviendrait vide.
+    const url = URL.createObjectURL(image.data);
+    setSource(url);
+    return () => {
+      URL.revokeObjectURL(url);
+      setSource(null);
+    };
+  }, [image.data]);
+
   return (
-    <figure className="relative mx-auto max-w-3xl">
-      <img
-        src={page.image ?? undefined}
-        alt=""
-        className="w-full border border-[var(--border)] bg-white shadow-sm"
-      />
-      <ReaderTextLayer words={page.words} />
+    <figure className="relative aspect-[1/1.414] w-full bg-white">
+      {source ? (
+        <>
+          <img src={source} alt="" className="absolute inset-0 h-full w-full object-contain" />
+          <ReaderTextLayer words={page.words} policy={page.text_policy} />
+        </>
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center" role="status">
+          <span className="text-sm text-[var(--muted-foreground)]">
+            {image.isError
+              ? "Cette page n'a pas pu être affichée."
+              : `Page ${page.page_number}`}
+          </span>
+        </div>
+      )}
       <figcaption className="sr-only">
         Page {page.page_number} sur {page.page_count}
       </figcaption>

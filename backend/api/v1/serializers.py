@@ -99,6 +99,7 @@ class ReaderPageSerializer(serializers.Serializer):
     language_code = serializers.CharField(read_only=True)
     text = serializers.CharField(read_only=True)
     words = serializers.ListField(read_only=True)
+    text_policy = serializers.CharField(read_only=True)
     image = serializers.CharField(read_only=True, allow_null=True)
 
 

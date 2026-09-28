@@ -3,8 +3,16 @@ import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-route
 
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
-import { ReaderControls } from "@/components/reader/ReaderControls";
-import { ReaderPage } from "@/components/reader/ReaderPage";
+import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
+import { ReaderViewport } from "@/components/reader/ReaderViewport";
+import {
+  DEFAULT_MODE,
+  DEFAULT_ZOOM,
+  nextZoom,
+  readPreferences,
+  writePreferences,
+  type ScrollMode
+} from "@/components/reader/readerPreferences";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -43,7 +51,42 @@ export function LecturePage() {
   const sessionKeyRef = useRef<string | null>(null);
   const sessionGenerationRef = useRef(0);
   const persistedPageRef = useRef<string | null>(null);
-  const page = useReaderPage(sessionKey, pageNumber);
+  // **La page d'amorçage, pas la page courante.** Elle donne le nombre de
+  // pages et fait remonter les refus d'accès ; elle ne suit pas la navigation.
+  // La faire suivre `pageNumber` démontait le lecteur entier à chaque
+  // changement de page — et, en défilement continu, le remontage rappelait
+  // l'observateur qui changeait la page, donc le lecteur oscillait sans
+  // jamais se stabiliser.
+  const page = useReaderPage(sessionKey, initialPageNumber);
+  // Lues une seule fois : `localStorage` peut échouer, et le relire à chaque
+  // rendu transformerait un stockage refusé en boucle de rendus.
+  const [mode, setMode] = useState<ScrollMode>(DEFAULT_MODE);
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+
+  useEffect(() => {
+    const stored = readPreferences();
+    setMode(stored.mode);
+    setZoom(stored.zoom);
+  }, []);
+
+  const applyMode = useCallback((value: ScrollMode) => {
+    setMode(value);
+    setZoom((current) => {
+      writePreferences({ mode: value, zoom: current });
+      return current;
+    });
+  }, []);
+
+  const applyZoom = useCallback(
+    (direction: 1 | -1) => {
+      setZoom((current) => {
+        const value = nextZoom(current, direction);
+        writePreferences({ mode, zoom: value });
+        return value;
+      });
+    },
+    [mode]
+  );
 
   const endSession = useCallback(() => {
     sessionGenerationRef.current += 1;
@@ -83,7 +126,9 @@ export function LecturePage() {
   }, [endSession, startSession]);
 
   useEffect(() => {
-    const loadedPageNumber = page.data?.page_number;
+    // La progression suit la page **lue**, que le lecteur y soit arrivé par
+    // les flèches ou en faisant défiler.
+    const loadedPageNumber = page.data ? pageNumber : null;
     if (!tokens?.access || !loadedPageNumber) return;
     const persistedPageKey = `${documentId}:${loadedPageNumber}`;
     if (persistedPageRef.current === persistedPageKey) return;
@@ -92,7 +137,7 @@ export function LecturePage() {
       documentId,
       lastPageNumber: loadedPageNumber
     });
-  }, [documentId, page.data?.page_number, tokens?.access, updateProgressMutate]);
+  }, [documentId, page.data, pageNumber, tokens?.access, updateProgressMutate]);
 
   async function returnToDocument() {
     endSession();
@@ -179,28 +224,37 @@ export function LecturePage() {
     );
   }
 
+  const pageCount = page.data.page_count;
+
   return (
-    <SiteLayout>
-      <main className="container-editorial py-8 sm:py-12">
-        <button
-          type="button"
-          onClick={returnToDocument}
-          className="mb-6 text-sm font-semibold text-[var(--green)] hover:underline"
-        >
-          Retour au document
-        </button>
-        <ReaderPage title={document.data?.title ?? "Lecture"} page={page.data} />
-        <div className="mt-6">
-          <ReaderControls
-            pageNumber={page.data.page_number}
-            pageCount={page.data.page_count}
-            onPrevious={() => setPageNumber((currentPage) => Math.max(1, currentPage - 1))}
-            onNext={() =>
-              setPageNumber((currentPage) => Math.min(page.data.page_count, currentPage + 1))
-            }
-          />
-        </div>
-      </main>
-    </SiteLayout>
+    // Plein écran : un document se lit dans le document, pas dans une colonne
+    // au milieu d'un site. `h-dvh` et non `h-screen` — sur mobile, la barre du
+    // navigateur mange une partie de `100vh` et la barre d'outils du lecteur
+    // se retrouverait hors de l'écran.
+    <div className="fixed inset-0 z-50 flex h-dvh flex-col bg-[var(--navy-soft)]">
+      <ReaderToolbar
+        title={document.data?.title ?? "Lecture"}
+        pageNumber={pageNumber}
+        pageCount={pageCount}
+        mode={mode}
+        zoom={zoom}
+        onModeChange={applyMode}
+        onZoomChange={applyZoom}
+        onPrevious={() => setPageNumber((current) => Math.max(1, current - 1))}
+        onNext={() => setPageNumber((current) => Math.min(pageCount, current + 1))}
+        onClose={() => void returnToDocument()}
+      />
+      <div className="min-h-0 flex-1">
+        <ReaderViewport
+          sessionKey={sessionKey}
+          title={document.data?.title ?? "Lecture"}
+          pageCount={pageCount}
+          pageNumber={pageNumber}
+          mode={mode}
+          zoom={zoom}
+          onVisiblePage={setPageNumber}
+        />
+      </div>
+    </div>
   );
 }

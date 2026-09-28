@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from accounts.models import Entitlement
 from accounts.services import active_organization_ids_for_user, user_has_entitlement
-from catalog.models import Document
+from catalog.models import Document, RightsAgreement
 from document_ingestion.models import DocumentAsset, DocumentVersion
 from document_processing.models import DocumentPage, ExtractedText
 from document_reader.exceptions import (
@@ -244,6 +244,7 @@ def get_reader_page(*, session: ReaderSession, page_number: int, at=None) -> dic
         raise ReaderPageUnavailable("Page has no extracted text") from exc
 
     _record_page_access(session=session, page=page, at=at)
+    policy = text_layer_policy(session.document)
 
     return {
         "session_key": str(session.session_key),
@@ -253,8 +254,59 @@ def get_reader_page(*, session: ReaderSession, page_number: int, at=None) -> dic
         "page_count": session.version.page_count,
         "language_code": extracted_text.language_code,
         "text": extracted_text.text,
-        "words": list(extracted_text.word_boxes or []),
+        # Un document sous clause de confidentialité ne reçoit aucune position :
+        # empêcher la sélection dissuade, ne pas envoyer le texte protège.
+        "words": []
+        if policy == TextLayerPolicy.WITHHELD
+        else list(extracted_text.word_boxes or []),
+        "text_policy": policy,
     }
+
+
+class TextLayerPolicy:
+    """Ce qu'un lecteur peut faire du texte d'une page.
+
+    La couche texte transparente rend la page sélectionnable, cherchable et
+    lisible par un lecteur d'écran. Elle la rend aussi copiable — et une
+    plateforme où l'on copie un mémoire entier ne tient pas ce qu'elle promet
+    à ses déposants.
+
+    La règle suit donc **l'accord de droits signé**, pas un réglage global :
+    un réglage uniforme trahirait soit les auteurs, soit l'accès ouvert.
+
+    Une honnêteté à garder en tête : `SELECTABLE` et `PROTECTED` envoient le
+    même texte au navigateur. Empêcher la sélection dissuade, ne protège pas —
+    qui ouvre les outils de développement récupère le texte. Seul `WITHHELD`
+    protège vraiment, en n'envoyant rien, et c'est pour cela qu'il coûte le
+    lecteur d'écran et qu'il est réservé aux documents qui l'exigent.
+    """
+
+    SELECTABLE = "selectable"
+    PROTECTED = "protected"
+    WITHHELD = "withheld"
+
+
+def text_layer_policy(document: Document) -> str:
+    """Politique applicable au texte de ce document.
+
+    Sans accord de droits, la réponse est `PROTECTED` et non `SELECTABLE` :
+    un document dont les droits ne sont pas déclarés ne doit pas être le plus
+    permissif du catalogue.
+    """
+    agreement = getattr(document, "rights_agreement", None)
+
+    if agreement is not None and agreement.confidentiality_terms.strip():
+        return TextLayerPolicy.WITHHELD
+
+    if document.category == Document.Category.OPEN_RESOURCE:
+        return TextLayerPolicy.SELECTABLE
+    if (
+        agreement is not None
+        and agreement.agreement_type == RightsAgreement.AgreementType.OPEN_LICENSE
+    ):
+        return TextLayerPolicy.SELECTABLE
+
+    return TextLayerPolicy.PROTECTED
 
 
 def _record_page_access(*, session: ReaderSession, page: DocumentPage, at) -> None:

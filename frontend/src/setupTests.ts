@@ -27,3 +27,54 @@ if (!("ResizeObserver" in globalThis)) {
     disconnect() {}
   } as unknown as typeof ResizeObserver;
 }
+
+/**
+ * jsdom n'implémente pas `IntersectionObserver`.
+ *
+ * Le lecteur s'en sert pour charger une page à l'approche de l'écran et pour
+ * savoir laquelle est lue. Le palliatif signale l'intersection **dès
+ * l'observation** : dans un vrai navigateur, un élément présent dans la
+ * fenêtre intersecte, et un palliatif silencieux ferait passer des tests sur
+ * un lecteur qui ne charge jamais rien.
+ */
+if (!("IntersectionObserver" in globalThis)) {
+  globalThis.IntersectionObserver = class {
+    private readonly callback: IntersectionObserverCallback;
+
+    constructor(callback: IntersectionObserverCallback) {
+      this.callback = callback;
+    }
+
+    observe(target: Element) {
+      this.callback(
+        [{ target, isIntersecting: true } as unknown as IntersectionObserverEntry],
+        this as unknown as IntersectionObserver
+      );
+    }
+
+    unobserve() {}
+    disconnect() {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+  } as unknown as typeof IntersectionObserver;
+}
+
+/**
+ * jsdom n'implémente pas `URL.createObjectURL`.
+ *
+ * Le lecteur s'en sert pour afficher une image de page récupérée avec son
+ * jeton d'authentification — une balise `<img src>` ne peut pas porter
+ * d'en-tête. Le palliatif rend une adresse reconnaissable et retient les
+ * révocations, pour qu'un test puisse vérifier qu'aucune n'est oubliée.
+ */
+const revokedObjectUrls: string[] = [];
+(globalThis as { __revokedObjectUrls?: string[] }).__revokedObjectUrls = revokedObjectUrls;
+
+let objectUrlCounter = 0;
+const nativeRevoke = URL.revokeObjectURL?.bind(URL);
+URL.createObjectURL = () => `blob:bibliogabon/${++objectUrlCounter}`;
+URL.revokeObjectURL = (url: string) => {
+  revokedObjectUrls.push(url);
+  nativeRevoke?.(url);
+};

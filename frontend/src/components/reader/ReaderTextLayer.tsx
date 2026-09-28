@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 
-import type { WordBox } from "@/api/types";
+import type { ReaderPage as ReaderPagePayload, WordBox } from "@/api/types";
 
 /**
  * Couche texte transparente, superposée à l'image de la page.
@@ -23,7 +23,13 @@ import type { WordBox } from "@/api/types";
  *   mesure donc la largeur réelle et on applique un `scaleX` — c'est ce que
  *   fait pdf.js, pour la même raison.
  */
-export function ReaderTextLayer({ words }: { words: WordBox[] }) {
+export function ReaderTextLayer({
+  words,
+  policy
+}: {
+  words: WordBox[];
+  policy: ReaderPagePayload["text_policy"];
+}) {
   const container = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -50,11 +56,20 @@ export function ReaderTextLayer({ words }: { words: WordBox[] }) {
 
   if (words.length === 0) return null;
 
+  // `select-none` empêche la copie sans rien retirer aux lecteurs d'écran ni
+  // à la recherche dans la page : c'est le seul point de ce sujet où il n'y a
+  // pas d'arbitrage. Mais c'est une dissuasion, pas une protection — le texte
+  // est dans la page, et qui ouvre les outils du navigateur le récupère. La
+  // seule protection réelle est `withheld`, où le serveur n'envoie rien.
+  const protectedLayer = policy !== "selectable";
+
   return (
     <div
       ref={container}
-      className="absolute inset-0 select-text"
+      className={`absolute inset-0 ${protectedLayer ? "select-none" : "select-text"}`}
       style={{ containerType: "size" }}
+      onCopy={protectedLayer ? (event) => event.preventDefault() : undefined}
+      onContextMenu={protectedLayer ? (event) => event.preventDefault() : undefined}
     >
       {words.map(([x0, y0, x1, y1, word], index) => (
         <span

@@ -103,6 +103,7 @@ def test_reader_page_api_returns_safe_payload(client):
         "language_code",
         "text",
         "words",
+        "text_policy",
     }
     assert payload["text"] == "Texte API lisible."
 

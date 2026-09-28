@@ -89,6 +89,9 @@ def test_get_reader_page_returns_safe_payload_and_logs_success():
         # lecteur doit pouvoir distinguer « aucune position connue » de
         # « champ oublié par le serveur ».
         "words": [],
+        # Ce document est une ressource ouverte : la copie y est libre,
+        # c'est le principe même de l'accès ouvert.
+        "text_policy": "selectable",
     }
     log = PageAccessLog.objects.get()
     assert log.session == session

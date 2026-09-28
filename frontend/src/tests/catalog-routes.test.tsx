@@ -249,8 +249,12 @@ describe("reader route", () => {
       </QueryClientProvider>
     );
 
-    expect(await screen.findByText("Lecture")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: document.title })).toBeInTheDocument();
+    // Le lecteur occupe désormais tout l'écran : le titre est porté par sa
+    // barre, et la sortie doit être visible en permanence — sur un écran
+    // tactile il n'y a pas de survol, et une barre qui se cache oblige à
+    // tâtonner pour quitter.
+    expect(await screen.findByRole("heading", { name: document.title })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Quitter/i })).toBeInTheDocument();
   });
 });
 

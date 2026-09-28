@@ -103,6 +103,17 @@ export interface ReaderPage {
   language_code: string;
   text: string;
   words: WordBox[];
+  /**
+   * Ce que le lecteur peut faire du texte, dicté par l'accord de droits :
+   *
+   * - `selectable` — licence ouverte : sélection et copie libres.
+   * - `protected` — la copie est empêchée, mais le lecteur d'écran et la
+   *   recherche dans la page continuent de fonctionner. C'est une dissuasion,
+   *   pas une protection : le texte est dans la page.
+   * - `withheld` — clause de confidentialité : le serveur n'envoie aucune
+   *   position. `words` est vide, et la page n'est que son image.
+   */
+  text_policy: "selectable" | "protected" | "withheld";
   /** `null` quand la page n'a pas de rendu : le lecteur affiche le texte. */
   image: string | null;
 }
