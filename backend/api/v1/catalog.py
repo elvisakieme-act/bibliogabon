@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from api.v1.covers import cover_url_for, documents_with_cover
 from api.v1.errors import error_response
 from api.v1.pagination import StandardResultsSetPagination
 from api.v1.serializers import (
@@ -59,11 +60,13 @@ class DocumentListView(APIView):
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(_published_documents(), request, view=self)
         readable_document_ids = readable_document_ids_for_user(request.user, page)
+        document_ids_with_cover = documents_with_cover(page)
         results = [
             serialize_document_metadata(
                 document,
                 user=request.user,
                 readable_document_ids=readable_document_ids,
+                document_ids_with_cover=document_ids_with_cover,
             )
             for document in page
         ]
@@ -104,7 +107,7 @@ class DocumentDetailView(APIView):
                     "authors": [],
                     "owner": None,
                     "page_count": 120,
-                    "cover": None,
+                    "cover": "/api/v1/catalog/documents/12/cover/",
                     "access": {
                         "can_read": True,
                         "access_model": "free",
@@ -126,11 +129,13 @@ class DocumentDetailView(APIView):
                 status_code=status.HTTP_404_NOT_FOUND,
             )
         readable_document_ids = readable_document_ids_for_user(request.user, [document])
+        document_ids_with_cover = documents_with_cover([document])
         return Response(
             serialize_document_metadata(
                 document,
                 user=request.user,
                 readable_document_ids=readable_document_ids,
+                document_ids_with_cover=document_ids_with_cover,
             ),
             status=status.HTTP_200_OK,
         )
@@ -271,6 +276,30 @@ class AuthorListView(APIView):
         )
 
 
+def _with_covers(results: list[dict]) -> list[dict]:
+    """Ajoute l'adresse de couverture à des résultats de recherche.
+
+    La recherche a son propre sérialiseur : elle ne passe pas par
+    `serialize_document_metadata`, et l'écran de résultats restait donc
+    entièrement gris pendant que le catalogue affichait ses couvertures.
+
+    L'enrichissement se fait ici, dans la couche API, et non dans
+    `search_discovery` : la découvrabilité est une règle du lecteur, et un
+    service de recherche qui l'importerait en tiendrait une seconde copie.
+    """
+    if not results:
+        return results
+    documents = {
+        document.pk: document
+        for document in Document.objects.filter(pk__in=[r["id"] for r in results])
+    }
+    with_cover = documents_with_cover(documents.values())
+    for result in results:
+        document = documents.get(result["id"])
+        result["cover"] = cover_url_for(document, with_cover) if document else None
+    return results
+
+
 class SearchView(APIView):
     @extend_schema(
         tags=["Search"],
@@ -341,4 +370,8 @@ class SearchView(APIView):
         ]
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(normalized, request, view=self)
+        # La couverture est résolue **après** pagination : la recherche renvoie
+        # tous les résultats, et les résoudre tous ferait payer une page de
+        # vingt vignettes le prix de plusieurs centaines.
+        page = _with_covers(page)
         return paginator.get_paginated_response(page)

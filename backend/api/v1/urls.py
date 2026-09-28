@@ -15,6 +15,7 @@ from api.v1.catalog import (
     DomainListView,
     SearchView,
 )
+from api.v1.covers import DocumentCoverView
 from api.v1.reader import ReaderPageView, ReaderSessionCreateView, ReaderSessionDeleteView
 from api.v1.reports import DocumentReportView, DocumentWithdrawalRequestView
 from api.v1.user_library import (
@@ -51,6 +52,11 @@ urlpatterns = [
         "catalog/documents/<int:document_id>/",
         DocumentDetailView.as_view(),
         name="catalog-document-detail",
+    ),
+    path(
+        "catalog/documents/<int:document_id>/cover/",
+        DocumentCoverView.as_view(),
+        name="catalog-document-cover",
     ),
     path("catalog/domains/", DomainListView.as_view(), name="catalog-domains"),
     path("catalog/types/", DocumentTypeListView.as_view(), name="catalog-types"),

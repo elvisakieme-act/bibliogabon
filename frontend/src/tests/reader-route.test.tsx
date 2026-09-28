@@ -18,6 +18,7 @@ const documentPayload = {
   language_code: "fr",
   publication_year: 2026,
   document_type: "open_resource",
+  category: "open_resource",
   access_model: "free",
   domain: null,
   authors: [],

@@ -50,6 +50,12 @@ export interface SearchDomainSummary {
   slug: string;
 }
 
+/** La recherche renvoie le type sans identifiant, comme le domaine. */
+export interface SearchDocumentTypeSummary {
+  name: string;
+  slug: string;
+}
+
 export interface DocumentMetadata {
   id: number;
   slug: string;
@@ -58,6 +64,7 @@ export interface DocumentMetadata {
   language_code: string;
   publication_year: number | null;
   document_type: string;
+  category: string;
   access_model: string;
   domain: DomainSummary | null;
   authors: Array<{ id: number; display_name: string; role: string }>;
@@ -95,10 +102,12 @@ export interface SearchResult {
   abstract: string;
   language_code: string;
   publication_year: number | null;
+  document_type: SearchDocumentTypeSummary | null;
   domain: SearchDomainSummary | null;
   authors: string[];
   access_model: string;
   indexed_page_count: number;
+  cover: string | null;
   score: number;
   text_match: boolean;
 }

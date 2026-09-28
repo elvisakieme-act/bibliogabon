@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
 from rest_framework import serializers
 
+from api.v1.covers import cover_url_for
 from catalog.models import DocumentAuthor
 from document_ingestion.models import DocumentVersion
 from document_reader.services import document_requires_entitlement, user_can_read_document
@@ -182,6 +183,7 @@ def serialize_document_metadata(
     document,
     user=None,
     readable_document_ids: set[int] | None = None,
+    document_ids_with_cover: set[int] | None = None,
 ) -> dict:
     domain = None
     if document.academic_domain_id:
@@ -207,7 +209,7 @@ def serialize_document_metadata(
         "authors": _ordered_authors(document),
         "owner": owner,
         "page_count": _page_count(document),
-        "cover": None,
+        "cover": cover_url_for(document, document_ids_with_cover),
         "access": _access_block(
             document,
             user=user,
@@ -266,6 +268,7 @@ class SearchResultSerializer(serializers.Serializer):
     authors = serializers.ListField(child=serializers.CharField(), read_only=True)
     access_model = serializers.CharField(read_only=True)
     indexed_page_count = serializers.IntegerField(read_only=True)
+    cover = serializers.CharField(read_only=True, allow_null=True)
     score = serializers.IntegerField(read_only=True)
     text_match = serializers.BooleanField(read_only=True)
 

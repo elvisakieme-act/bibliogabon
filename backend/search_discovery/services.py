@@ -7,14 +7,23 @@ from django.utils import timezone
 from catalog.models import Document
 from document_ingestion.models import DocumentVersion
 from document_processing.models import DocumentPage, ExtractedText
+from document_reader.services import document_is_reader_accessible
 from search_discovery.models import DocumentSearchIndex
 
 
 def document_is_discoverable(document: Document) -> bool:
-    return (
-        document.publication_status == Document.PublicationStatus.PUBLISHED
-        and document.access_model != Document.AccessModel.PRIVATE
-    )
+    """Un document entre dans l'index s'il est découvrable par un lecteur.
+
+    C'était une seconde écriture, mot pour mot identique, de
+    `document_reader.services.document_is_reader_accessible`. Deux copies d'une
+    même règle tiennent tant que personne n'en modifie une : le jour où un
+    nouvel état de publication apparaît, un document cesse d'être lisible sans
+    cesser d'être indexé, et la recherche continue de l'annoncer.
+
+    `search_discovery` vient après `document_reader` dans la séquence des
+    sous-systèmes, donc cette dépendance suit le sens autorisé.
+    """
+    return document_is_reader_accessible(document)
 
 
 def _ordered_author_names(document: Document) -> list[str]:

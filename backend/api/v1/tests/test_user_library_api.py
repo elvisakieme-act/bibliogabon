@@ -246,23 +246,42 @@ def test_reading_progress_rejects_page_outside_current_version(page_number, mess
 
 @pytest.mark.django_db
 def test_favorites_list_serializes_multiple_documents_in_constant_query_count():
+    """Le coût ne doit pas grandir avec la liste.
+
+    Le test figeait un nombre — cinq. Ajouter une requête *groupée* légitime,
+    comme celle qui résout les couvertures en un seul appel, le faisait échouer
+    alors que le coût restait constant. Il compare donc désormais deux tailles
+    de liste : c'est l'invariant qui compte, pas le chiffre.
+    """
     client = APIClient()
     headers = auth_headers(client)
     user = get_user_model().objects.get(email="reader@example.ga")
-    documents = [create_document(slug=f"favorite-doc-{number}") for number in range(2)]
-    for number, document in enumerate(documents):
-        author = Author.objects.create(
-            display_name=f"Author {number}", normalized_name=f"author {number}"
-        )
-        DocumentAuthor.objects.create(document=document, author=author, position=1)
-        FavoriteDocument.objects.create(user=user, document=document)
 
-    with CaptureQueriesContext(connection) as queries:
+    def add_favorites(count: int, prefix: str) -> None:
+        for number in range(count):
+            document = create_document(slug=f"{prefix}-{number}")
+            author = Author.objects.create(
+                display_name=f"Author {prefix} {number}",
+                normalized_name=f"author {prefix} {number}",
+            )
+            DocumentAuthor.objects.create(document=document, author=author, position=1)
+            FavoriteDocument.objects.create(user=user, document=document)
+
+    add_favorites(2, "favorite-doc")
+    with CaptureQueriesContext(connection) as few:
         response = client.get("/api/v1/me/favorites/", **headers)
-
     assert response.status_code == 200
     assert response.json()["count"] == 2
-    assert len(queries) == 5
+
+    add_favorites(6, "favorite-plus")
+    with CaptureQueriesContext(connection) as many:
+        response = client.get("/api/v1/me/favorites/", **headers)
+    assert response.json()["count"] == 8
+
+    assert len(many) == len(few), (
+        f"le coût grandit avec la liste : {len(few)} requêtes pour 2 favoris, "
+        f"{len(many)} pour 8"
+    )
 
 
 @pytest.mark.django_db

@@ -24,6 +24,7 @@ const document: DocumentMetadata = {
   language_code: "fr",
   publication_year: 2026,
   document_type: "open_resource",
+  category: "open_resource",
   access_model: "free",
   domain: { id: 1, name: "Droit", slug: "droit" },
   authors: [{ id: 1, display_name: "Auteur Test", role: "author" }],
@@ -151,10 +152,12 @@ describe("SearchResultCard", () => {
       abstract: "Resume.",
       language_code: "fr",
       publication_year: 2026,
+      document_type: { name: "Cours", slug: "cours" },
       domain: { name: "Droit", slug: "droit" },
       authors: ["Auteur Test"],
       access_model: "institutional",
       indexed_page_count: 10,
+      cover: null,
       score: 1,
       text_match: false
     };
@@ -166,6 +169,38 @@ describe("SearchResultCard", () => {
       "/documents/20"
     );
     expect(screen.queryByRole("link", { name: /Lire/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the cover when the search result carries one", () => {
+    // L'API sert la couverture de la recherche depuis un sérialiseur distinct
+    // de celui du catalogue. L'écran l'ignorait : les résultats restaient une
+    // liste de titres sur fond blanc pendant que le catalogue montrait ses
+    // vignettes.
+    const result: SearchResult = {
+      id: 21,
+      title: "Document avec couverture",
+      slug: "avec-couverture",
+      abstract: "Resume.",
+      language_code: "fr",
+      publication_year: 2026,
+      document_type: { name: "Cours", slug: "cours" },
+      domain: { name: "Droit", slug: "droit" },
+      authors: [],
+      access_model: "free",
+      indexed_page_count: 3,
+      cover: "/api/v1/catalog/documents/21/cover/",
+      score: 1,
+      text_match: false
+    };
+
+    const { container } = render(<SearchResultCard result={result} />);
+
+    const image = container.querySelector("img");
+    expect(image).not.toBeNull();
+    expect(image).toHaveAttribute("src", "/api/v1/catalog/documents/21/cover/");
+    // Décorative : le titre est déjà un lien nommé juste à côté, et une
+    // alternative qui le répète fait lire le résultat deux fois.
+    expect(image).toHaveAttribute("alt", "");
   });
 });
 

@@ -256,3 +256,25 @@ def test_search_documents_returns_safe_payload_and_enforces_limit():
     assert "storage_key" not in payload
     assert "url" not in payload
     assert "session_key" not in payload
+
+
+@pytest.mark.django_db
+def test_discoverability_is_one_rule_not_two():
+    """L'index et le lecteur répondent la même chose, par construction.
+
+    `document_is_discoverable` répétait mot pour mot
+    `document_is_reader_accessible`. Deux copies d'une règle ne divergent
+    jamais le jour où on les écrit — elles divergent le jour où un sixième état
+    de publication apparaît et qu'un seul des deux fichiers est modifié. Ce
+    test parcourt tous les états et tous les modèles d'accès, donc un état
+    nouveau y entre sans qu'on ait à y penser.
+    """
+    from document_reader.services import document_is_reader_accessible
+    from search_discovery.services import document_is_discoverable
+
+    for status in Document.PublicationStatus.values:
+        for access in Document.AccessModel.values:
+            document = Document(publication_status=status, access_model=access)
+            assert document_is_discoverable(document) == document_is_reader_accessible(
+                document
+            ), f"divergence sur {status}/{access}"

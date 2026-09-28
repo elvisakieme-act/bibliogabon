@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from api.v1.covers import documents_with_cover
 from api.v1.errors import error_response
 from api.v1.pagination import StandardResultsSetPagination
 from api.v1.serializers import (
@@ -49,7 +50,7 @@ _DOCUMENT_EXAMPLE = {
     "authors": [],
     "owner": None,
     "page_count": 120,
-    "cover": None,
+    "cover": "/api/v1/catalog/documents/12/cover/",
     "access": {
         "can_read": True,
         "access_model": "free",
@@ -95,10 +96,9 @@ class FavoriteListCreateView(APIView):
         )
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(favorites, request, view=self)
-        readable_document_ids = readable_document_ids_for_user(
-            request.user,
-            [favorite.document for favorite in page],
-        )
+        documents = [favorite.document for favorite in page]
+        readable_document_ids = readable_document_ids_for_user(request.user, documents)
+        document_ids_with_cover = documents_with_cover(documents)
         return paginator.get_paginated_response(
             [
                 {
@@ -106,6 +106,7 @@ class FavoriteListCreateView(APIView):
                         favorite.document,
                         user=request.user,
                         readable_document_ids=readable_document_ids,
+                        document_ids_with_cover=document_ids_with_cover,
                     ),
                     "created_at": favorite.created_at.isoformat(),
                 }
@@ -215,10 +216,9 @@ class ReadingProgressListView(APIView):
         )
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(progress_rows, request, view=self)
-        readable_document_ids = readable_document_ids_for_user(
-            request.user,
-            [progress.document for progress in page],
-        )
+        documents = [progress.document for progress in page]
+        readable_document_ids = readable_document_ids_for_user(request.user, documents)
+        document_ids_with_cover = documents_with_cover(documents)
         return paginator.get_paginated_response(
             [
                 {
@@ -226,6 +226,7 @@ class ReadingProgressListView(APIView):
                         progress.document,
                         user=request.user,
                         readable_document_ids=readable_document_ids,
+                        document_ids_with_cover=document_ids_with_cover,
                     ),
                     "last_page_number": progress.last_page_number,
                     "updated_at": progress.updated_at.isoformat(),
