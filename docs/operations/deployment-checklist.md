@@ -10,6 +10,17 @@
 - Confirm secure cookie and SSL redirect variables are enabled.
 - Confirm `DATABASE_URL` points to the production PostgreSQL database.
 - Confirm private document storage credentials are configured outside Git.
+- **SeaweedFS is the chosen store (D016), self-hosted.** Its operation is on us,
+  not a provider: before first service, confirm that the volume servers are
+  replicated, that `weed backup` or a filesystem-level snapshot runs on the
+  same schedule as the database backup, and that free capacity is monitored.
+  Page rendering produces roughly 150 objects per document, so object *count*
+  grows far faster than byte volume — a filer that runs out of metadata room
+  fails writes while disk space still looks ample.
+- Confirm the S3 gateway is reachable from the application host and that
+  `DOCUMENT_STORAGE_ENDPOINT_URL` points at it. Production refuses to start on
+  the filesystem backend, so a misconfigured endpoint fails loudly at boot
+  rather than silently writing nowhere.
 - Confirm `CELERY_BROKER_URL` points to the production Redis instance; the
   application refuses to start in production without it.
 - Confirm `DOCUMENT_STORAGE_BACKEND=s3` with endpoint and credentials set;

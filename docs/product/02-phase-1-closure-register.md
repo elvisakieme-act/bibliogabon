@@ -37,22 +37,9 @@ qu'avec un test qui l'empêche de revenir.
 
 ## Décisions produit ouvertes
 
-| # | Question | Ce qui la bloque | Conséquence actuelle |
-|---|---|---|---|
-| B2 | Trie-t-on les auteurs par nom de famille, comme l'usage académique ? | Déduire le nom de famille d'un nom affiché est peu fiable (noms composés, institutions, « Université Omar Bongo »). Cela demanderait un champ `sort_name` distinct. | **A1 rend l'ordre cohérent, pas savant** : il porte sur le nom affiché, donc « Aline NZE » se classe sous A et non sous N. Un test le dit explicitement. Trancher B2 demanderait un champ dédié et une règle de saisie. |
-| B3 | Quel fournisseur S3 héberge les documents privés ? (D007) | Dépend du volume réel et de l'arbitrage souveraineté / coût de bande passante. | Tout parle S3 via `DOCUMENT_STORAGE_ENDPOINT_URL` ; le choix n'est encodé nulle part. |
-
-## Traité (suite)
-
-| # | Point | Correction | Ce qui l'empêche de revenir |
-|---|---|---|---|
-| A5 | `seed_demo` ne réparait pas ce qu'il prétendait garantir | Le mot de passe n'était posé qu'à la création, et les adhésions créées par `get_or_create` n'étaient jamais remises dans l'état voulu. Une démonstration qui suspendait un membre laissait le jeu de données cassé sans recours. | Quatre tests d'idempotence, dont un qui rend un mot de passe inutilisable et un qui suspend le recteur, puis rejouent le seed. |
-| A6 | Le motif était facultatif sur la suspension et la fin d'adhésion | Une suspension sans raison enregistrée est le même défaut qu'un retrait sans motif : un acte dont personne ne peut rendre compte. | Test paramétré sur les deux routes. |
-
-
-| # | Point | Correction | Ce qui l'empêche de revenir |
-|---|---|---|---|
-| A4 | `SUBMITTABLE_STATES` n'acceptait que `draft` | Un document rejeté restait bloqué à vie, et la republication d'un retrait — que la gouvernance exige « through a new validation decision » — était impossible. `rejected` et `withdrawn` sont désormais soumissibles ; `published` et `archived` ne le sont pas. | Un test paramétré sur les quatre états. Trouvé par le parcours manuel, pas par un test unitaire : chaque endpoint passait isolément. |
+*Vide.* Les quatre questions ouvertes au 27/09/2026 sont tranchées — voir
+ci-dessous. Une nouvelle question se rajoute ici dès qu'elle bloque une
+implémentation, et n'en sort qu'avec une entrée au registre de décisions.
 
 ## Décisions tranchées
 
@@ -60,6 +47,8 @@ qu'avec un test qui l'empêche de revenir.
 |---|---|---|---|
 | B1 | Qui peut créer un auteur ? | La modération seule. L'ouverture aux déposants remplirait le registre national de doublons, plus coûteux à fusionner qu'un aller-retour. | D015 |
 | B4 | Combien d'états pour le workflow ? | Cinq, plus le rejet. Les trois états de revue dupliquaient des barrières tenues ailleurs et mieux ; aucune barrière n'est perdue. | D014 |
+| B3 | Quel fournisseur S3 ? | SeaweedFS auto-hébergé. La souveraineté prime sur l'économie d'exploitation d'un service managé. | D016 |
+| B2 | Tri académique des auteurs ? | Non : tri par nom affiché. Déduire un nom de famille se tromperait en silence, et un champ dédié n'est pas justifié à cette échelle. | D017 |
 
 ## Reporté en phase 2, sciemment
 

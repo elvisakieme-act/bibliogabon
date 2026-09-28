@@ -24,9 +24,14 @@ s'authentifie, le **rôle** ce qui est permis, l'**habilitation** ce qui est
 lisible. Un rôle n'ouvre jamais un document ; une habilitation n'autorise jamais
 une action.
 
-**Réserve** : le fournisseur S3 de production n'est pas choisi (D007). Ce n'est
-pas un manque de code — rien ne l'encode — mais une décision qui reste à
-prendre avant la mise en service.
+Le stockage de production est tranché : **SeaweedFS auto-hébergé** (D016),
+évalué contre sa passerelle S3 avec boto3. Rien ne change dans le code, qui ne
+l'encode nulle part. En revanche l'exploitation revient à l'équipe, et la liste
+de déploiement porte désormais ce qu'il faut vérifier avant la première mise en
+service — réplication des volumes, sauvegarde du stockage objet alignée sur
+celle de la base, et surveillance du **nombre** d'objets autant que du volume :
+le rendu de pages en produit environ 150 par document, donc le compteur monte
+bien plus vite que les octets.
 
 ### 2. « Construire catalogue, comptes, organisations et back-office minimum complet » — fait
 
