@@ -2,6 +2,7 @@ import { LogOut, Menu, Search, User } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/auth/useAuth";
+import { BACK_OFFICE_ACCOUNT_TYPES } from "@/auth/roles";
 import { Logo } from "@/components/brand/Logo";
 
 const NAV_ITEMS = [
@@ -55,8 +56,20 @@ export function Navbar() {
                 href="/bibliotheque"
                 className="rounded-lg px-3 py-2 text-sm font-semibold text-[var(--navy)] transition hover:bg-[var(--navy-soft)]"
               >
-                Bibliotheque
+                Bibliothèque
               </a>
+              {/* Sans ce lien, un enseignant devait taper /gestion dans la
+                  barre d'adresse pour atteindre son espace de dépôt. Il est
+                  affiché selon le rôle, comme une courtoisie : le serveur
+                  reste seul à décider, et l'espace refuse de lui-même. */}
+              {BACK_OFFICE_ACCOUNT_TYPES.includes(auth.user.account_type) ? (
+                <a
+                  href="/gestion"
+                  className="rounded-lg px-3 py-2 text-sm font-semibold text-[var(--green)] transition hover:bg-[var(--green-soft)]"
+                >
+                  Espace de gestion
+                </a>
+              ) : null}
               <a
                 href="/profil"
                 aria-label="Profil"
@@ -66,7 +79,7 @@ export function Navbar() {
               </a>
               <button
                 type="button"
-                aria-label="Se deconnecter"
+                aria-label="Se déconnecter"
                 onClick={() => void auth.logout().catch(() => undefined)}
                 className="rounded-lg p-2 text-[var(--navy)] transition hover:bg-[var(--navy-soft)]"
               >
@@ -123,8 +136,16 @@ export function Navbar() {
                   href="/bibliotheque"
                   className="block rounded-lg px-3 py-2 text-sm font-semibold text-[var(--navy)]"
                 >
-                  Bibliotheque
+                  Bibliothèque
                 </a>
+                {BACK_OFFICE_ACCOUNT_TYPES.includes(auth.user.account_type) ? (
+                  <a
+                    href="/gestion"
+                    className="block rounded-lg px-3 py-2 text-sm font-semibold text-[var(--green)]"
+                  >
+                    Espace de gestion
+                  </a>
+                ) : null}
                 <a
                   href="/profil"
                   className="block rounded-lg px-3 py-2 text-sm font-semibold text-[var(--navy)]"
@@ -136,7 +157,7 @@ export function Navbar() {
                   onClick={() => void auth.logout().catch(() => undefined)}
                   className="mt-1 rounded-lg px-3 py-2 text-sm font-semibold text-[var(--navy)]"
                 >
-                  Se deconnecter
+                  Se déconnecter
                 </button>
               </div>
             ) : (

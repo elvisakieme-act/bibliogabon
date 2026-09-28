@@ -104,17 +104,17 @@ export function RightsSection({
     <form
       onSubmit={onSubmit}
       noValidate
-      className="space-y-4 rounded border border-slate-200 bg-white p-4"
+      className="space-y-5 rounded-[calc(var(--radius)+0.25rem)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-editorial"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="font-semibold">Déclaration de droits</h3>
+        <h3 className="font-display text-lg text-[var(--navy)]">Déclaration de droits</h3>
         {document.rights ? (
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+          <span className="rounded-full bg-[var(--navy-soft)] px-3 py-1 text-xs font-semibold text-[var(--navy)]">
             {authorizationStatusLabel(document.rights.authorization_status)}
           </span>
         ) : null}
       </div>
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-[var(--muted-foreground)]">
         Vous declarez. Un moderateur decide ensuite, au vu du contrat ou de l&apos;autorisation
         signee. Toute modification de la déclaration la remet en attente de revue.
       </p>
@@ -127,12 +127,12 @@ export function RightsSection({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
-          <label htmlFor="droits-type" className="text-sm font-medium">
+          <label htmlFor="droits-type" className="text-sm font-semibold text-[var(--navy)]">
             Type d&apos;accord
           </label>
           <select
             id="droits-type"
-            className="rounded border border-slate-300 px-2 py-1.5"
+            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-white px-3.5 py-2.5 text-[15px] transition focus-visible:border-[var(--gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
             {...register("agreement_type", {
               required: "Choisissez le type d'accord qui couvre ce document."
             })}
@@ -149,12 +149,15 @@ export function RightsSection({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="droits-titulaire" className="text-sm font-medium">
+          <label
+            htmlFor="droits-titulaire"
+            className="text-sm font-semibold text-[var(--navy)]"
+          >
             Titulaire des droits
           </label>
           <input
             id="droits-titulaire"
-            className="rounded border border-slate-300 px-2 py-1.5"
+            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-white px-3.5 py-2.5 text-[15px] transition focus-visible:border-[var(--gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
             {...register("rights_holder_name", {
               required: "Le nom du titulaire des droits est obligatoire."
             })}
@@ -164,12 +167,12 @@ export function RightsSection({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="droits-retrait" className="text-sm font-medium">
+          <label htmlFor="droits-retrait" className="text-sm font-semibold text-[var(--navy)]">
             Règle de retrait
           </label>
           <select
             id="droits-retrait"
-            className="rounded border border-slate-300 px-2 py-1.5"
+            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-white px-3.5 py-2.5 text-[15px] transition focus-visible:border-[var(--gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
             {...register("withdrawal_rule", {
               required: "Choisissez la règle de retrait applicable."
             })}
@@ -187,17 +190,20 @@ export function RightsSection({
 
         {document.category === "student_work" ? (
           <div className="flex flex-col gap-1">
-            <label htmlFor="droits-consentement" className="text-sm font-medium">
+            <label
+              htmlFor="droits-consentement"
+              className="text-sm font-semibold text-[var(--navy)]"
+            >
               Référence du consentement
             </label>
             <input
               id="droits-consentement"
-              className="rounded border border-slate-300 px-2 py-1.5"
+              className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-white px-3.5 py-2.5 text-[15px] transition focus-visible:border-[var(--gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
               {...register("consent_reference")}
               {...fieldErrorProps("droits", "consent_reference", fieldErrors)}
             />
             <FieldErrors form="droits" field="consent_reference" fieldErrors={fieldErrors} />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[var(--muted-foreground)]">
               Un travail d&apos;etudiant exige un consentement explicite.
             </p>
           </div>
@@ -205,12 +211,15 @@ export function RightsSection({
 
         {agreementType === "commercial_distribution" ? (
           <div className="flex flex-col gap-1">
-            <label htmlFor="droits-partage" className="text-sm font-medium">
+            <label
+              htmlFor="droits-partage"
+              className="text-sm font-semibold text-[var(--navy)]"
+            >
               Règle de partage des revenus
             </label>
             <input
               id="droits-partage"
-              className="rounded border border-slate-300 px-2 py-1.5"
+              className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-white px-3.5 py-2.5 text-[15px] transition focus-visible:border-[var(--gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
               {...register("revenue_sharing_rule")}
               {...fieldErrorProps("droits", "revenue_sharing_rule", fieldErrors)}
             />
@@ -222,7 +231,7 @@ export function RightsSection({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-[var(--radius)] bg-[var(--navy)] px-4 py-2.5 text-sm font-semibold text-white shadow-editorial transition hover:bg-[var(--navy-deep)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:ring-offset-2 disabled:opacity-45"
       >
         Enregistrer la déclaration
       </button>

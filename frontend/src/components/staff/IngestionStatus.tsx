@@ -21,9 +21,9 @@ export function IngestionStatus({ documentId }: { documentId: number }) {
   }
   if (query.isError || !query.data) {
     return (
-      <section className="rounded border border-slate-200 bg-white p-4">
-        <h3 className="font-semibold">Traitement</h3>
-        <p className="mt-2 text-sm text-slate-600">
+      <section className="rounded-[calc(var(--radius)+0.25rem)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-editorial">
+        <h3 className="font-display text-lg text-[var(--navy)]">Traitement</h3>
+        <p className="mt-2 text-sm text-[var(--muted-foreground)]">
           {query.error instanceof ApiError
             ? query.error.message
             : "Le suivi du traitement n'a pas pu être charge."}
@@ -35,11 +35,11 @@ export function IngestionStatus({ documentId }: { documentId: number }) {
   const { state, version, job } = query.data;
 
   return (
-    <section className="space-y-3 rounded border border-slate-200 bg-white p-4">
-      <h3 className="font-semibold">Traitement</h3>
+    <section className="space-y-4 rounded-[calc(var(--radius)+0.25rem)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-editorial">
+      <h3 className="font-display text-lg text-[var(--navy)]">Traitement</h3>
 
       {state === "no_source" ? (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-[var(--muted-foreground)]">
           Aucun fichier n&apos;a encore ete recu pour ce document.
         </p>
       ) : null}
@@ -51,7 +51,7 @@ export function IngestionStatus({ documentId }: { documentId: number }) {
             optique si nécessaire.
           </p>
           {job && job.retry_count > 0 ? (
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-[var(--muted-foreground)]">
               {job.retry_count} tentative{job.retry_count > 1 ? "s" : ""} après echec.
             </p>
           ) : null}
@@ -72,11 +72,11 @@ export function IngestionStatus({ documentId }: { documentId: number }) {
             <p className="text-sm text-red-800">{job.error_message}</p>
           ) : null}
           {job && job.retry_count > 0 ? (
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-[var(--muted-foreground)]">
               {job.retry_count} tentative{job.retry_count > 1 ? "s" : ""} avant abandon.
             </p>
           ) : null}
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-[var(--muted-foreground)]">
             Déposez a nouveau le fichier source, en cochant le remplacement de la version.
           </p>
         </div>

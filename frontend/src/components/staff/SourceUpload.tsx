@@ -97,8 +97,8 @@ export function SourceUpload({
   }
 
   return (
-    <section className="space-y-3 rounded border border-slate-200 bg-white p-4">
-      <h3 className="font-semibold">Fichier source</h3>
+    <section className="space-y-4 rounded-[calc(var(--radius)+0.25rem)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-editorial">
+      <h3 className="font-display text-lg text-[var(--navy)]">Fichier source</h3>
 
       {error ? (
         <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-800">
@@ -112,7 +112,7 @@ export function SourceUpload({
       ) : null}
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="depot-fichier" className="text-sm font-medium">
+        <label htmlFor="depot-fichier" className="text-sm font-semibold text-[var(--navy)]">
           Fichier source
         </label>
         <input
@@ -122,7 +122,7 @@ export function SourceUpload({
           className="text-sm"
           onChange={(event) => choose(event.target.files?.[0] ?? null)}
         />
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-[var(--muted-foreground)]">
           Jusqu&apos;à {humanBytes(maxBytes)}. Le fichier reste privé : aucune adresse publique
           n&apos;y donne accès.
         </p>
@@ -145,7 +145,9 @@ export function SourceUpload({
             aria-label="Progression de l'envoi"
             className="w-full"
           />
-          <p className="text-xs text-slate-600">{Math.round(progress * 100)} %</p>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            {Math.round(progress * 100)} %
+          </p>
         </div>
       ) : null}
 
@@ -153,7 +155,7 @@ export function SourceUpload({
         type="button"
         disabled={!file || progress !== null}
         onClick={send}
-        className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-[var(--radius)] bg-[var(--navy)] px-4 py-2.5 text-sm font-semibold text-white shadow-editorial transition hover:bg-[var(--navy-deep)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:ring-offset-2 disabled:opacity-45"
       >
         Envoyer le fichier
       </button>

@@ -17,8 +17,17 @@ import { ACCESS_MODEL_OPTIONS, CATEGORY_OPTIONS } from "@/components/staff/optio
 import { RightsSection } from "@/components/staff/RightsSection";
 import { SourceUpload } from "@/components/staff/SourceUpload";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { FieldErrors } from "@/components/ui/FieldErrors";
 import { fieldErrorProps } from "@/components/ui/fieldErrors";
+import {
+  ActionButton,
+  Field,
+  FormAlert,
+  FormNotice,
+  Panel,
+  Select,
+  TextArea,
+  TextInput
+} from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDocumentTypes, useDomains } from "@/features/catalog/hooks";
 import { applyApiErrors, toFieldErrors } from "@/features/staff/applyApiErrors";
@@ -68,8 +77,8 @@ function DocumentDetail({
 
   return (
     <div className="max-w-3xl space-y-6">
-      <header className="flex flex-wrap items-center gap-3">
-        <h2 className="text-xl font-semibold">{document.title}</h2>
+      <header className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] pb-4">
+        <h2 className="font-display text-2xl text-[var(--navy)]">{document.title}</h2>
         <DocumentStateBadge status={document.publication_status} />
       </header>
 
@@ -104,23 +113,23 @@ function DocumentDetail({
           chaque rendu. */}
       {isContentAdmin(user?.account_type) ? <AuditTrail documentId={documentId} /> : null}
 
-      <section className="space-y-2">
-        <button
-          type="button"
-          // La barriere vient du serveur, qui la recalcule : le bouton ne
-          // fait que refleter `missing_for_submission`, il ne la decide pas.
+      <Panel
+        title="Soumission"
+        description={
+          missing.length > 0
+            ? "La soumission s'ouvrira quand la liste ci-dessus sera vide."
+            : "Tout est réuni : la modération pourra examiner ce dépôt."
+        }
+      >
+        <ActionButton
+          // La barrière vient du serveur, qui la recalcule : le bouton ne fait
+          // que refléter `missing_for_submission`, il ne la décide pas.
           disabled={missing.length > 0 || submit.isPending}
           onClick={() => submit.mutate()}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          Soumettre a la revue
-        </button>
-        {missing.length > 0 ? (
-          <p className="text-sm text-slate-600">
-            La soumission s&apos;ouvrira quand la liste ci-dessus sera vide.
-          </p>
-        ) : null}
-      </section>
+          Soumettre à la revue
+        </ActionButton>
+      </Panel>
     </div>
   );
 }
@@ -220,164 +229,174 @@ function MetadataSection({
   });
 
   return (
-    <form
-      onSubmit={onSubmit}
-      noValidate
-      className="space-y-4 rounded border border-slate-200 bg-white p-4"
-    >
-      <h3 className="font-semibold">Metadonnees</h3>
-      {formError ? (
-        <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-800">
-          {formError}
-        </p>
-      ) : null}
-      {saved ? (
-        <p role="status" className="text-sm text-emerald-700">
-          Metadonnees enregistrees.
-        </p>
-      ) : null}
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="meta-titre" className="text-sm font-medium">
-          Titre
-        </label>
-        <input
-          id="meta-titre"
-          className="rounded border border-slate-300 px-2 py-1.5"
-          {...register("title")}
-          {...fieldErrorProps("meta", "title", fieldErrors)}
-        />
-        <FieldErrors form="meta" field="title" fieldErrors={fieldErrors} />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="meta-résumé" className="text-sm font-medium">
-          Résumé
-        </label>
-        <textarea
-          id="meta-résumé"
-          rows={4}
-          className="rounded border border-slate-300 px-2 py-1.5"
-          {...register("abstract")}
-          {...fieldErrorProps("meta", "abstract", fieldErrors)}
-        />
-        <FieldErrors form="meta" field="abstract" fieldErrors={fieldErrors} />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="meta-domaine" className="text-sm font-medium">
-            Domaine académique
-          </label>
-          <select
-            id="meta-domaine"
-            className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("academic_domain")}
-            {...fieldErrorProps("meta", "academic_domain", fieldErrors)}
-          >
-            <option value="">Non renseigne</option>
-            {(domains.data?.results ?? []).map((domain) => (
-              <option key={domain.id} value={String(domain.id)}>
-                {domain.name}
-              </option>
-            ))}
-          </select>
-          <FieldErrors form="meta" field="academic_domain" fieldErrors={fieldErrors} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="meta-type" className="text-sm font-medium">
-            Type de document
-          </label>
-          <select
-            id="meta-type"
-            className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("document_type")}
-            {...fieldErrorProps("meta", "document_type", fieldErrors)}
-          >
-            <option value="">Non renseigne</option>
-            {(types.data?.results ?? []).map((type) => (
-              <option key={type.id} value={String(type.id)}>
-                {type.name}
-              </option>
-            ))}
-          </select>
-          <FieldErrors form="meta" field="document_type" fieldErrors={fieldErrors} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="meta-categorie" className="text-sm font-medium">
-            Catégorie de contenu
-          </label>
-          <select
-            id="meta-categorie"
-            className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("category")}
-            {...fieldErrorProps("meta", "category", fieldErrors)}
-          >
-            {CATEGORY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <FieldErrors form="meta" field="category" fieldErrors={fieldErrors} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="meta-accès" className="text-sm font-medium">
-            Modèle d&apos;accès
-          </label>
-          <select
-            id="meta-accès"
-            className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("access_model")}
-            {...fieldErrorProps("meta", "access_model", fieldErrors)}
-          >
-            {ACCESS_MODEL_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <FieldErrors form="meta" field="access_model" fieldErrors={fieldErrors} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="meta-langue" className="text-sm font-medium">
-            Langue
-          </label>
-          <input
-            id="meta-langue"
-            className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("language_code")}
-            {...fieldErrorProps("meta", "language_code", fieldErrors)}
-          />
-          <FieldErrors form="meta" field="language_code" fieldErrors={fieldErrors} />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="meta-annee" className="text-sm font-medium">
-            Année de publication
-          </label>
-          <input
-            id="meta-annee"
-            inputMode="numeric"
-            className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("publication_year")}
-            {...fieldErrorProps("meta", "publication_year", fieldErrors)}
-          />
-          <FieldErrors form="meta" field="publication_year" fieldErrors={fieldErrors} />
-        </div>
-      </div>
-
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+    <form onSubmit={onSubmit} noValidate>
+      <Panel
+        title="Métadonnées"
+        description="Ce que le catalogue affichera. Le domaine et le type conditionnent la soumission."
       >
-        Enregistrer les metadonnees
-      </button>
+        {formError ? <FormAlert>{formError}</FormAlert> : null}
+        {saved ? <FormNotice>Métadonnées enregistrées.</FormNotice> : null}
+
+        <Field
+          id="meta-titre"
+          label="Titre"
+          required
+          form="meta"
+          name="title"
+          errors={fieldErrors}
+        >
+          <TextInput
+            id="meta-titre"
+            invalid={Boolean(fieldErrors.title?.length)}
+            {...register("title")}
+            {...fieldErrorProps("meta", "title", fieldErrors)}
+          />
+        </Field>
+
+        <Field
+          id="meta-resume"
+          label="Résumé"
+          hint="Quelques lignes : c'est ce qu'un lecteur lit avant d'ouvrir le document."
+          form="meta"
+          name="abstract"
+          errors={fieldErrors}
+        >
+          <TextArea
+            id="meta-resume"
+            rows={4}
+            invalid={Boolean(fieldErrors.abstract?.length)}
+            {...register("abstract")}
+            {...fieldErrorProps("meta", "abstract", fieldErrors)}
+          />
+        </Field>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field
+            id="meta-domaine"
+            label="Domaine académique"
+            form="meta"
+            name="academic_domain"
+            errors={fieldErrors}
+          >
+            <Select
+              id="meta-domaine"
+              invalid={Boolean(fieldErrors.academic_domain?.length)}
+              {...register("academic_domain")}
+              {...fieldErrorProps("meta", "academic_domain", fieldErrors)}
+            >
+              <option value="">Non renseigne</option>
+              {(domains.data?.results ?? []).map((domain) => (
+                <option key={domain.id} value={String(domain.id)}>
+                  {domain.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field
+            id="meta-type"
+            label="Type de document"
+            form="meta"
+            name="document_type"
+            errors={fieldErrors}
+          >
+            <Select
+              id="meta-type"
+              invalid={Boolean(fieldErrors.document_type?.length)}
+              {...register("document_type")}
+              {...fieldErrorProps("meta", "document_type", fieldErrors)}
+            >
+              <option value="">Non renseigne</option>
+              {(types.data?.results ?? []).map((type) => (
+                <option key={type.id} value={String(type.id)}>
+                  {type.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field
+            id="meta-categorie"
+            label="Catégorie de contenu"
+            required
+            form="meta"
+            name="category"
+            errors={fieldErrors}
+          >
+            <Select
+              id="meta-categorie"
+              invalid={Boolean(fieldErrors.category?.length)}
+              {...register("category")}
+              {...fieldErrorProps("meta", "category", fieldErrors)}
+            >
+              {CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field
+            id="meta-acces"
+            label="Modèle d'accès"
+            required
+            form="meta"
+            name="access_model"
+            errors={fieldErrors}
+          >
+            <Select
+              id="meta-acces"
+              invalid={Boolean(fieldErrors.access_model?.length)}
+              {...register("access_model")}
+              {...fieldErrorProps("meta", "access_model", fieldErrors)}
+            >
+              {ACCESS_MODEL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field
+            id="meta-langue"
+            label="Langue"
+            form="meta"
+            name="language_code"
+            errors={fieldErrors}
+          >
+            <TextInput
+              id="meta-langue"
+              invalid={Boolean(fieldErrors.language_code?.length)}
+              {...register("language_code")}
+              {...fieldErrorProps("meta", "language_code", fieldErrors)}
+            />
+          </Field>
+
+          <Field
+            id="meta-annee"
+            label="Année de publication"
+            form="meta"
+            name="publication_year"
+            errors={fieldErrors}
+          >
+            <TextInput
+              id="meta-annee"
+              inputMode="numeric"
+              invalid={Boolean(fieldErrors.publication_year?.length)}
+              {...register("publication_year")}
+              {...fieldErrorProps("meta", "publication_year", fieldErrors)}
+            />
+          </Field>
+        </div>
+
+        <div className="mt-5">
+          <ActionButton type="submit" disabled={isSubmitting}>
+            Enregistrer les métadonnées
+          </ActionButton>
+        </div>
+      </Panel>
     </form>
   );
 }

@@ -76,8 +76,8 @@ export function LifecycleActions({
   }
 
   return (
-    <section className="space-y-3 rounded border border-slate-200 bg-white p-4">
-      <h3 className="font-semibold">Fin de vie</h3>
+    <section className="space-y-4 rounded-[calc(var(--radius)+0.25rem)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-editorial">
+      <h3 className="font-display text-lg text-[var(--navy)]">Fin de vie</h3>
 
       {open === null ? (
         <div className="flex flex-wrap gap-2">
@@ -94,7 +94,7 @@ export function LifecycleActions({
             <button
               type="button"
               onClick={() => start("archive")}
-              className="rounded border border-slate-300 px-3 py-1.5 text-sm"
+              className="inline-flex items-center justify-center rounded-[var(--radius)] border border-[var(--border)] bg-white px-3.5 py-2 text-sm font-semibold text-[var(--navy)] transition hover:bg-[var(--navy-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
             >
               {COPY.archive.open}
             </button>
@@ -102,24 +102,24 @@ export function LifecycleActions({
         </div>
       ) : (
         <div className="space-y-3">
-          <h4 className="text-sm font-medium">{COPY[open].title}</h4>
+          <h4 className="text-sm font-semibold text-[var(--navy)]">{COPY[open].title}</h4>
           {error ? (
             <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-800">
               {error}
             </p>
           ) : null}
           <div className="flex flex-col gap-1">
-            <label htmlFor="cycle-motif" className="text-sm font-medium">
+            <label htmlFor="cycle-motif" className="text-sm font-semibold text-[var(--navy)]">
               {COPY[open].label}
             </label>
             <textarea
               id="cycle-motif"
               rows={3}
-              className="rounded border border-slate-300 px-2 py-1.5"
+              className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-white px-3.5 py-2.5 text-[15px] transition focus-visible:border-[var(--gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[var(--muted-foreground)]">
               {open === "withdraw"
                 ? "Le contenu est conservé : pages, version et droits restent en place. Seule la lecture publique cesse."
                 : "L'archivage ferme le document sur la plateforme."}
@@ -130,14 +130,14 @@ export function LifecycleActions({
               type="button"
               onClick={() => run(open)}
               disabled={withdraw.isPending || archive.isPending}
-              className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-[var(--radius)] bg-[var(--navy)] px-4 py-2.5 text-sm font-semibold text-white shadow-editorial transition hover:bg-[var(--navy-deep)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:ring-offset-2 disabled:opacity-45"
             >
               {COPY[open].confirm}
             </button>
             <button
               type="button"
               onClick={() => setOpen(null)}
-              className="rounded border border-slate-300 px-4 py-2 text-sm"
+              className="inline-flex items-center justify-center rounded-[var(--radius)] border border-[var(--border)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--navy)] transition hover:bg-[var(--navy-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
             >
               Annuler
             </button>

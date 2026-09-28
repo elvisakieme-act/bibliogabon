@@ -23,9 +23,9 @@ export function AuditTrail({ documentId }: { documentId: number }) {
   }
   if (query.isError) {
     return (
-      <section className="rounded border border-slate-200 bg-white p-4">
-        <h3 className="font-semibold">Journal d&apos;audit</h3>
-        <p className="mt-2 text-sm text-slate-600">
+      <section className="rounded-[calc(var(--radius)+0.25rem)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-editorial">
+        <h3 className="font-display text-lg text-[var(--navy)]">Journal d&apos;audit</h3>
+        <p className="mt-2 text-sm text-[var(--muted-foreground)]">
           {query.error instanceof ApiError
             ? query.error.message
             : "Le journal n'a pas pu être charge."}
@@ -37,29 +37,31 @@ export function AuditTrail({ documentId }: { documentId: number }) {
   const events = query.data?.results ?? [];
 
   return (
-    <section className="rounded border border-slate-200 bg-white p-4">
-      <h3 id="journal-titre" className="font-semibold">
+    <section className="rounded-[calc(var(--radius)+0.25rem)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-editorial">
+      <h3 id="journal-titre" className="font-display text-lg text-[var(--navy)]">
         Journal d&apos;audit
       </h3>
       {events.length === 0 ? (
-        <p className="mt-2 text-sm text-slate-600">Aucun événement enregistré.</p>
+        <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+          Aucun événement enregistré.
+        </p>
       ) : (
         <ul aria-labelledby="journal-titre" className="mt-3 space-y-3 text-sm">
           {events.map((event) => {
             const reason = event.metadata?.reason;
             return (
-              <li key={event.id} className="border-l-2 border-slate-200 ps-3">
+              <li key={event.id} className="border-l-2 border-[var(--border)] ps-3">
                 <p
                   className={isKnownAuditEvent(event.event_type) ? "font-medium" : "font-mono"}
                 >
                   {auditEventLabel(event.event_type)}
                 </p>
-                <p className="text-slate-600">
+                <p className="text-[var(--muted-foreground)]">
                   {event.actor?.display_name ?? "Système"} &middot;{" "}
                   {formatDate(event.created_at)}
                 </p>
                 {typeof reason === "string" && reason ? (
-                  <p className="mt-1 text-slate-700">{reason}</p>
+                  <p className="mt-1 text-[var(--ink)]">{reason}</p>
                 ) : null}
               </li>
             );

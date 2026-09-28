@@ -16,7 +16,7 @@ export function GestionLayout() {
 
   return (
     <RequireRole>
-      <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="min-h-screen bg-[var(--muted)] text-[var(--ink)]">
         {/* Bande gabonaise : la continuite visuelle avec l'espace lecture,
             sans en reprendre la grille editoriale, qui sert la decouverte
             et non la saisie. */}
@@ -25,26 +25,31 @@ export function GestionLayout() {
           <span className="flex-1 bg-[#FCD116]" />
           <span className="flex-1 bg-[#3A75C4]" />
         </div>
-        <header className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
-            <h1 className="text-lg font-semibold">Espace de gestion</h1>
+        <header className="border-b border-[var(--border)] bg-white/90 backdrop-blur-sm">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-5 px-4 py-4">
+            <h1 className="font-display text-xl text-[var(--navy)]">Espace de gestion</h1>
             <nav aria-label="Espace de gestion" className="flex gap-1 text-sm">
               {NAVIGATION.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
                   activeOptions={{ exact: item.exact }}
-                  className="rounded px-3 py-1.5 text-slate-600 hover:bg-slate-100"
-                  activeProps={{ className: "bg-slate-900 text-white hover:bg-slate-900" }}
+                  className="rounded-[var(--radius)] px-3 py-2 font-semibold text-[var(--navy)] transition hover:bg-[var(--navy-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
+                  activeProps={{
+                    className:
+                      "bg-[var(--navy)] text-white shadow-editorial hover:bg-[var(--navy-deep)]"
+                  }}
                 >
                   {item.label}
                 </Link>
               ))}
             </nav>
-            <p className="ms-auto text-sm text-slate-500">{auth.user?.display_name}</p>
+            <p className="ms-auto text-sm text-[var(--muted-foreground)]">
+              {auth.user?.display_name}
+            </p>
           </div>
         </header>
-        <main className="mx-auto max-w-6xl px-4 py-6">
+        <main className="mx-auto max-w-6xl px-4 py-8">
           <Outlet />
         </main>
       </div>

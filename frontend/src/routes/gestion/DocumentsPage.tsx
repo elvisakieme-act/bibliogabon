@@ -48,11 +48,11 @@ export function DocumentsPage() {
         onSubmit={(event) => event.preventDefault()}
       >
         <div className="flex flex-col gap-1">
-          <label htmlFor="filtre-état" className="text-sm font-medium">
+          <label htmlFor="filtre-etat" className="text-sm font-medium">
             État
           </label>
           <select
-            id="filtre-état"
+            id="filtre-etat"
             className="rounded border border-slate-300 px-2 py-1.5 text-sm"
             value={filters.status ?? ""}
             onChange={(event) => setFilter("status", event.target.value)}

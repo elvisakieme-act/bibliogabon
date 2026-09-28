@@ -289,7 +289,7 @@ describe("fiche d'un document", () => {
     await screen.findByRole("option", { name: "Mathematiques" });
     await userEvent.selectOptions(screen.getByLabelText(/^Domaine/), "3");
     await userEvent.selectOptions(screen.getByLabelText(/^Type de document/), "1");
-    await userEvent.click(screen.getByRole("button", { name: /enregistrer les metadonnees/i }));
+    await userEvent.click(screen.getByRole("button", { name: /enregistrer les métadonnées/i }));
 
     await waitFor(() => {
       expect(bodies.at(-1)).toMatchObject({
@@ -311,7 +311,7 @@ describe("fiche d'un document", () => {
     // qu'elle soit peuplee echoue sur une option absente.
     await screen.findByRole("option", { name: "Mathematiques" });
     await userEvent.selectOptions(screen.getByLabelText(/^Domaine/), "3");
-    await userEvent.click(screen.getByRole("button", { name: /enregistrer les metadonnees/i }));
+    await userEvent.click(screen.getByRole("button", { name: /enregistrer les métadonnées/i }));
 
     await waitFor(() => {
       expect(bodies.at(-1)).toMatchObject({ academic_domain: 3 });

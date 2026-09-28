@@ -4,7 +4,7 @@ const FOOTER_LINKS = [
   { href: "/catalogue", label: "Catalogue" },
   { href: "/domaines", label: "Domaines" },
   { href: "/recherche", label: "Recherche" },
-  { href: "/bibliotheque", label: "Bibliotheque" }
+  { href: "/bibliotheque", label: "Bibliothèque" }
 ];
 
 export function Footer() {

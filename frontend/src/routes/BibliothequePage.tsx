@@ -48,7 +48,7 @@ function LibraryContent() {
       <SiteLayout>
         <main className="container-editorial py-10 sm:py-14">
           <EmptyState
-            title="Bibliotheque indisponible"
+            title="Bibliothèque indisponible"
             description="Reessayez dans quelques instants."
           />
         </main>
