@@ -18,6 +18,15 @@ from api.staff.v1.lifecycle import (
     DocumentAuditView,
     DocumentWithdrawView,
 )
+from api.staff.v1.organizations import (
+    OrganizationDetailView,
+    OrganizationListView,
+    OrganizationMemberEndView,
+    OrganizationMemberListView,
+    OrganizationMemberSuspendView,
+    OrganizationQuotaListView,
+    OrganizationReportView,
+)
 from api.staff.v1.reviews import (
     ReviewAssignView,
     ReviewDecisionView,
@@ -37,6 +46,37 @@ app_name = "api-staff-v1"
 urlpatterns = [
     path("", StaffIndexView.as_view(), name="index"),
     path("authors/", StaffAuthorListView.as_view(), name="author-list"),
+    path("organizations/", OrganizationListView.as_view(), name="organization-list"),
+    path(
+        "organizations/<int:organization_id>/",
+        OrganizationDetailView.as_view(),
+        name="organization-detail",
+    ),
+    path(
+        "organizations/<int:organization_id>/members/",
+        OrganizationMemberListView.as_view(),
+        name="organization-members",
+    ),
+    path(
+        "organizations/<int:organization_id>/members/<int:membership_id>/suspend/",
+        OrganizationMemberSuspendView.as_view(),
+        name="organization-member-suspend",
+    ),
+    path(
+        "organizations/<int:organization_id>/members/<int:membership_id>/end/",
+        OrganizationMemberEndView.as_view(),
+        name="organization-member-end",
+    ),
+    path(
+        "organizations/<int:organization_id>/quotas/",
+        OrganizationQuotaListView.as_view(),
+        name="organization-quotas",
+    ),
+    path(
+        "organizations/<int:organization_id>/report/",
+        OrganizationReportView.as_view(),
+        name="organization-report",
+    ),
     path("tickets/", TicketListView.as_view(), name="ticket-list"),
     path("tickets/<int:ticket_id>/", TicketDetailView.as_view(), name="ticket-detail"),
     path(

@@ -73,13 +73,13 @@ Slice 4 of 4. Design: `docs/superpowers/specs/2026-09-27-bibliogabon-organizatio
 - Create: `backend/api/staff/v1/organizations.py`, `backend/api/staff/v1/tests/test_organizations.py`
 - Modify: `backend/api/staff/v1/urls.py`
 
-- [ ] Write failing tests: an institution admin lists their organizations and only theirs; every endpoint refuses another organization, asserted at the endpoint and not only in the predicate.
-- [ ] Write failing tests: members list carries verification status; adding, suspending and ending a membership each go through the audited service and write an event; suspending removes reading access immediately.
-- [ ] Write failing tests: quotas list carries seat limits and contract references; the usage report returns aggregated metrics for a period.
-- [ ] Write a failing test that scans the report payload for per-user fields — a future metric that adds one must fail the test, not leak.
-- [ ] Implement, reusing the audited services unchanged.
-- [ ] Run `python -m pytest api/staff/v1 -q`.
-- [ ] Commit `feat: expose organization members, quotas and usage reports`.
+- [x] Write failing tests: an institution admin lists their organizations and only theirs; every endpoint refuses another organization, asserted at the endpoint and not only in the predicate.
+- [x] Write failing tests: members list carries verification status; adding, suspending and ending a membership each go through the audited service and write an event; suspending removes reading access immediately.
+- [x] Write failing tests: quotas list carries seat limits and contract references; the usage report returns aggregated metrics for a period.
+- [x] Write a failing test that scans the report payload for per-user fields — a future metric that adds one must fail the test, not leak.
+- [x] Implement, reusing the audited services unchanged.
+- [x] Run `python -m pytest api/staff/v1 -q`.
+- [x] Commit `feat: expose organization members, quotas and usage reports`.
 
 ---
 
