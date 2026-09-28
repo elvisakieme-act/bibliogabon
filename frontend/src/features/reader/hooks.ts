@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { closeReaderSession, createReaderSession, getReaderPage } from "@/api/reader";
+import { fetchReaderManifest } from "@/features/reader/manifest";
 import { fetchReaderPageImage } from "@/features/reader/pageImage";
 import { useAuth } from "@/auth/useAuth";
 
@@ -54,6 +55,18 @@ export function useReaderPageImage(path: string | null, enabled = true) {
     // requête partie trop tôt reviendrait en 403 et le lecteur afficherait
     // brièvement une erreur avant de réessayer.
     enabled: Boolean(path) && enabled && !isHydrating,
+    staleTime: Infinity,
+    retry: false
+  });
+}
+
+/** Manifeste IIIF de la session : une requête pour tout le document. */
+export function useReaderManifest(sessionKey: string | null) {
+  const { tokens, isHydrating } = useAuth();
+  return useQuery({
+    queryKey: ["reader-manifest", sessionKey, tokens?.access ?? null],
+    queryFn: () => fetchReaderManifest(sessionKey as string, tokens?.access),
+    enabled: Boolean(sessionKey) && !isHydrating,
     staleTime: Infinity,
     retry: false
   });

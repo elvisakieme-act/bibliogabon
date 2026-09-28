@@ -300,4 +300,8 @@ def test_pipeline_tuning_values_have_safe_defaults():
     )
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "(1240, 'fra', 20)"
+    # 2480 px : 300 ppp pour une A4, la norme d'archivage. Le tuilage IIIF
+    # rend ce choix peu coûteux pour le lecteur, qui ne télécharge que les
+    # tuiles qu'il regarde. Changer cette valeur oblige à réingérer — les
+    # tuiles et leur `info.json` en dépendent — d'où ce verrou.
+    assert result.stdout.strip() == "(2480, 'fra', 20)"

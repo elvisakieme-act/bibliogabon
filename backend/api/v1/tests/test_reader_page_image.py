@@ -67,7 +67,7 @@ def ingest_with_images(document: Document):
             document=document, fileobj=handle, original_filename="s.pdf"
         )
     for page in DocumentPage.objects.filter(version=version):
-        tasks.render_page_image.apply(args=[page.pk]).get()
+        tasks.tile_page.apply(args=[page.pk]).get()
     return version
 
 

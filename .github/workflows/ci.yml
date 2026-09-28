@@ -11,6 +11,29 @@ jobs:
     defaults:
       run:
         working-directory: backend
+
+    # PostgreSQL, comme le developpement et la production. La CI tournait sur
+    # SQLite, dont le verrou global serialise les ecritures : une course entre
+    # deux requetes concurrentes y est invisible, et c'est precisement ainsi
+    # qu'un 500 du lecteur tuile est passe entre les mailles.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: bibliogabon
+          POSTGRES_PASSWORD: bibliogabon
+          POSTGRES_DB: bibliogabon
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://bibliogabon:bibliogabon@127.0.0.1:5432/bibliogabon
+
     steps:
       - uses: actions/checkout@v4
 

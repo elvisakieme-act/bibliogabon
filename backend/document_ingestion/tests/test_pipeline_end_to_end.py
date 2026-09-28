@@ -136,6 +136,7 @@ def test_a_reader_session_serves_a_page_with_no_storage_field(ingested, client):
         "words",
         "text_policy",
         "image",
+        "iiif",
     }
     assert "storage" not in response.content.decode().lower()
 

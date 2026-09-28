@@ -56,11 +56,13 @@ export function ReaderToolbar({
         <IconButton label="Page précédente" onClick={onPrevious} disabled={atFirst}>
           ‹
         </IconButton>
+        {/* Une seule expression, donc un seul nœud de texte : rendu en
+            fragments, `aria-live` annonce « 2 », « / », « 5 » séparément. */}
         <p
           aria-live="polite"
           className="min-w-[5.5rem] text-center text-sm tabular-nums text-white/80"
         >
-          {pageNumber} / {pageCount}
+          {`${pageNumber} / ${pageCount}`}
         </p>
         <IconButton label="Page suivante" onClick={onNext} disabled={atLast}>
           ›
@@ -76,7 +78,7 @@ export function ReaderToolbar({
           −
         </IconButton>
         <span className="min-w-[3.25rem] text-center text-sm tabular-nums text-white/80">
-          {Math.round(zoom * 100)} %
+          {`${Math.round(zoom * 100)} %`}
         </span>
         <IconButton
           label="Agrandir"

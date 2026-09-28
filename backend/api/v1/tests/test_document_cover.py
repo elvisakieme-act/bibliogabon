@@ -19,6 +19,7 @@ par un point d'accès opaque, jamais par une adresse d'objet.
 
 from __future__ import annotations
 
+import io
 import re
 from pathlib import Path
 
@@ -75,7 +76,7 @@ def ingest_with_cover(document: Document):
             document=document, fileobj=handle, original_filename="s.pdf"
         )
     first = DocumentPage.objects.get(version=version, page_number=1)
-    tasks.render_page_image.apply(args=[first.pk]).get()
+    tasks.tile_page.apply(args=[first.pk]).get()
     return version
 
 
@@ -296,3 +297,24 @@ def test_a_search_result_without_a_rendered_page_reports_null(client, local_stor
     found = [r for r in results if r["id"] == document.pk]
     assert found, "le document devrait être indexé"
     assert found[0]["cover"] is None
+
+
+@pytest.mark.django_db
+def test_the_cover_is_a_thumbnail_not_the_whole_page(client, local_storage):
+    """Une grille de vingt couvertures ne doit pas coûter vingt pages.
+
+    Le tuilage produit la page entière **et** une vignette. Servir la première
+    comme couverture a été mesuré à 97 ko par vignette de catalogue, contre
+    quelques kilo-octets — sur une connexion mobile gabonaise, la différence
+    porte sur chaque page de résultats.
+    """
+    from PIL import Image
+
+    document = make_document(slug="couverture-legere")
+    ingest_with_cover(document)
+
+    response = client.get(cover_path(document))
+    payload = b"".join(response.streaming_content)
+    image = Image.open(io.BytesIO(payload))
+
+    assert image.width <= 400, f"la couverture fait {image.width} px de large"

@@ -78,3 +78,23 @@ URL.revokeObjectURL = (url: string) => {
   revokedObjectUrls.push(url);
   nativeRevoke?.(url);
 };
+
+/**
+ * jsdom n'implémente pas `matchMedia`.
+ *
+ * OpenSeadragon l'interroge au démarrage. Sans lui, le lecteur entier échoue
+ * — et l'échec se présente comme une absence d'élément, ce qui envoie la
+ * recherche du défaut au mauvais endroit.
+ */
+if (typeof window.matchMedia !== "function") {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false
+  })) as unknown as typeof window.matchMedia;
+}

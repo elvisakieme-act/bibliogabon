@@ -1,18 +1,18 @@
 """Une page lue compte une fois, quel que soit le nombre de requêtes.
 
-Le lecteur demande désormais deux représentations d'une même page : son texte
-— avec la position des mots — et son image fidèle. Le journal d'accès
-enregistre les deux, et il le doit : une représentation qui ne journaliserait
-pas offrirait un chemin de lecture non tracé, et l'audit ne peut pas dépendre
-de ce que le client a demandé.
+Le lecteur demande plusieurs représentations d'une même page : son texte, son
+image, et des dizaines de tuiles. Le journal les enregistre toutes, et il le
+doit : une représentation qui ne journaliserait pas offrirait un chemin de
+lecture non tracé, et l'audit ne peut pas dépendre de ce que le client a
+demandé. Mais `page_view_count` compte les lignes : sans dédoublonnage, tous
+les rapports institutionnels auraient été multipliés d'autant.
 
-Mais `page_view_count` comptait les lignes du journal. Sans dédoublonnage, tous
-les rapports institutionnels auraient doublé — sans erreur, sans alerte, et
-sans possibilité de reconstituer les chiffres a posteriori.
-
-Le dédoublonnage porte sur (session, page). Il corrige au passage un défaut
-antérieur : un lecteur qui revenait sur une page gonflait le compte de son
-institution.
+**Une contrainte d'unicité tient désormais la règle en base** — une ligne par
+(session, page). Le dédoublonnage à l'agrégation n'est donc plus la première
+barrière, mais il reste nécessaire pour un cas que la contrainte ne peut pas
+couvrir : `PageAccessLog.page` passe à `NULL` quand une réingestion supprime
+les pages, et PostgreSQL considère les NULL comme distincts. Ces lignes
+gardent leur `page_number`, et c'est sur lui que porte le dédoublonnage.
 """
 
 import pytest
@@ -27,16 +27,19 @@ from analytics.tests.factories import (
     create_reader_activity,
     create_user,
 )
-from document_processing.models import DocumentPage
 from document_reader.models import PageAccessLog
 
 
-def read_the_same_page_again(session, page_number, at):
-    """Ce que fait le lecteur quand il demande l'image après le texte."""
-    page = DocumentPage.objects.get(version=session.version, page_number=page_number)
+def orphaned_duplicate(session, page_number, at):
+    """Une seconde ligne pour la même page, après qu'une réingestion l'a supprimée.
+
+    C'est le seul cas où un doublon peut exister : la contrainte d'unicité
+    porte sur (session, page), et une page supprimée laisse `page` à `NULL`,
+    que PostgreSQL considère comme distinct d'un autre `NULL`.
+    """
     return PageAccessLog.objects.create(
         session=session,
-        page=page,
+        page=None,
         user=session.user,
         document=session.document,
         page_number=page_number,
@@ -58,11 +61,46 @@ def reading(db):
 
 
 @pytest.mark.django_db
-def test_text_and_image_of_one_page_count_as_one_view(reading):
+def test_the_database_refuses_a_second_row_for_the_same_page(reading):
+    """La première barrière est la contrainte, pas le code.
+
+    Le lecteur tuilé demande des dizaines d'images d'une même page : sans
+    elle, la règle « une ligne par page lue » ne tiendrait qu'à la faveur du
+    code, et céderait à la première écriture concurrente.
+    """
+    from django.db import IntegrityError, transaction
+
     at, session = reading
-    read_the_same_page_again(session, 1, at + timezone.timedelta(seconds=1))
-    read_the_same_page_again(session, 2, at + timezone.timedelta(seconds=2))
-    read_the_same_page_again(session, 3, at + timezone.timedelta(seconds=3))
+    existing = PageAccessLog.objects.filter(session=session, page_number=1).get()
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        PageAccessLog.objects.bulk_create(
+            [
+                PageAccessLog(
+                    session=session,
+                    page=existing.page,
+                    user=session.user,
+                    document=session.document,
+                    page_number=1,
+                    accessed_at=at + timezone.timedelta(seconds=1),
+                )
+            ]
+        )
+
+
+@pytest.mark.django_db
+def test_orphaned_duplicates_still_count_as_one_view(reading):
+    """Le cas que la contrainte ne peut pas couvrir.
+
+    Une réingestion supprime les pages et laisse les lignes de journal avec
+    `page` à `NULL` — PostgreSQL les considère alors comme distinctes. Sans le
+    dédoublonnage à l'agrégation, un document réingéré gonflerait les rapports
+    de son institution, et rien ne le signalerait.
+    """
+    at, session = reading
+    orphaned_duplicate(session, 1, at + timezone.timedelta(seconds=1))
+    orphaned_duplicate(session, 2, at + timezone.timedelta(seconds=2))
+    orphaned_duplicate(session, 3, at + timezone.timedelta(seconds=3))
 
     build_daily_usage_aggregate(at.date())
 
@@ -75,7 +113,7 @@ def test_returning_to_a_page_later_in_the_session_does_not_inflate_the_count(rea
     """Feuilleter n'est pas lire trois fois plus."""
     at, session = reading
     for minute in (20, 40, 60):
-        read_the_same_page_again(session, 2, at + timezone.timedelta(minutes=minute))
+        orphaned_duplicate(session, 2, at + timezone.timedelta(minutes=minute))
 
     build_daily_usage_aggregate(at.date())
 

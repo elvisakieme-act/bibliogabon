@@ -8,7 +8,6 @@ qu'une enveloppe qui gère l'état du job et les réessais.
 
 from __future__ import annotations
 
-import hashlib
 import io
 import logging
 import shutil
@@ -16,7 +15,12 @@ import shutil
 from celery import chain, chord, group, shared_task
 from django.conf import settings
 
-from document_ingestion.blob_storage import open_stream, save_stream
+from document_ingestion.blob_storage import delete_prefix, open_stream
+from document_ingestion.iiif import (
+    DEFAULT_TILE_WIDTH,
+    tiles_root,
+    write_page_tiles,
+)
 from document_ingestion.models import DocumentAsset, DocumentVersion, ProcessingJob
 from document_ingestion.pipeline import process_ingest_job
 from document_ingestion.services import mark_version_current_and_index
@@ -227,20 +231,15 @@ def ocr_page(self, page_id: int) -> bool:
     return True
 
 
-# --- Rendu des pages en images privees ---------------------------------------
+# --- Tuilage des pages ---------------------------------------------------------
 
 
-def page_image_storage_key(page: DocumentPage) -> str:
-    """Cle privee deterministe, alignee sur celle du fichier source."""
-    prefix = getattr(settings, "DOCUMENT_STORAGE_KEY_PREFIX", "documents")
-    return (
-        f"{prefix}/{page.version.document_id}/versions/"
-        f"{page.version.version_label}/pages/{page.page_number:04d}.webp"
-    )
+def render_page_to_image(pdf_stream, page_number: int, width: int):
+    """Rend une page a la largeur demandee, en image.
 
-
-def render_page_to_webp(pdf_stream, page_number: int, width: int) -> bytes:
-    """Rend une page en WebP a la largeur demandee."""
+    Rendue en image et non en octets : le tuilage la decoupe, et la reencoder
+    pour la redecouper ferait perdre de la qualite a chaque passage.
+    """
     import pymupdf
     from PIL import Image
 
@@ -249,25 +248,29 @@ def render_page_to_webp(pdf_stream, page_number: int, width: int) -> bytes:
         page = document[page_number - 1]
         zoom = width / page.rect.width if page.rect.width else 1
         pixmap = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom))
-        image = Image.open(io.BytesIO(pixmap.tobytes("png")))
+        return Image.open(io.BytesIO(pixmap.tobytes("png"))).convert("RGB")
     finally:
         document.close()
 
-    buffer = io.BytesIO()
-    image.save(buffer, format="WEBP", quality=80, method=4)
-    return buffer.getvalue()
-
 
 @shared_task(bind=True, max_retries=MAX_RETRIES, acks_late=True)
-def render_page_image(self, page_id: int) -> bool:
-    """Produit l'image privee d'une page.
+def tile_page(self, page_id: int) -> bool:
+    """Produit le tuilage IIIF prive d'une page.
 
-    Le rendu est un derive d'un fichier prive : il reste prive lui aussi et
-    n'est servi qu'a travers une session de lecture autorisee. Rejouable :
-    une image au contenu identique est conservee telle quelle.
+    Remplace le rendu d'une image unique par page. Celle-ci etait telechargee
+    en entier pour etre vue en petit et bornait le zoom a sa largeur ; les
+    tuiles ne descendent que ce qui est regarde et rendent le zoom illimite.
+
+    Le derive reste prive et n'est servi qu'a travers une session de lecture
+    autorisee, sauf la vignette, qui est la couverture publique d'un document
+    decouvrable.
+
+    Rejouable : l'arborescence precedente est effacee avant d'ecrire, faute de
+    quoi une page devenue plus petite laisserait derriere elle des tuiles que
+    `info.json` n'annonce plus.
     """
     page = DocumentPage.objects.select_related("version").get(pk=page_id)
-    width = int(getattr(settings, "DOCUMENT_PAGE_IMAGE_WIDTH", 1240))
+    width = int(getattr(settings, "DOCUMENT_PAGE_IMAGE_WIDTH", DEFAULT_TILE_WIDTH))
 
     source = (
         DocumentAsset.objects.filter(
@@ -277,37 +280,38 @@ def render_page_image(self, page_id: int) -> bool:
         .first()
     )
     if source is None:
-        logger.warning("Page %s : aucun fichier source, rendu impossible.", page_id)
+        logger.warning("Page %s : aucun fichier source, tuilage impossible.", page_id)
         return False
 
     with open_stream(source.storage_key) as handle:
-        payload = render_page_to_webp(handle, page.page_number, width)
+        image = render_page_to_image(handle, page.page_number, width)
 
-    checksum = hashlib.sha256(payload).hexdigest()
-    existing = DocumentAsset.objects.filter(
-        page=page, asset_type=DocumentAsset.AssetType.PAGE_IMAGE
-    ).first()
-    if existing is not None and existing.checksum_sha256 == checksum:
-        logger.debug("Page %s : image inchangee, rien a reecrire.", page_id)
-        return False
+    delete_prefix(tiles_root(page))
+    tiling = write_page_tiles(page, image)
 
-    storage_key = page_image_storage_key(page)
-    save_stream(storage_key, io.BytesIO(payload))
-
-    defaults = {
+    common = {
         "version": page.version,
         "storage_bucket": getattr(settings, "DOCUMENT_STORAGE_BUCKET", ""),
-        "storage_key": storage_key,
         "mime_type": "image/webp",
-        "byte_size": len(payload),
-        "checksum_sha256": checksum,
-        "visibility": DocumentAsset.Visibility.PRIVATE,
     }
-    DocumentAsset.objects.update_or_create(
-        page=page,
-        asset_type=DocumentAsset.AssetType.PAGE_IMAGE,
-        defaults=defaults,
-    )
+
+    def record(asset_type, stored, visibility):
+        DocumentAsset.objects.update_or_create(
+            page=page,
+            asset_type=asset_type,
+            defaults={
+                **common,
+                "storage_key": stored.storage_key,
+                "byte_size": stored.byte_size,
+                "checksum_sha256": stored.checksum_sha256,
+                "visibility": visibility,
+            },
+        )
+
+    record(DocumentAsset.AssetType.PAGE_IMAGE, tiling.full, DocumentAsset.Visibility.PRIVATE)
+    # La couverture pointe la vignette, pas la page entiere : une grille de
+    # vingt couvertures ne doit pas coûter vingt pages a 300 ppp.
+    record(DocumentAsset.AssetType.COVER, tiling.thumbnail, DocumentAsset.Visibility.PRIVATE)
     return True
 
 
@@ -335,7 +339,7 @@ def page_workflow(page_id: int):
     voir le texte issu de l'OCR."""
     return chain(
         ocr_page.si(page_id),
-        render_page_image.si(page_id),
+        tile_page.si(page_id),
         index_page.si(page_id),
     )
 
@@ -377,6 +381,6 @@ def run_ingestion_inline(job) -> None:
     process_ingest_job(job)
     for page in DocumentPage.objects.filter(version=job.version).order_by("page_number"):
         ocr_page.run(page.pk)
-        render_page_image.run(page.pk)
+        tile_page.run(page.pk)
         index_page.run(page.pk)
     mark_version_current_and_index(job.version)

@@ -116,6 +116,14 @@ export interface ReaderPage {
   text_policy: "selectable" | "protected" | "withheld";
   /** `null` quand la page n'a pas de rendu : le lecteur affiche le texte. */
   image: string | null;
+  /**
+   * `info.json` du service IIIF de la page, quand elle est tuilée.
+   *
+   * C'est lui que le visualiseur préfère : il ne télécharge que les tuiles
+   * regardées et le zoom n'est plus borné par la largeur de rendu. `image`
+   * reste un repli simple.
+   */
+  iiif: string | null;
 }
 
 export interface SearchResult {

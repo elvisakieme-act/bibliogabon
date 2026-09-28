@@ -132,7 +132,18 @@ class PageAccessLog(models.Model):
             models.CheckConstraint(
                 condition=Q(page_number__gte=1),
                 name="page_access_log_page_number_positive",
-            )
+            ),
+            # Une ligne par page et par session, garantie par la base.
+            #
+            # Le tuilage a changé l'échelle du problème : afficher une page
+            # demande des dizaines de tuiles, servies en parallèle. Sans cette
+            # contrainte, elles couraient toutes à l'écriture en même temps —
+            # observé comme « database is locked » sur SQLite, ce qui aurait
+            # été une tempête d'écritures concurrentes sur PostgreSQL.
+            models.UniqueConstraint(
+                fields=["session", "page"],
+                name="page_access_log_one_row_per_session_page",
+            ),
         ]
         indexes = [
             models.Index(fields=["user", "accessed_at"], name="page_access_user_time_idx"),

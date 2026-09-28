@@ -113,6 +113,19 @@ DATABASES = {
     )
 }
 
+# SQLite en développement : le lecteur tuilé demande des dizaines d'images en
+# parallèle, et le mode par défaut verrouille la base entière dès qu'une
+# écriture est en cours. Le symptôme est une erreur 500 sur une tuile, ce qui
+# envoie la recherche du défaut vers le tuilage — qui n'y est pour rien.
+#
+# WAL laisse les lectures se poursuivre pendant une écriture ; le délai
+# d'attente couvre le cas où plusieurs premières tuiles d'une même page
+# arrivent ensemble. Sans effet en production, qui tourne sur PostgreSQL.
+if DATABASES["default"]["ENGINE"].endswith("sqlite3"):
+    DATABASES["default"].setdefault("OPTIONS", {}).update(
+        {"timeout": 20, "init_command": "PRAGMA journal_mode=WAL;"}
+    )
+
 AUTH_USER_MODEL = "accounts.User"
 
 LANGUAGE_CODE = "fr-fr"
@@ -124,6 +137,17 @@ STATIC_URL = "static/"
 DOCUMENT_STORAGE_BUCKET = os.getenv("DOCUMENT_STORAGE_BUCKET", "bibliogabon-private-documents")
 DOCUMENT_STORAGE_KEY_PREFIX = os.getenv("DOCUMENT_STORAGE_KEY_PREFIX", "documents")
 READER_SESSION_TTL_MINUTES = env_int("READER_SESSION_TTL_MINUTES", 120)
+# Adresse publique de l'API, quand elle diffère de ce que Django voit.
+#
+# Le manifeste IIIF doit annoncer des adresses absolues — la spécification les
+# exige — et un visualiseur construit **toutes** ses requêtes à partir
+# d'elles. Derrière un proxy inverse, `build_absolute_uri` rend l'adresse
+# interne : le manifeste s'affiche normalement et pas une seule image ne
+# charge, ce qui envoie la recherche du défaut au mauvais endroit.
+#
+# Vide, l'adresse est déduite de la requête, ce qui est juste en développement
+# et en accès direct.
+PUBLIC_API_BASE_URL = os.getenv("DJANGO_PUBLIC_API_BASE_URL", "").rstrip("/")
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 CORS_ALLOWED_ORIGINS = env_list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
@@ -167,7 +191,12 @@ DOCUMENT_STORAGE_SECRET_KEY = os.getenv("DOCUMENT_STORAGE_SECRET_KEY", "").strip
 # boto3 exige une region, meme quand le fournisseur S3-compatible l'ignore.
 DOCUMENT_STORAGE_REGION = os.getenv("DOCUMENT_STORAGE_REGION", "").strip() or "us-east-1"
 
-DOCUMENT_PAGE_IMAGE_WIDTH = env_int("DOCUMENT_PAGE_IMAGE_WIDTH", 1240)
+# 300 ppp pour une A4 — la norme d'archivage pour du texte. Le tuilage IIIF
+# rend ce choix peu coûteux pour le lecteur, qui ne télécharge que les tuiles
+# qu'il regarde : mesuré à 249 ko stockés par page, contre ~40 ko téléchargés
+# pour voir une page entière avant le tuilage. Changer cette valeur oblige à
+# réingérer : les tuiles et leur `info.json` en dépendent.
+DOCUMENT_PAGE_IMAGE_WIDTH = env_int("DOCUMENT_PAGE_IMAGE_WIDTH", 2480)
 OCR_LANGUAGES = os.getenv("OCR_LANGUAGES", "").strip() or "fra"
 OCR_MIN_CHARACTERS = env_int("OCR_MIN_CHARACTERS", 20)
 

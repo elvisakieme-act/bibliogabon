@@ -203,3 +203,66 @@ def test_get_reader_page_rejects_page_without_extracted_text():
         get_reader_page(session=session, page_number=1)
 
     assert PageAccessLog.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_page_is_logged_once_per_session_however_often_it_is_fetched():
+    """Le tuilage a changé l'échelle du problème.
+
+    Afficher une page demande désormais des dizaines de tuiles. Une ligne de
+    journal par requête ferait du journal du bruit plutôt qu'une trace, et
+    gonflerait les rapports institutionnels d'autant. L'invariant tenu est :
+    *toute page dont le contenu est remis est enregistrée, une fois par
+    session de lecture.*
+
+    La session, elle, doit être rafraîchie à chaque fois : c'est ce qui mesure
+    qu'une lecture est encore en cours.
+    """
+    session, page = create_free_session_with_page()
+
+    get_reader_page(session=session, page_number=page.page_number)
+    session.refresh_from_db()
+    first_seen = session.last_seen_at
+
+    get_reader_page(session=session, page_number=page.page_number)
+    get_reader_page(session=session, page_number=page.page_number)
+
+    assert PageAccessLog.objects.filter(session=session, page=page).count() == 1
+    session.refresh_from_db()
+    assert session.last_seen_at >= first_seen
+
+
+@pytest.mark.django_db
+def test_two_simultaneous_requests_for_a_new_page_do_not_fail(monkeypatch):
+    """La course que seule une vraie base concurrente a révélée.
+
+    Le lecteur tuilé demande des dizaines d'images d'une même page en
+    parallèle. Deux d'entre elles lisent « aucune ligne de journal », puis
+    écrivent toutes les deux : la contrainte d'unicité refuse la seconde, ce
+    qui est exactement ce qu'on veut — mais `full_clean()` la refuse en
+    `ValidationError`, que `get_or_create` ne rattrape pas.
+
+    Le lecteur recevait donc une erreur serveur sur une tuile, pour une ligne
+    qui venait d'être écrite correctement. Invisible sur SQLite, dont le
+    verrou global sérialisait les écritures et masquait la course.
+
+    Le test la reproduit en faisant croire au second appel qu'aucune ligne
+    n'existe — ce que voit réellement une requête concurrente.
+    """
+    from document_reader import services
+
+    session, page = create_free_session_with_page()
+    get_reader_page(session=session, page_number=page.page_number)
+    assert PageAccessLog.objects.filter(session=session, page=page).count() == 1
+
+    # On rend périmée **uniquement** la lecture que fait le service, comme le
+    # voit une requête concurrente. Aveugler `objects.filter` aveuglerait
+    # aussi la validation du modèle, et le test emprunterait alors le chemin
+    # de l'IntegrityError plutôt que celui de la ValidationError observée.
+    monkeypatch.setattr(services, "_page_already_logged", lambda *args: False)
+
+    # Ne doit pas lever : la ligne existe, c'est le résultat voulu.
+    get_reader_page(session=session, page_number=page.page_number)
+
+    monkeypatch.undo()
+    assert PageAccessLog.objects.filter(session=session, page=page).count() == 1

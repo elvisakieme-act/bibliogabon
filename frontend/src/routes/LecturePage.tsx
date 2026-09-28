@@ -3,6 +3,10 @@ import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-route
 
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
+import type OpenSeadragon from "openseadragon";
+
+import { ReaderPage } from "@/components/reader/ReaderPage";
+import { ReaderTextOverlays } from "@/components/reader/ReaderTextOverlays";
 import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
 import { ReaderViewport } from "@/components/reader/ReaderViewport";
 import {
@@ -21,6 +25,7 @@ import { useUpdateReadingProgress } from "@/features/library/hooks";
 import {
   useCloseReaderSession,
   useCreateReaderSession,
+  useReaderManifest,
   useReaderPage
 } from "@/features/reader/hooks";
 
@@ -58,6 +63,11 @@ export function LecturePage() {
   // l'observateur qui changeait la page, donc le lecteur oscillait sans
   // jamais se stabiliser.
   const page = useReaderPage(sessionKey, initialPageNumber);
+  // Une requête décrit tout le document : nombre de pages, dimensions,
+  // service d'images. Sans elle, ouvrir un cours de 157 pages demanderait 157
+  // `info.json` — et journaliserait le document entier comme lu.
+  const manifest = useReaderManifest(sessionKey);
+  const [viewer, setViewer] = useState<OpenSeadragon.Viewer | null>(null);
   // Lues une seule fois : `localStorage` peut échouer, et le relire à chaque
   // rendu transformerait un stockage refusé en boucle de rendus.
   const [mode, setMode] = useState<ScrollMode>(DEFAULT_MODE);
@@ -77,15 +87,18 @@ export function LecturePage() {
     });
   }, []);
 
+  // Le zoom agit sur le visualiseur, non sur une largeur de page : le tuilage
+  // le rend continu, et OpenSeadragon ne descend que les tuiles regardées.
   const applyZoom = useCallback(
     (direction: 1 | -1) => {
       setZoom((current) => {
         const value = nextZoom(current, direction);
         writePreferences({ mode, zoom: value });
+        viewer?.viewport.zoomTo(viewer.viewport.getHomeZoom() * value, undefined, false);
         return value;
       });
     },
-    [mode]
+    [mode, viewer]
   );
 
   const endSession = useCallback(() => {
@@ -245,15 +258,37 @@ export function LecturePage() {
         onClose={() => void returnToDocument()}
       />
       <div className="min-h-0 flex-1">
-        <ReaderViewport
-          sessionKey={sessionKey}
-          title={document.data?.title ?? "Lecture"}
-          pageCount={pageCount}
-          pageNumber={pageNumber}
-          mode={mode}
-          zoom={zoom}
-          onVisiblePage={setPageNumber}
-        />
+        {manifest.data && manifest.data.items.length > 0 && sessionKey ? (
+          <>
+            <ReaderViewport
+              sessionKey={sessionKey}
+              manifest={manifest.data}
+              mode={mode}
+              pageNumber={pageNumber}
+              onVisiblePage={setPageNumber}
+              onViewerReady={setViewer}
+            />
+            <ReaderTextOverlays
+              viewer={viewer}
+              manifest={manifest.data}
+              sessionKey={sessionKey}
+              pageNumber={pageNumber}
+            />
+          </>
+        ) : manifest.isPending ? (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-[var(--muted-foreground)]">Ouverture du document…</p>
+          </div>
+        ) : (
+          // Repli texte : un document ingéré avant le tuilage, ou dont le
+          // rendu a échoué, doit rester lisible. Le perdre ferait d'une
+          // amélioration d'affichage une perte d'accès.
+          <div className="h-full overflow-y-auto px-4 py-6">
+            <div className="mx-auto max-w-3xl">
+              <ReaderPage title={document.data?.title ?? "Lecture"} page={page.data} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

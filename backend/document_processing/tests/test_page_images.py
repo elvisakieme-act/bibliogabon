@@ -45,18 +45,42 @@ def version(local_storage, db):
         )
 
 
-def test_rendering_creates_one_private_asset_linked_to_the_page(version, local_storage):
+def test_tiling_records_the_full_page_and_the_thumbnail(version, local_storage):
+    """Deux lignes en base, pas une par tuile.
+
+    Le tuilage produit des dizaines d'objets par page — plus de huit mille pour
+    un cours de 157 pages. Leur donner une ligne chacune paierait en lignes une
+    question de stockage : leurs clés sont déterministes, donc seules l'image
+    entière, qui sert de repli au lecteur, et la vignette, qui sert de
+    couverture au catalogue, sont référencées.
+    """
     page = DocumentPage.objects.get(version=version, page_number=2)
 
-    tasks.render_page_image.apply(args=[page.pk]).get()
+    tasks.tile_page.apply(args=[page.pk]).get()
 
-    asset = DocumentAsset.objects.get(page=page)
-    assert asset.asset_type == DocumentAsset.AssetType.PAGE_IMAGE
-    assert asset.visibility == DocumentAsset.Visibility.PRIVATE
-    assert asset.version_id == version.pk
-    assert asset.mime_type == "image/webp"
-    assert asset.byte_size > 0
-    assert (local_storage / asset.storage_key).is_file()
+    assets = {a.asset_type: a for a in DocumentAsset.objects.filter(page=page)}
+    assert set(assets) == {
+        DocumentAsset.AssetType.PAGE_IMAGE,
+        DocumentAsset.AssetType.COVER,
+    }
+    for asset in assets.values():
+        assert asset.visibility == DocumentAsset.Visibility.PRIVATE
+        assert asset.version_id == version.pk
+        assert asset.mime_type == "image/webp"
+        assert asset.byte_size > 0
+        assert (local_storage / asset.storage_key).is_file()
+
+
+def test_the_thumbnail_is_far_lighter_than_the_page(version, local_storage):
+    """La couverture pointe la vignette et non la page entière : une grille de
+    vingt couvertures ne doit pas coûter vingt pages à 300 ppp."""
+    page = DocumentPage.objects.get(version=version, page_number=1)
+
+    tasks.tile_page.apply(args=[page.pk]).get()
+
+    full = DocumentAsset.objects.get(page=page, asset_type=DocumentAsset.AssetType.PAGE_IMAGE)
+    thumbnail = DocumentAsset.objects.get(page=page, asset_type=DocumentAsset.AssetType.COVER)
+    assert thumbnail.byte_size < full.byte_size
 
 
 def test_the_stored_object_is_a_webp_at_the_configured_width(version, local_storage):
@@ -64,9 +88,9 @@ def test_the_stored_object_is_a_webp_at_the_configured_width(version, local_stor
 
     page = DocumentPage.objects.get(version=version, page_number=1)
 
-    tasks.render_page_image.apply(args=[page.pk]).get()
+    tasks.tile_page.apply(args=[page.pk]).get()
 
-    asset = DocumentAsset.objects.get(page=page)
+    asset = DocumentAsset.objects.get(page=page, asset_type=DocumentAsset.AssetType.PAGE_IMAGE)
     with (local_storage / asset.storage_key).open("rb") as handle:
         image = Image.open(io.BytesIO(handle.read()))
     assert image.format == "WEBP"
@@ -76,12 +100,12 @@ def test_the_stored_object_is_a_webp_at_the_configured_width(version, local_stor
 def test_rendering_twice_does_not_duplicate_the_asset(version, local_storage):
     page = DocumentPage.objects.get(version=version, page_number=1)
 
-    tasks.render_page_image.apply(args=[page.pk]).get()
-    first = DocumentAsset.objects.get(page=page)
-    tasks.render_page_image.apply(args=[page.pk]).get()
+    tasks.tile_page.apply(args=[page.pk]).get()
+    first = DocumentAsset.objects.get(page=page, asset_type=DocumentAsset.AssetType.PAGE_IMAGE)
+    tasks.tile_page.apply(args=[page.pk]).get()
 
-    assert DocumentAsset.objects.filter(page=page).count() == 1
-    second = DocumentAsset.objects.get(page=page)
+    assert DocumentAsset.objects.filter(page=page).count() == 2
+    second = DocumentAsset.objects.get(page=page, asset_type=DocumentAsset.AssetType.PAGE_IMAGE)
     assert second.pk == first.pk
     assert second.checksum_sha256 == first.checksum_sha256
 
@@ -110,7 +134,7 @@ def test_two_identical_pages_each_keep_their_own_image(local_storage, db):
 
     for number in (1, 2):
         page = DocumentPage.objects.get(version=version, page_number=number)
-        tasks.render_page_image.apply(args=[page.pk]).get()
+        tasks.tile_page.apply(args=[page.pk]).get()
 
     images = DocumentAsset.objects.filter(
         version=version, asset_type=DocumentAsset.AssetType.PAGE_IMAGE
@@ -152,8 +176,12 @@ def test_page_images_never_reach_a_public_payload(version, local_storage, client
     from django.urls import reverse
 
     page = DocumentPage.objects.get(version=version, page_number=1)
-    tasks.render_page_image.apply(args=[page.pk]).get()
-    asset = DocumentAsset.objects.get(page=page)
+    tasks.tile_page.apply(args=[page.pk]).get()
+    # Les deux objets référencés : la page entière et la vignette. Aucune des
+    # deux clés ne doit sortir, ni celle d'une tuile — toutes partagent le
+    # même préfixe, que la vérification de « storage » couvre.
+    assets = list(DocumentAsset.objects.filter(page=page))
+    assert len(assets) == 2
 
     document = version.document
     document.publication_status = Document.PublicationStatus.PUBLISHED
@@ -184,6 +212,8 @@ def test_page_images_never_reach_a_public_payload(version, local_storage, client
 
     for payload in payloads:
         assert "page_image" not in payload
-        assert asset.storage_key not in payload
+        for asset in assets:
+            assert asset.storage_key not in payload
         assert ".webp" not in payload
         assert "storage" not in payload.lower()
+        assert "tiles/" not in payload

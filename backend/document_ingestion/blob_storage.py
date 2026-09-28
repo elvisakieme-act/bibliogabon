@@ -88,3 +88,36 @@ def save_stream(storage_key: str, fileobj: IO[bytes]) -> None:
 def open_stream(storage_key: str) -> IO[bytes]:
     """Ouvre le contenu privé en lecture. L'appelant referme le flux."""
     return get_document_storage().open(storage_key, "rb")
+
+
+def delete_prefix(prefix: str) -> int:
+    """Supprime tout ce qui est rangé sous un préfixe. Renvoie le compte.
+
+    Le tuilage IIIF produit des dizaines d'objets par page — plus de huit
+    mille pour un cours de 157 pages. Leur donner à chacun une ligne en base
+    pour pouvoir les supprimer serait payer en lignes une question de
+    stockage ; leurs clés sont déterministes, donc le préfixe suffit.
+
+    Sans cela, une réingestion laisserait derrière elle les tuiles de la
+    version précédente : des objets que plus rien ne référence, et qu'aucun
+    inventaire ne retrouverait.
+
+    `listdir` est implémenté par les deux backends du produit, système de
+    fichiers et S3, ce qui évite d'écrire deux chemins de code pour une
+    opération que l'API de stockage couvre déjà.
+    """
+    storage = get_document_storage()
+    prefix = prefix.rstrip("/")
+    removed = 0
+    try:
+        directories, files = storage.listdir(prefix)
+    except (FileNotFoundError, NotADirectoryError):
+        # Rien à supprimer : une version jamais tuilée, ou déjà nettoyée.
+        return 0
+
+    for name in files:
+        storage.delete(f"{prefix}/{name}")
+        removed += 1
+    for name in directories:
+        removed += delete_prefix(f"{prefix}/{name}")
+    return removed

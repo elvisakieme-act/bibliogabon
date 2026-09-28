@@ -67,6 +67,7 @@ function page(overrides: Partial<ReaderPagePayload> = {}): ReaderPagePayload {
     words: [[0.1, 0.2, 0.3, 0.23, "Introduction"]],
     text_policy: "selectable",
     image: "/api/v1/reader/sessions/cle/pages/1/image/",
+    iiif: null,
     ...overrides
   };
 }

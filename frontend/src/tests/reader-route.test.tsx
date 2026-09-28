@@ -51,6 +51,71 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * Manifeste IIIF minimal.
+ *
+ * Le lecteur ouvre le document à partir de lui : une requête décrit toutes
+ * les pages, leurs dimensions et leur service d'images. Sans manifeste, il ne
+ * peut rien afficher — d'où sa présence dans chaque simulation.
+ */
+function manifestPayload(pageNumbers: number[] = [1, 2]) {
+  return {
+    "@context": "http://iiif.io/api/presentation/3/context.json",
+    id: "http://localhost/api/v1/reader/sessions/x/manifest",
+    type: "Manifest",
+    label: { fr: ["Document"] },
+    items: pageNumbers.map((number) => ({
+      id: `http://localhost/api/v1/reader/sessions/x/canvas/${number}`,
+      type: "Canvas",
+      width: 600,
+      height: 849,
+      items: [
+        {
+          type: "AnnotationPage",
+          items: [
+            {
+              type: "Annotation",
+              body: {
+                type: "Image",
+                service: [
+                  {
+                    id: `http://localhost/api/v1/reader/sessions/x/pages/${number}/iiif`,
+                    type: "ImageService3",
+                    profile: "level0",
+                    width: 600,
+                    height: 849,
+                    tiles: [{ width: 512, scaleFactors: [1, 2] }],
+                    sizes: [
+                      { width: 600, height: 849 },
+                      { width: 300, height: 425 }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }))
+  };
+}
+
+/**
+ * Le visualiseur est remplacé par un double dans ces tests.
+ *
+ * OpenSeadragon dessine sur un canevas, que jsdom n'implémente pas. Ces tests
+ * portent sur le cycle de vie de la session — reprise, progression, reprise
+ * après échec — et non sur le rendu des tuiles, qui se vérifie dans un vrai
+ * navigateur.
+ */
+vi.mock("@/components/reader/ReaderViewport", () => ({
+  ReaderViewport: () => null
+}));
+
+vi.mock("@/components/reader/ReaderTextOverlays", () => ({
+  ReaderTextOverlays: () => null
+}));
+
 describe("reader components", () => {
   it("renders page content without raw download controls", () => {
     render(
@@ -66,7 +131,8 @@ describe("reader components", () => {
           text: "Page securisee",
           words: [],
           text_policy: "selectable",
-          image: null
+          image: null,
+          iiif: null
         }}
       />
     );
@@ -107,6 +173,9 @@ describe("secure reader route", () => {
           })
         );
       }
+      if (url.includes("/manifest")) {
+        return new Response(JSON.stringify(manifestPayload()));
+      }
       if (init?.method === "DELETE") return new Response(null, { status: 204 });
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
     });
@@ -114,7 +183,9 @@ describe("secure reader route", () => {
 
     renderLectureRoute({ path: "/lecture/10?page=2" });
 
-    expect(await screen.findByText("Page reprise")).toBeInTheDocument();
+    // La barre annonce la page reprise : le visualiseur rend des tuiles, il
+    // n'y a plus de texte de page à chercher dans le document.
+    expect(await screen.findByText("2 / 2")).toBeInTheDocument();
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain(
       "http://127.0.0.1:8000/api/v1/reader/sessions/session-resume/pages/2/"
     );
@@ -177,15 +248,18 @@ describe("secure reader route", () => {
       if (url.endsWith("/api/v1/me/reading-progress/10/") && init?.method === "PATCH") {
         return new Response(JSON.stringify({}));
       }
+      if (url.includes("/manifest")) {
+        return new Response(JSON.stringify(manifestPayload()));
+      }
       if (init?.method === "DELETE") return new Response(null, { status: 204 });
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
 
     renderLectureRoute();
-    expect(await screen.findByText("Premiere page")).toBeInTheDocument();
+    expect(await screen.findByText("1 / 2")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Page suivante/i }));
-    expect(await screen.findByText("Deuxieme page")).toBeInTheDocument();
+    expect(await screen.findByText("2 / 2")).toBeInTheDocument();
 
     await waitFor(() => {
       const progressCall = fetchMock.mock.calls.find(
@@ -236,6 +310,9 @@ describe("secure reader route", () => {
             text: "Page actuelle"
           })
         );
+      }
+      if (url.includes("/manifest")) {
+        return new Response(JSON.stringify(manifestPayload()));
       }
       if (init?.method === "DELETE") return new Response(null, { status: 204 });
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
@@ -311,7 +388,7 @@ describe("secure reader route", () => {
     renderLectureRoute();
     await userEvent.click(await screen.findByRole("button", { name: "Reessayer" }));
 
-    await waitFor(() => expect(screen.getByText("Page securisee")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("1 / 2")).toBeInTheDocument());
     const requests = fetchMock.mock.calls.map(
       ([url, init]) => `${(init as RequestInit | undefined)?.method ?? "GET"} ${String(url)}`
     );

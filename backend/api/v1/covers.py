@@ -39,6 +39,15 @@ from document_reader.services import document_is_reader_accessible
 COVER_MAX_AGE_SECONDS = 60 * 60 * 24
 
 
+# La vignette d'abord, la page entière ensuite. Le tuilage produit les deux :
+# une grille de vingt couvertures ne doit pas coûter vingt pages à 300 ppp,
+# et un document tuilé avant que la vignette existe doit rester affichable.
+COVER_ASSET_PREFERENCE = (
+    DocumentAsset.AssetType.COVER,
+    DocumentAsset.AssetType.PAGE_IMAGE,
+)
+
+
 def find_cover_asset(document: Document) -> DocumentAsset | None:
     version = (
         DocumentVersion.objects.filter(
@@ -51,15 +60,17 @@ def find_cover_asset(document: Document) -> DocumentAsset | None:
     )
     if version is None:
         return None
-    return (
-        DocumentAsset.objects.filter(
-            version=version,
-            asset_type=DocumentAsset.AssetType.PAGE_IMAGE,
-            page__page_number=1,
+    for asset_type in COVER_ASSET_PREFERENCE:
+        asset = (
+            DocumentAsset.objects.filter(
+                version=version, asset_type=asset_type, page__page_number=1
+            )
+            .order_by("id")
+            .first()
         )
-        .order_by("id")
-        .first()
-    )
+        if asset is not None:
+            return asset
+    return None
 
 
 def documents_with_cover(documents) -> set[int]:
@@ -80,7 +91,7 @@ def documents_with_cover(documents) -> set[int]:
             version__document_id__in=discoverable,
             version__is_current=True,
             version__status=DocumentVersion.Status.PROCESSED,
-            asset_type=DocumentAsset.AssetType.PAGE_IMAGE,
+            asset_type__in=COVER_ASSET_PREFERENCE,
             page__page_number=1,
         ).values_list("version__document_id", flat=True)
     )

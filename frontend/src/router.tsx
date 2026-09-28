@@ -16,7 +16,6 @@ import { RecherchePage } from "@/routes/RecherchePage";
 import { DomainesPage } from "@/routes/DomainesPage";
 import { DomainDetailPage } from "@/routes/DomainDetailPage";
 import { DocumentDetailPage } from "@/routes/DocumentDetailPage";
-import { LecturePage } from "@/routes/LecturePage";
 import { BibliothequePage } from "@/routes/BibliothequePage";
 import { NotFoundPage } from "@/routes/NotFoundPage";
 
@@ -90,7 +89,10 @@ const documentDetailRoute = createRoute({
 const lectureRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/lecture/$documentId",
-  component: LecturePage
+  // Chargée à la demande : OpenSeadragon pèse plus que tout le reste du
+  // catalogue, et un visiteur qui parcourt les documents sans en ouvrir un
+  // n'a aucune raison de le télécharger.
+  component: lazyRouteComponent(() => import("@/routes/LecturePage"), "LecturePage")
 });
 
 // L'espace de gestion est la premiere partie chargee a la demande : un

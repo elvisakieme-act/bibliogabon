@@ -76,6 +76,7 @@ function page(overrides: Partial<ReaderPagePayload> = {}): ReaderPagePayload {
     words: [],
     text_policy: "selectable",
     image: null,
+    iiif: null,
     ...overrides
   };
 }

@@ -17,7 +17,10 @@ from api.v1.catalog import (
 )
 from api.v1.covers import DocumentCoverView
 from api.v1.reader import (
+    ReaderManifestView,
+    ReaderPageImageInfoView,
     ReaderPageImageView,
+    ReaderPageTileView,
     ReaderPageView,
     ReaderSessionCreateView,
     ReaderSessionDeleteView,
@@ -87,6 +90,22 @@ urlpatterns = [
         "reader/sessions/<uuid:session_key>/pages/<int:page_number>/image/",
         ReaderPageImageView.as_view(),
         name="reader-page-image",
+    ),
+    path(
+        "reader/sessions/<uuid:session_key>/manifest",
+        ReaderManifestView.as_view(),
+        name="reader-manifest",
+    ),
+    path(
+        "reader/sessions/<uuid:session_key>/pages/<int:page_number>/iiif/info.json",
+        ReaderPageImageInfoView.as_view(),
+        name="reader-page-image-info",
+    ),
+    path(
+        "reader/sessions/<uuid:session_key>/pages/<int:page_number>/iiif/"
+        "<str:region>/<str:size>/<str:rotation>/<str:quality>.<str:image_format>",
+        ReaderPageTileView.as_view(),
+        name="reader-page-tile",
     ),
     path(
         "reader/sessions/<uuid:session_key>/",

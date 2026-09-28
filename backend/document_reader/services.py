@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import json
+
 from django.conf import settings
-from django.db import transaction
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import Entitlement
 from accounts.services import active_organization_ids_for_user, user_has_entitlement
 from catalog.models import Document, RightsAgreement
+from document_ingestion.blob_storage import open_stream
 from document_ingestion.models import DocumentAsset, DocumentVersion
 from document_processing.models import DocumentPage, ExtractedText
 from document_reader.exceptions import (
@@ -309,29 +313,270 @@ def text_layer_policy(document: Document) -> str:
     return TextLayerPolicy.PROTECTED
 
 
-def _record_page_access(*, session: ReaderSession, page: DocumentPage, at) -> None:
-    """Journalise une remise de contenu et rafraîchit la session.
+# Au-delà de ce délai, la session est rafraîchie ; en deçà, non. Une page
+# affichée déclenche des dizaines de requêtes de tuiles en quelques
+# millisecondes : les écrire toutes ferait autant d'écritures pour une
+# information — « cette lecture est en cours » — qui ne change pas à cette
+# échelle de temps.
+SESSION_TOUCH_SECONDS = 30
 
-    Appelée par **toutes** les représentations d'une page — texte comme image.
-    Une représentation qui ne journaliserait pas offrirait un chemin de lecture
-    non tracé, et l'audit ne doit pas dépendre de ce que le client a demandé.
 
-    Comptabiliser ces lignes une par une gonflerait d'autant les rapports
-    institutionnels ; c'est l'agrégation qui dédoublonne par page, pas le
-    journal qui oublie.
+def _page_already_logged(session: ReaderSession, page: DocumentPage) -> bool:
+    """Cette page a-t-elle déjà été enregistrée pour cette session ?
+
+    Fonction à part, et non une expression dans l'appelant : c'est la lecture
+    qu'une requête concurrente voit périmée, et un test doit pouvoir la rendre
+    périmée sans aveugler du même coup la validation du modèle — auquel cas il
+    emprunterait un autre chemin d'erreur que celui observé en production.
     """
+    return PageAccessLog.objects.filter(session=session, page=page).exists()
+
+
+def _record_page_access(*, session: ReaderSession, page: DocumentPage, at) -> None:
+    """Journalise l'accès à une page et rafraîchit la session.
+
+    Appelée par **toutes** les représentations d'une page — texte, image
+    entière, tuile. Une représentation qui ne journaliserait pas offrirait un
+    chemin de lecture non tracé, et l'audit ne doit pas dépendre de ce que le
+    client a demandé.
+
+    **Une ligne par page et par session, pas une par requête.** Le tuilage a
+    changé l'échelle du problème : afficher une page demande des dizaines de
+    tuiles, servies en parallèle. Une écriture par requête a été observée
+    comme « database is locked » sur SQLite — ce qui, sur PostgreSQL, aurait
+    été une tempête d'écritures concurrentes plutôt qu'une panne visible.
+    L'invariant tenu est donc : *toute page dont le contenu est remis est
+    enregistrée, une fois par session de lecture*, et une contrainte d'unicité
+    le garantit en base plutôt qu'à la faveur du code.
+
+    Les deux écritures sont évitées quand elles n'apprendraient rien : la
+    ligne existe déjà, ou la session a été vue il y a moins de
+    `SESSION_TOUCH_SECONDS`.
+    """
+    already_logged = _page_already_logged(session, page)
+    stale = (
+        session.last_seen_at is None
+        or (at - session.last_seen_at).total_seconds() >= SESSION_TOUCH_SECONDS
+    )
+    if already_logged and not stale:
+        return
+
     with transaction.atomic():
-        PageAccessLog.objects.create(
-            session=session,
-            page=page,
-            user=session.user,
-            document=session.document,
-            page_number=page.page_number,
-            client_ip=session.client_ip,
-            user_agent=session.user_agent,
+        if not already_logged:
+            # Deux tuiles d'une page jamais lue arrivent en même temps : les
+            # deux lisent « aucune ligne », les deux écrivent. La contrainte
+            # d'unicité refuse la seconde, et c'est exactement ce qu'on veut —
+            # mais `full_clean()` la refuse en `ValidationError`, que
+            # `get_or_create` ne rattrape pas. Sans ce garde, le lecteur
+            # recevait une erreur serveur sur une tuile pour une ligne qui
+            # venait d'être écrite correctement.
+            #
+            # Observé sur PostgreSQL, invisible sur SQLite, où le verrou global
+            # sérialisait les écritures et masquait la course.
+            try:
+                with transaction.atomic():
+                    PageAccessLog.objects.create(
+                        session=session,
+                        page=page,
+                        user=session.user,
+                        document=session.document,
+                        page_number=page.page_number,
+                        client_ip=session.client_ip,
+                        user_agent=session.user_agent,
+                    )
+            except (IntegrityError, ValidationError):
+                pass
+        if stale:
+            session.last_seen_at = at
+            session.save(update_fields=["last_seen_at", "updated_at"])
+
+
+def _authorized_page(session: ReaderSession, page_number: int, at) -> DocumentPage:
+    """Page lisible d'une session vivante, ou l'exception qui dit pourquoi.
+
+    Extrait pour que le texte, l'image et les tuiles passent **exactement** par
+    la même vérification. Le jour où la règle d'accès change, elle change une
+    fois : trois copies finiraient par diverger, et c'est l'image — le contenu
+    lui-même — qui serait du mauvais côté.
+    """
+    if page_number < 1:
+        raise ReaderPageUnavailable("page_number must be positive")
+
+    session.refresh_from_db()
+    _ensure_reader_session_can_read(session, at=at)
+
+    if page_number > session.version.page_count:
+        raise ReaderPageUnavailable("Page is outside the readable document range")
+
+    try:
+        return DocumentPage.objects.get(
+            version=session.version,
+            page_number=page_number,
+            status=DocumentPage.Status.PROCESSED,
         )
-        session.last_seen_at = at
-        session.save(update_fields=["last_seen_at", "updated_at"])
+    except DocumentPage.DoesNotExist as exc:
+        raise ReaderPageUnavailable("Page is not available for reading") from exc
+
+
+def get_reader_manifest(*, session: ReaderSession, base_url: str, at=None) -> dict:
+    """Manifeste IIIF Presentation 3.0 de la session de lecture.
+
+    Une seule requête donne au visualiseur tout ce dont il a besoin pour
+    ouvrir le document : le nombre de pages, les dimensions de chacune et la
+    description complète de son service d'images.
+
+    C'est ce qui rend l'architecture tenable. Sans manifeste, un visualiseur
+    qui met 157 pages en page doit lire 157 `info.json` à l'ouverture — donc
+    demander 157 fois l'autorisation, et **journaliser le document entier
+    comme lu** avant que le lecteur ait tourné une page.
+
+    Le manifeste ne livre aucun contenu : des dimensions et des adresses. Les
+    tuiles, elles, restent derrière l'autorisation, page par page.
+    """
+    at = at or timezone.now()
+    session.refresh_from_db()
+    _ensure_reader_session_can_read(session, at=at)
+
+    document = session.document
+    canvases = []
+    for page in (
+        DocumentPage.objects.filter(
+            version=session.version, status=DocumentPage.Status.PROCESSED
+        )
+        .order_by("page_number")
+        .iterator()
+    ):
+        info = _page_image_info(page)
+        if info is None:
+            # Une page traitée mais pas encore tuilée : elle n'entre pas au
+            # manifeste plutôt que d'y figurer avec des dimensions inventées,
+            # qui décaleraient la mise en page de tout le document.
+            continue
+        width, height = info["width"], info["height"]
+        service_id = f"{base_url}/pages/{page.page_number}/iiif"
+        # Le service est **décrit en entier** ici, pas seulement adressé : un
+        # visualiseur qui recalculerait les facteurs d'échelle en tiendrait
+        # une seconde écriture, et demanderait un jour des tuiles que
+        # l'ingestion n'a pas produites.
+        service = {**info, "id": service_id}
+        canvases.append(
+            {
+                "id": f"{base_url}/canvas/{page.page_number}",
+                "type": "Canvas",
+                "label": {"fr": [f"Page {page.page_number}"]},
+                "width": width,
+                "height": height,
+                "items": [
+                    {
+                        "id": f"{base_url}/canvas/{page.page_number}/page",
+                        "type": "AnnotationPage",
+                        "items": [
+                            {
+                                "id": f"{base_url}/canvas/{page.page_number}/annotation",
+                                "type": "Annotation",
+                                "motivation": "painting",
+                                "target": f"{base_url}/canvas/{page.page_number}",
+                                "body": {
+                                    "id": f"{service_id}/full/max/0/default.webp",
+                                    "type": "Image",
+                                    "format": "image/webp",
+                                    "width": width,
+                                    "height": height,
+                                    "service": [service],
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+
+    return {
+        "@context": "http://iiif.io/api/presentation/3/context.json",
+        "id": f"{base_url}/manifest",
+        "type": "Manifest",
+        "label": {"fr": [document.title]},
+        "viewingDirection": "left-to-right",
+        "behavior": ["paged"],
+        "items": canvases,
+    }
+
+
+def _page_image_info(page: DocumentPage) -> dict | None:
+    """`info.json` d'une page, ou `None` si elle n'est pas tuilée."""
+    from document_ingestion.iiif import tiles_root
+
+    try:
+        with open_stream(f"{tiles_root(page)}/info.json") as handle:
+            return json.loads(handle.read())
+    except Exception:
+        return None
+
+
+def get_reader_page_tile_key(
+    *,
+    session: ReaderSession,
+    page_number: int,
+    region: str,
+    size: str,
+    rotation: str,
+    quality: str,
+    image_format: str,
+    at=None,
+) -> str:
+    """Clé de stockage d'une tuile, sous les mêmes conditions que le texte.
+
+    La clé n'est pas fabriquée à partir de ce que le client envoie : elle est
+    reconstruite par `tile_storage_key`, qui n'accepte que les quatre
+    composantes de l'Image API. Concaténer un chemin reçu permettrait à un
+    `../` de sortir de l'arborescence de la page.
+
+    Seules la rotation `0` et la qualité `default` existent au niveau 0 : les
+    annoncer autrement ferait chercher au visualiseur un objet qui n'a jamais
+    été produit.
+    """
+    from document_ingestion.iiif import UnknownTile, tile_storage_key, tiles_root
+
+    at = at or timezone.now()
+    page = _authorized_page(session, page_number, at)
+
+    if rotation != "0" or quality != "default" or image_format != "webp":
+        raise ReaderPageUnavailable("Only 0/default.webp exists at level 0")
+
+    try:
+        storage_key = tile_storage_key(tiles_root(page), region, size)
+    except UnknownTile as exc:
+        raise ReaderPageUnavailable(str(exc)) from exc
+    _record_page_access(session=session, page=page, at=at)
+    return storage_key
+
+
+def get_reader_page_image_info(
+    *, session: ReaderSession, page_number: int, identifier: str, at=None
+) -> dict:
+    """`info.json` de la page, avec l'identifiant que le client doit utiliser.
+
+    L'identifiant est passé par la couche API : c'est elle qui connaît l'URL
+    publique, et le service en sert deux — la surface JWT et celle à session
+    Django — dont les espaces d'adresses diffèrent.
+    """
+    from document_ingestion.iiif import tiles_root
+
+    at = at or timezone.now()
+    page = _authorized_page(session, page_number, at)
+
+    try:
+        with open_stream(f"{tiles_root(page)}/info.json") as handle:
+            info = json.loads(handle.read())
+    except Exception as exc:
+        # Une page traitée avant le tuilage, ou dont le rendu a échoué : pas
+        # d'information, et surtout pas d'erreur serveur — le lecteur doit
+        # pouvoir retomber sur le texte.
+        raise ReaderPageUnavailable("Page has no tiled image") from exc
+
+    info["id"] = identifier
+    _record_page_access(session=session, page=page, at=at)
+    return info
 
 
 def get_reader_page_image(*, session: ReaderSession, page_number: int, at=None):
@@ -348,23 +593,7 @@ def get_reader_page_image(*, session: ReaderSession, page_number: int, at=None):
     du mauvais côté.
     """
     at = at or timezone.now()
-    if page_number < 1:
-        raise ReaderPageUnavailable("page_number must be positive")
-
-    session.refresh_from_db()
-    _ensure_reader_session_can_read(session, at=at)
-
-    if page_number > session.version.page_count:
-        raise ReaderPageUnavailable("Page is outside the readable document range")
-
-    try:
-        page = DocumentPage.objects.get(
-            version=session.version,
-            page_number=page_number,
-            status=DocumentPage.Status.PROCESSED,
-        )
-    except DocumentPage.DoesNotExist as exc:
-        raise ReaderPageUnavailable("Page is not available for reading") from exc
+    page = _authorized_page(session, page_number, at)
 
     asset = (
         DocumentAsset.objects.filter(page=page, asset_type=DocumentAsset.AssetType.PAGE_IMAGE)
