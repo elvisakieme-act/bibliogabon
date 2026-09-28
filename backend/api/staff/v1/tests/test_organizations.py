@@ -447,3 +447,31 @@ def test_membership_changes_go_through_the_audited_service(api, pair, action, ev
     assert event.event_type == event_type
     assert event.actor == pair["admin"]
     assert event.metadata["reason"] == "Motif consigné."
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("action", ["suspend", "end"])
+def test_a_membership_change_without_a_reason_is_refused(api, pair, action):
+    """Le motif était d'abord facultatif ici, par mimétisme avec la signature
+    du service. Une suspension sans raison enregistrée est pourtant le même
+    défaut qu'un retrait sans motif : un acte dont personne ne peut rendre
+    compte, alors que c'est ce que l'audit doit permettre."""
+    member = make_user(f"sans-motif-{action}@example.ga")
+    membership = OrganizationMembership.objects.create(
+        organization=pair["mine"], user=member, status=OrganizationMembership.Status.ACTIVE
+    )
+    api.force_authenticate(user=pair["admin"])
+
+    response = api.post(
+        reverse(
+            f"api-staff-v1:organization-member-{action}",
+            kwargs={"organization_id": pair["mine"].pk, "membership_id": membership.pk},
+        ),
+        {"reason": "  "},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "reason" in response.json()["error"]["field_errors"]
+    membership.refresh_from_db()
+    assert membership.status == OrganizationMembership.Status.ACTIVE

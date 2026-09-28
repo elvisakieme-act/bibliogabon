@@ -199,7 +199,23 @@ class OrganizationMemberListView(StaffAPIView):
 
 
 class ReasonSerializer(serializers.Serializer):
-    reason = serializers.CharField(allow_blank=True, required=False, default="")
+    """Le motif est obligatoire, comme pour le retrait et l'archivage.
+
+    Il l'était d'abord facultatif, par mimétisme avec la signature du service,
+    qui lui donne une valeur par défaut. Mais une suspension sans raison
+    enregistrée est le même défaut qu'un retrait sans motif : un acte dont
+    personne ne peut rendre compte, alors que c'est précisément ce que l'audit
+    doit permettre.
+    """
+
+    reason = serializers.CharField()
+
+    def validate_reason(self, value: str) -> str:
+        if not value.strip():
+            raise serializers.ValidationError(
+                "Un motif est obligatoire : il est conservé au journal d'audit."
+            )
+        return value.strip()
 
 
 def _get_membership(user, organization_id: int, membership_id: int):
@@ -232,11 +248,12 @@ class OrganizationMemberSuspendView(StaffAPIView):
             return error_response("permission_denied", "Gestion des membres refusée.", 403)
 
         serializer = ReasonSerializer(data=request.data)
-        serializer.is_valid(raise_exception=False)
+        if not serializer.is_valid():
+            return error_response("invalid_request", "Motif manquant.", 400, serializer.errors)
         suspend_organization_membership(
             membership=membership,
             actor=request.user,
-            reason=serializer.validated_data.get("reason", ""),
+            reason=serializer.validated_data["reason"],
         )
         membership.refresh_from_db()
         return Response(serialize_membership(membership))
@@ -261,11 +278,12 @@ class OrganizationMemberEndView(StaffAPIView):
             return error_response("permission_denied", "Gestion des membres refusée.", 403)
 
         serializer = ReasonSerializer(data=request.data)
-        serializer.is_valid(raise_exception=False)
+        if not serializer.is_valid():
+            return error_response("invalid_request", "Motif manquant.", 400, serializer.errors)
         end_organization_membership(
             membership=membership,
             actor=request.user,
-            reason=serializer.validated_data.get("reason", ""),
+            reason=serializer.validated_data["reason"],
         )
         membership.refresh_from_db()
         return Response(serialize_membership(membership))
