@@ -105,11 +105,11 @@ Slice 4 of 4. Design: `docs/superpowers/specs/2026-09-27-bibliogabon-organizatio
 - Create: `frontend/src/routes/gestion/SupportPage.tsx`, `frontend/src/tests/staff-support.test.tsx`
 - Modify: the staff client, types, hooks, router and layout
 
-- [ ] Write failing tests: the queue filters by category and status; a withdrawal request links to its document and states plainly that resolving the ticket withdraws nothing.
-- [ ] Write failing tests: resolving requires a summary; a server refusal lands on the field; loading, empty and refused states each render.
-- [ ] Implement.
-- [ ] Run `npm run test`, `npm run lint`, `npm run build`.
-- [ ] Commit `feat: add the support and report queue screen`.
+- [x] Write failing tests: the queue filters by category and status; a withdrawal request links to its document and states plainly that resolving the ticket withdraws nothing.
+- [x] Write failing tests: resolving requires a summary; a server refusal lands on the field; loading, empty and refused states each render.
+- [x] Implement.
+- [x] Run `npm run test`, `npm run lint`, `npm run build`.
+- [x] Commit `feat: add the support and report queue screen`.
 
 ---
 

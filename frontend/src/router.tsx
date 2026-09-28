@@ -107,6 +107,11 @@ const gestionIndexRoute = createRoute({
   path: "/",
   component: lazyRouteComponent(() => import("@/routes/gestion/DashboardPage"), "DashboardPage")
 });
+const gestionSupportRoute = createRoute({
+  getParentRoute: () => gestionRoute,
+  path: "support",
+  component: lazyRouteComponent(() => import("@/routes/gestion/SupportPage"), "SupportPage")
+});
 const gestionOrganizationsRoute = createRoute({
   getParentRoute: () => gestionRoute,
   path: "organisations",
@@ -180,7 +185,8 @@ const routeTree = rootRoute.addChildren([
     gestionReviewsRoute,
     gestionReviewDetailRoute,
     gestionOrganizationsRoute,
-    gestionOrganizationDetailRoute
+    gestionOrganizationDetailRoute,
+    gestionSupportRoute
   ])
 ]);
 
