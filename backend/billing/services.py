@@ -29,6 +29,19 @@ def _payment_terms(payment: PaymentTransaction) -> dict:
     }
 
 
+# `select_for_update(of=("self",))` partout où un `select_related` accompagne
+# le verrou.
+#
+# PostgreSQL refuse `FOR UPDATE` dès que la requête comporte une jointure
+# externe sur une clé nullable — et `select_related` en produit une par
+# relation facultative. Sans `of`, activer un abonnement échouait en
+# production ; la suite n'en savait rien, tournant sur SQLite, qui ignore
+# purement et simplement le verrou.
+#
+# `of=("self",)` dit ce qu'on voulait dire depuis le début : verrouiller la
+# ligne qu'on s'apprête à modifier, pas les lignes jointes pour affichage.
+
+
 def create_payment_transaction(
     *,
     idempotency_key: str,
@@ -121,7 +134,7 @@ def _entitlement_defaults(*, offer: CommercialOffer, starts_at, ends_at) -> dict
 def activate_subscription(*, subscription: Subscription, at=None) -> Entitlement:
     with transaction.atomic():
         subscription = (
-            Subscription.objects.select_for_update()
+            Subscription.objects.select_for_update(of=("self",))
             .select_related("offer", "user", "organization", "entitlement")
             .get(pk=subscription.pk)
         )
@@ -172,7 +185,7 @@ def _close_subscription(*, subscription: Subscription, status: str, at=None) -> 
     at = at or timezone.now()
     with transaction.atomic():
         subscription = (
-            Subscription.objects.select_for_update()
+            Subscription.objects.select_for_update(of=("self",))
             .select_related("entitlement")
             .get(pk=subscription.pk)
         )
@@ -201,7 +214,7 @@ def expire_subscription(*, subscription: Subscription, at=None) -> Subscription:
 def activate_organization_quota(*, quota: OrganizationQuota, at=None) -> Entitlement:
     with transaction.atomic():
         quota = (
-            OrganizationQuota.objects.select_for_update()
+            OrganizationQuota.objects.select_for_update(of=("self",))
             .select_related("organization", "offer", "entitlement")
             .get(pk=quota.pk)
         )
@@ -238,7 +251,7 @@ def _close_organization_quota(
     at = at or timezone.now()
     with transaction.atomic():
         quota = (
-            OrganizationQuota.objects.select_for_update()
+            OrganizationQuota.objects.select_for_update(of=("self",))
             .select_related("entitlement")
             .get(pk=quota.pk)
         )
@@ -282,7 +295,7 @@ def enroll_user_in_sponsored_campaign(
     at = at or timezone.now()
     with transaction.atomic():
         campaign = (
-            SponsoredCampaign.objects.select_for_update()
+            SponsoredCampaign.objects.select_for_update(of=("self",))
             .select_related("sponsor")
             .get(pk=campaign.pk)
         )
