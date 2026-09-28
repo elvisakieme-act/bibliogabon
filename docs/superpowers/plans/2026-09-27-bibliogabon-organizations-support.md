@@ -58,12 +58,12 @@ Slice 4 of 4. Design: `docs/superpowers/specs/2026-09-27-bibliogabon-organizatio
 - Create: `backend/api/staff/v1/tickets.py`, `backend/api/staff/v1/tests/test_tickets.py`
 - Modify: `backend/api/staff/v1/urls.py`
 
-- [ ] Write failing tests: a content admin lists tickets filtered by category and status; an organization admin sees only tickets attached to their own organization; a teacher is refused.
-- [ ] Write failing tests: assigning records the assignee; resolving requires a summary and writes an audit event; resolving twice is refused.
-- [ ] Write a failing test that resolving a withdrawal request does not touch the document, at the endpoint.
-- [ ] Implement, reusing `resolve_support_ticket`.
-- [ ] Run `python -m pytest api/staff/v1 -q`.
-- [ ] Commit `feat: expose the support and report queue`.
+- [x] Write failing tests: a content admin lists tickets filtered by category and status; an organization admin sees only tickets attached to their own organization; a teacher is refused.
+- [x] Write failing tests: assigning records the assignee; resolving requires a summary and writes an audit event; resolving twice is refused.
+- [x] Write a failing test that resolving a withdrawal request does not touch the document, at the endpoint.
+- [x] Implement, reusing `resolve_support_ticket`.
+- [x] Run `python -m pytest api/staff/v1 -q`.
+- [x] Commit `feat: expose the support and report queue`.
 
 ---
 

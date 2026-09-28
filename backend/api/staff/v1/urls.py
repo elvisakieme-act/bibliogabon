@@ -24,6 +24,12 @@ from api.staff.v1.reviews import (
     ReviewDetailView,
     ReviewListView,
 )
+from api.staff.v1.tickets import (
+    TicketAssignView,
+    TicketDetailView,
+    TicketListView,
+    TicketResolveView,
+)
 from api.staff.v1.views import StaffIndexView
 
 app_name = "api-staff-v1"
@@ -31,6 +37,18 @@ app_name = "api-staff-v1"
 urlpatterns = [
     path("", StaffIndexView.as_view(), name="index"),
     path("authors/", StaffAuthorListView.as_view(), name="author-list"),
+    path("tickets/", TicketListView.as_view(), name="ticket-list"),
+    path("tickets/<int:ticket_id>/", TicketDetailView.as_view(), name="ticket-detail"),
+    path(
+        "tickets/<int:ticket_id>/assign/",
+        TicketAssignView.as_view(),
+        name="ticket-assign",
+    ),
+    path(
+        "tickets/<int:ticket_id>/resolve/",
+        TicketResolveView.as_view(),
+        name="ticket-resolve",
+    ),
     path("reviews/", ReviewListView.as_view(), name="review-list"),
     path("reviews/<int:review_id>/", ReviewDetailView.as_view(), name="review-detail"),
     path(
