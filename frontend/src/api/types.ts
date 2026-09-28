@@ -240,6 +240,74 @@ export interface StaffAuditEvent {
   metadata: Record<string, unknown>;
 }
 
+export interface StaffOrganization {
+  id: number;
+  name: string;
+  slug: string;
+  organization_type: string;
+  status: string;
+  requires_identity_verification: boolean;
+  active_member_count?: number;
+}
+
+export interface StaffMembership {
+  id: number;
+  user: { id: number; email: string; display_name: string };
+  role: string;
+  status: string;
+  // Une adhesion non verifiee n'accorde rien : sans ce champ a l'ecran, un
+  // administrateur ne comprendra pas pourquoi un membre ne peut pas lire.
+  verification_status: string;
+  verification_method: string;
+  starts_at: string;
+  ends_at: string | null;
+}
+
+export interface StaffQuota {
+  id: number;
+  status: string;
+  seat_limit: number;
+  offer: { id: number; name: string };
+  contract_reference: string;
+  starts_at: string;
+  ends_at: string;
+}
+
+export interface StaffInstitutionReport {
+  id: number;
+  organization: { id: number; name: string; slug: string };
+  period: { start: string; end: string };
+  status: string;
+  // Agregats uniquement. Aucun champ ne nomme un lecteur : un test backend
+  // parcourt cette charge utile et echoue si une metriqueureure en ajoute un.
+  metrics: Record<string, unknown>;
+  generated_at: string;
+}
+
+export type TicketCategory = "support" | "document_report" | "withdrawal_request";
+
+export interface StaffTicket {
+  id: number;
+  category: TicketCategory;
+  status: string;
+  priority: string;
+  title: string;
+  description: string;
+  created_by: StaffPerson | null;
+  assigned_to: StaffPerson | null;
+  document: { id: number; title: string; slug: string } | null;
+  organization: { id: number; name: string } | null;
+  resolution_summary: string;
+  opened_at: string;
+  resolved_at: string | null;
+}
+
+export interface StaffTicketFilters {
+  category?: TicketCategory;
+  status?: string;
+  page?: number;
+}
+
 export interface StaffReviewFilters {
   status?: ReviewStatus;
   assigned?: "me" | "none" | "any";

@@ -89,13 +89,13 @@ Slice 4 of 4. Design: `docs/superpowers/specs/2026-09-27-bibliogabon-organizatio
 - Create: `frontend/src/routes/gestion/OrganizationsPage.tsx`, `.../OrganizationDetailPage.tsx`, `frontend/src/tests/staff-organizations.test.tsx`
 - Modify: the staff client, types, hooks, router and layout
 
-- [ ] Write failing tests: the list shows only administered organizations; the detail shows members with their verification status, quotas with contract references, and the usage report.
-- [ ] Write a failing test that an unverified membership is visibly marked — an admin who does not see it will not understand why a member cannot read.
-- [ ] Write failing tests: suspending a member asks for confirmation and reflects the result; a server refusal renders.
-- [ ] Write a failing test that no rendered screen shows a per-user reading record.
-- [ ] Implement.
-- [ ] Run `npm run test`.
-- [ ] Commit `feat: add the organization screens`.
+- [x] Write failing tests: the list shows only administered organizations; the detail shows members with their verification status, quotas with contract references, and the usage report.
+- [x] Write a failing test that an unverified membership is visibly marked — an admin who does not see it will not understand why a member cannot read.
+- [x] Write failing tests: suspending a member asks for confirmation and reflects the result; a server refusal renders.
+- [x] Write a failing test that no rendered screen shows a per-user reading record.
+- [x] Implement.
+- [x] Run `npm run test`.
+- [x] Commit `feat: add the organization screens`.
 
 ---
 

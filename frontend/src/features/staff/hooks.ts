@@ -2,23 +2,34 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   addDocumentAuthor,
+  addOrganizationMember,
   archiveStaffDocument,
   assignStaffReview,
+  assignStaffTicket,
   createStaffDocument,
   decideDocumentRights,
   decideStaffReview,
+  endOrganizationMember,
   declareDocumentRights,
   getDocumentAudit,
   getDocumentIngestion,
   getStaffIndex,
+  getOrganizationReport,
+  getStaffOrganization,
   getStaffReview,
+  listOrganizationMembers,
+  listOrganizationQuotas,
+  listStaffOrganizations,
   listStaffReviews,
+  listStaffTickets,
   openStaffReview,
+  resolveStaffTicket,
   getStaffDocument,
   listStaffDocuments,
   removeDocumentAuthor,
   searchStaffAuthors,
   submitStaffDocument,
+  suspendOrganizationMember,
   updateStaffDocument,
   withdrawStaffDocument
 } from "@/api/staff";
@@ -27,7 +38,8 @@ import type {
   RightsDecision,
   RightsDeclaration,
   StaffDocumentFilters,
-  StaffReviewFilters
+  StaffReviewFilters,
+  StaffTicketFilters
 } from "@/api/types";
 import { useAuth } from "@/auth/useAuth";
 
@@ -246,5 +258,128 @@ export function useArchiveStaffDocument(documentId: number) {
   return useReviewMutation(
     (reason: string, token) => archiveStaffDocument(documentId, reason, token),
     { documentId }
+  );
+}
+
+// --- Organisations ----------------------------------------------------------
+
+export function useStaffOrganizations() {
+  const token = useStaffToken();
+  return useQuery({
+    queryKey: ["staff", "organizations", token],
+    queryFn: ({ signal }) => listStaffOrganizations(token as string, signal),
+    enabled: Boolean(token)
+  });
+}
+
+export function useStaffOrganization(organizationId: number) {
+  const token = useStaffToken();
+  return useQuery({
+    queryKey: ["staff", "organization", organizationId, token],
+    queryFn: ({ signal }) => getStaffOrganization(organizationId, token as string, signal),
+    enabled: Boolean(token) && Number.isFinite(organizationId)
+  });
+}
+
+export function useOrganizationMembers(organizationId: number) {
+  const token = useStaffToken();
+  return useQuery({
+    queryKey: ["staff", "members", organizationId, token],
+    queryFn: ({ signal }) => listOrganizationMembers(organizationId, token as string, signal),
+    enabled: Boolean(token) && Number.isFinite(organizationId)
+  });
+}
+
+export function useOrganizationQuotas(organizationId: number) {
+  const token = useStaffToken();
+  return useQuery({
+    queryKey: ["staff", "quotas", organizationId, token],
+    queryFn: ({ signal }) => listOrganizationQuotas(organizationId, token as string, signal),
+    enabled: Boolean(token) && Number.isFinite(organizationId)
+  });
+}
+
+export function useOrganizationReport(
+  organizationId: number,
+  period: { from?: string; to?: string }
+) {
+  const token = useStaffToken();
+  return useQuery({
+    queryKey: ["staff", "report", organizationId, period, token],
+    queryFn: ({ signal }) =>
+      getOrganizationReport(organizationId, period, token as string, signal),
+    enabled: Boolean(token) && Number.isFinite(organizationId)
+  });
+}
+
+function useOrganizationMutation<TVariables, TResult>(
+  run: (variables: TVariables, token: string) => Promise<TResult>,
+  organizationId: number
+) {
+  const token = useStaffToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (variables: TVariables) => run(variables, token as string),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["staff", "members", organizationId] });
+      queryClient.invalidateQueries({ queryKey: ["staff", "organization", organizationId] });
+    }
+  });
+}
+
+export function useAddOrganizationMember(organizationId: number) {
+  return useOrganizationMutation(
+    (payload: { email: string; role: string }, token) =>
+      addOrganizationMember(organizationId, payload, token),
+    organizationId
+  );
+}
+
+export function useSuspendOrganizationMember(organizationId: number) {
+  return useOrganizationMutation(
+    ({ membershipId, reason }: { membershipId: number; reason: string }, token) =>
+      suspendOrganizationMember(organizationId, membershipId, reason, token),
+    organizationId
+  );
+}
+
+export function useEndOrganizationMember(organizationId: number) {
+  return useOrganizationMutation(
+    ({ membershipId, reason }: { membershipId: number; reason: string }, token) =>
+      endOrganizationMember(organizationId, membershipId, reason, token),
+    organizationId
+  );
+}
+
+// --- Support ----------------------------------------------------------------
+
+export function useStaffTickets(filters: StaffTicketFilters) {
+  const token = useStaffToken();
+  return useQuery({
+    queryKey: ["staff", "tickets", filters, token],
+    queryFn: ({ signal }) => listStaffTickets({ token: token as string, filters, signal }),
+    enabled: Boolean(token)
+  });
+}
+
+function useTicketMutation<TVariables, TResult>(
+  run: (variables: TVariables, token: string) => Promise<TResult>
+) {
+  const token = useStaffToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (variables: TVariables) => run(variables, token as string),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["staff", "tickets"] })
+  });
+}
+
+export function useAssignStaffTicket() {
+  return useTicketMutation((ticketId: number, token) => assignStaffTicket(ticketId, token));
+}
+
+export function useResolveStaffTicket() {
+  return useTicketMutation(
+    ({ ticketId, summary }: { ticketId: number; summary: string }, token) =>
+      resolveStaffTicket(ticketId, summary, token)
   );
 }

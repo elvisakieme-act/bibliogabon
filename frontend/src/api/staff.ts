@@ -10,8 +10,14 @@ import type {
   StaffIndex,
   StaffDocumentFilters,
   StaffIngestionStatus,
+  StaffInstitutionReport,
+  StaffMembership,
+  StaffOrganization,
+  StaffQuota,
   StaffReview,
-  StaffReviewFilters
+  StaffReviewFilters,
+  StaffTicket,
+  StaffTicketFilters
 } from "@/api/types";
 
 /**
@@ -238,6 +244,140 @@ export function getDocumentAudit(documentId: number, token: string, signal?: Abo
   return apiRequest<PaginatedResponse<StaffAuditEvent>>(documentPath(documentId, "audit/"), {
     token,
     signal
+  });
+}
+
+// --- Organisations ----------------------------------------------------------
+
+function organizationPath(organizationId: number, suffix = "") {
+  return `${BASE}/organizations/${organizationId}/${suffix}`;
+}
+
+export function listStaffOrganizations(token: string, signal?: AbortSignal) {
+  return apiRequest<PaginatedResponse<StaffOrganization>>(`${BASE}/organizations/`, {
+    token,
+    signal
+  });
+}
+
+export function getStaffOrganization(
+  organizationId: number,
+  token: string,
+  signal?: AbortSignal
+) {
+  return apiRequest<StaffOrganization>(organizationPath(organizationId), { token, signal });
+}
+
+export function listOrganizationMembers(
+  organizationId: number,
+  token: string,
+  signal?: AbortSignal
+) {
+  return apiRequest<PaginatedResponse<StaffMembership>>(
+    organizationPath(organizationId, "members/"),
+    { token, signal }
+  );
+}
+
+export function addOrganizationMember(
+  organizationId: number,
+  payload: { email: string; role: string },
+  token: string
+) {
+  return apiRequest<StaffMembership>(organizationPath(organizationId, "members/"), {
+    method: "POST",
+    token,
+    body: payload
+  });
+}
+
+export function suspendOrganizationMember(
+  organizationId: number,
+  membershipId: number,
+  reason: string,
+  token: string
+) {
+  return apiRequest<StaffMembership>(
+    organizationPath(organizationId, `members/${membershipId}/suspend/`),
+    { method: "POST", token, body: { reason } }
+  );
+}
+
+export function endOrganizationMember(
+  organizationId: number,
+  membershipId: number,
+  reason: string,
+  token: string
+) {
+  return apiRequest<StaffMembership>(
+    organizationPath(organizationId, `members/${membershipId}/end/`),
+    { method: "POST", token, body: { reason } }
+  );
+}
+
+export function listOrganizationQuotas(
+  organizationId: number,
+  token: string,
+  signal?: AbortSignal
+) {
+  return apiRequest<PaginatedResponse<StaffQuota>>(
+    organizationPath(organizationId, "quotas/"),
+    { token, signal }
+  );
+}
+
+export function getOrganizationReport(
+  organizationId: number,
+  period: { from?: string; to?: string },
+  token: string,
+  signal?: AbortSignal
+) {
+  const params = new URLSearchParams();
+  if (period.from) params.set("from", period.from);
+  if (period.to) params.set("to", period.to);
+  const query = params.toString();
+  return apiRequest<StaffInstitutionReport>(
+    `${organizationPath(organizationId, "report/")}${query ? `?${query}` : ""}`,
+    { token, signal }
+  );
+}
+
+// --- Support, signalements et demandes de retrait ---------------------------
+
+export function listStaffTickets({
+  token,
+  filters,
+  signal
+}: {
+  token: string;
+  filters?: StaffTicketFilters;
+  signal?: AbortSignal;
+}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters ?? {})) {
+    if (value === undefined || value === null || value === "") continue;
+    params.set(key, String(value));
+  }
+  const query = params.toString();
+  return apiRequest<PaginatedResponse<StaffTicket>>(
+    `${BASE}/tickets/${query ? `?${query}` : ""}`,
+    { token, signal }
+  );
+}
+
+export function assignStaffTicket(ticketId: number, token: string) {
+  return apiRequest<StaffTicket>(`${BASE}/tickets/${ticketId}/assign/`, {
+    method: "POST",
+    token,
+    body: {}
+  });
+}
+
+export function resolveStaffTicket(ticketId: number, resolutionSummary: string, token: string) {
+  return apiRequest<StaffTicket>(`${BASE}/tickets/${ticketId}/resolve/`, {
+    method: "POST",
+    token,
+    body: { resolution_summary: resolutionSummary }
   });
 }
 
