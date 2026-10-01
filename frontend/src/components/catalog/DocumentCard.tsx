@@ -47,13 +47,29 @@ export function DocumentCard({
             </button>
           ) : null}
         </div>
-        <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{document.abstract}</p>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full bg-[var(--navy-soft)] px-2.5 py-1 uppercase">
-            {document.language_code}
-          </span>
+        {authors ? <p className="mt-2 text-sm text-[var(--ink)]">{authors}</p> : null}
+        <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{document.abstract}</p>
+        {/* La nature du document ouvre la ligne : un cours, une thèse et un
+            sujet d'examen ne se lisent pas pour les mêmes raisons, et c'est
+            souvent elle qui décide qu'on ouvre ou non. La langue ne s'affiche
+            que lorsqu'elle sort de l'ordinaire : « FR » sur chaque carte d'une
+            bibliothèque francophone n'apprend rien et occupe la place de ce
+            qui en vaudrait la peine. */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {document.document_type ? (
+            <span className="font-semibold text-[var(--navy)]">
+              {document.document_type.name}
+            </span>
+          ) : null}
           {document.publication_year ? <span>{document.publication_year}</span> : null}
-          {authors ? <span>{authors}</span> : null}
+          {document.page_count ? (
+            <span>
+              {document.page_count} page{document.page_count > 1 ? "s" : ""}
+            </span>
+          ) : null}
+          {document.language_code !== "fr" ? (
+            <span className="uppercase">{document.language_code}</span>
+          ) : null}
         </div>
         {document.access.can_read ? (
           <a

@@ -41,6 +41,26 @@ function refuseWithFieldErrors(fieldErrors: Record<string, string[]>) {
   );
 }
 
+describe("page d'inscription", () => {
+  it("dit ce qu'un compte apporte, sur un grand écran comme sur un téléphone", async () => {
+    // On demandait trois champs sans dire ce qu'on y gagne — alors que la
+    // lecture libre, elle, n'en demande aucun. Les raisons vivaient dans un
+    // panneau masqué sous `lg`, c'est-à-dire absent là où se trouvent la
+    // plupart des lecteurs : elles sont donc écrites deux fois, et les deux
+    // doivent rester.
+    vi.stubGlobal("fetch", vi.fn());
+    renderAt("/inscription");
+    await screen.findByRole("button", { name: /Créer mon compte/i });
+
+    expect(screen.getAllByText(/Reprendre une lecture là où vous l'avez laissée/)).toHaveLength(
+      2
+    );
+    expect(screen.getAllByText(/rattachement vérifié/)).toHaveLength(2);
+    // Et l'on ne laisse pas croire qu'un compte est nécessaire pour lire.
+    expect(screen.getByText(/ne demande aucun compte/)).toBeInTheDocument();
+  });
+});
+
 describe("accessibilité des erreurs de formulaire", () => {
   it("associe une erreur de champ à son input à l'inscription", async () => {
     refuseWithFieldErrors({ email: ["Cette adresse est déjà utilisée."] });

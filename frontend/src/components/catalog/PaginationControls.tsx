@@ -25,6 +25,11 @@ export function PaginationControls({
 }) {
   const hasResults = response.count > 0;
   const totalPages = Math.max(1, Math.ceil(response.count / pageSize));
+  // Une seule page : pas de numéro, pas de flèches, pas de taille de page. Un
+  // « Page 1 sur 1 » encadré de deux boutons morts occupe la largeur de
+  // l'écran pour n'apprendre rien, et donne à six résultats l'allure d'un
+  // catalogue tronqué.
+  const parcourable = totalPages > 1;
 
   return (
     <nav
@@ -36,47 +41,49 @@ export function PaginationControls({
           ? `${response.count} résultat${response.count > 1 ? "s" : ""}`
           : "Aucun résultat"}
       </p>
-      <div className="flex items-center gap-2">
-        {response.previous ? (
-          <a
-            href={pageHref(path, params, page - 1, pageSize)}
-            className="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-[var(--navy)]"
-          >
-            Précédent
-          </a>
-        ) : (
-          <span className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
-            Précédent
+      {parcourable ? (
+        <div className="flex items-center gap-2">
+          {response.previous ? (
+            <a
+              href={pageHref(path, params, page - 1, pageSize)}
+              className="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-[var(--navy)]"
+            >
+              Précédent
+            </a>
+          ) : (
+            <span className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
+              Précédent
+            </span>
+          )}
+          <span className="text-sm text-muted-foreground">
+            Page {page} sur {totalPages}
           </span>
-        )}
-        <span className="text-sm text-muted-foreground">
-          Page {page} sur {totalPages}
-        </span>
-        {response.next ? (
-          <a
-            href={pageHref(path, params, page + 1, pageSize)}
-            className="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-[var(--navy)]"
+          {response.next ? (
+            <a
+              href={pageHref(path, params, page + 1, pageSize)}
+              className="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-[var(--navy)]"
+            >
+              Suivant
+            </a>
+          ) : (
+            <span className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
+              Suivant
+            </span>
+          )}
+          <select
+            aria-label="Résultats par page"
+            defaultValue={pageSize}
+            onChange={(event) => {
+              window.location.href = pageHref(path, params, 1, Number(event.target.value));
+            }}
+            className="rounded-lg border border-border bg-white px-2 py-2 text-sm"
           >
-            Suivant
-          </a>
-        ) : (
-          <span className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
-            Suivant
-          </span>
-        )}
-        <select
-          aria-label="Résultats par page"
-          defaultValue={pageSize}
-          onChange={(event) => {
-            window.location.href = pageHref(path, params, 1, Number(event.target.value));
-          }}
-          className="rounded-lg border border-border bg-white px-2 py-2 text-sm"
-        >
-          <option value="8">8</option>
-          <option value="12">12</option>
-          <option value="24">24</option>
-        </select>
-      </div>
+            <option value="8">8</option>
+            <option value="12">12</option>
+            <option value="24">24</option>
+          </select>
+        </div>
+      ) : null}
     </nav>
   );
 }

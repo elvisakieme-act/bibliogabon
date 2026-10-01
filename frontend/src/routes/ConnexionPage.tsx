@@ -43,7 +43,7 @@ export function ConnexionPage() {
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
       <section className="hidden bg-[var(--navy)] p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <Logo className="text-white" />
+        <Logo onDark />
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--gold)]">
             Espace lecteur
@@ -62,12 +62,7 @@ export function ConnexionPage() {
           <div className="mb-10 lg:hidden">
             <Logo />
           </div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--green)]">
-            Connexion
-          </p>
-          <h1 className="mt-3 font-display text-4xl font-semibold text-[var(--navy)]">
-            Bienvenue
-          </h1>
+          <h1 className="font-display text-4xl font-semibold text-[var(--navy)]">Bienvenue</h1>
           <form className="mt-8 space-y-5" onSubmit={onSubmit}>
             {error ? (
               <p

@@ -45,7 +45,14 @@ const FAUTES: Record<string, string> = {
   Agregats: "Agrégats",
   telecharger: "télécharger",
   renseigne: "renseigné",
-  affiche: "affiché"
+  affiche: "affiché",
+  // Trouvés après coup, sur une capture d'écran : la liste n'est pas une règle
+  // d'accentuation, elle s'allonge à chaque faute rencontrée.
+  academiques: "académiques",
+  academique: "académique",
+  reserve: "réservé",
+  deposants: "déposants",
+  moderation: "modération"
 };
 
 /**

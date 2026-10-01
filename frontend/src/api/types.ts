@@ -147,6 +147,13 @@ export interface SearchResult {
   cover: string | null;
   score: number;
   text_match: boolean;
+  /**
+   * Où le mot a été trouvé : « title », « authors », « domain », « type »,
+   * « abstract », « text ». Le score seul ne le dit pas — 5 et 1005 se lisent
+   * de la même façon — et un résultat qui ne doit sa présence qu'à une
+   * occurrence au fil du texte avait l'allure d'une correspondance de titre.
+   */
+  matched_in: string[];
 }
 
 export interface FavoriteItem {

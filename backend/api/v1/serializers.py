@@ -275,6 +275,7 @@ class SearchResultSerializer(serializers.Serializer):
     cover = serializers.CharField(read_only=True, allow_null=True)
     score = serializers.IntegerField(read_only=True)
     text_match = serializers.BooleanField(read_only=True)
+    matched_in = serializers.ListField(child=serializers.CharField(), read_only=True)
 
 
 class DocumentMetadataPageSerializer(serializers.Serializer):

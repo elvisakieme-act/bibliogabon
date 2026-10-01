@@ -226,7 +226,8 @@ describe("SearchResultCard", () => {
       indexed_page_count: 10,
       cover: null,
       score: 1,
-      text_match: false
+      text_match: false,
+      matched_in: ["title"]
     };
 
     render(<SearchResultCard result={result} />);
@@ -257,7 +258,8 @@ describe("SearchResultCard", () => {
       indexed_page_count: 3,
       cover: "/api/v1/catalog/documents/21/cover/",
       score: 1,
-      text_match: false
+      text_match: false,
+      matched_in: ["title"]
     };
 
     const { container } = render(<SearchResultCard result={result} />);

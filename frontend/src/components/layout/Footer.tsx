@@ -13,9 +13,7 @@ export function Footer() {
       <div className="h-1 gabon-stripe" aria-hidden="true" />
       <div className="container-editorial grid gap-10 py-12 md:grid-cols-[1.5fr_1fr]">
         <div>
-          <div className="inline-flex rounded-xl bg-white px-3 py-2">
-            <Logo className="text-[var(--navy)]" />
-          </div>
+          <Logo onDark />
           <p className="mt-4 max-w-md text-sm">
             La bibliothèque numérique des universités et grandes écoles de la République
             Gabonaise.

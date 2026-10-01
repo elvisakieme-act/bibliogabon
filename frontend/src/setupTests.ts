@@ -91,9 +91,14 @@ URL.revokeObjectURL = (url: string) => {
 /**
  * jsdom n'implémente pas `matchMedia`.
  *
- * OpenSeadragon l'interroge au démarrage. Sans lui, le lecteur entier échoue
- * — et l'échec se présente comme une absence d'élément, ce qui envoie la
- * recherche du défaut au mauvais endroit.
+ * `useMediaQuery` s'en sert pour suivre la largeur de l'écran : la double page
+ * du lecteur, qui se replie sous 768 px, et le panneau de filtres du catalogue,
+ * qui s'ouvre à partir de 1024 px. Sans le palliatif, les écrans concernés
+ * échouent — et l'échec se présente comme une absence d'élément, ce qui envoie
+ * la recherche du défaut au mauvais endroit.
+ *
+ * `matches: false` : la disposition la plus simple par défaut. Un test qui a
+ * besoin d'un écran large le déclare lui-même.
  */
 if (typeof window.matchMedia !== "function") {
   window.matchMedia = ((query: string) => ({

@@ -8,6 +8,21 @@ import { FieldErrors } from "@/components/ui/FieldErrors";
 import { fieldErrorProps } from "@/components/ui/fieldErrors";
 import { Logo } from "@/components/brand/Logo";
 
+/**
+ * Ce qu'un compte apporte réellement, et rien de plus.
+ *
+ * Chaque phrase correspond à quelque chose qui existe : la progression de
+ * lecture est enregistrée, la bibliothèque personnelle garde les favoris, et
+ * les documents réservés s'ouvrent par un rattachement vérifié — jamais
+ * déclaré par le lecteur lui-même, c'est l'établissement qui l'accorde.
+ * Promettre davantage à l'inscription se paie à la première déception.
+ */
+const AVANTAGES = [
+  "Reprendre une lecture là où vous l'avez laissée, d'un appareil à l'autre.",
+  "Garder dans votre bibliothèque les documents qui comptent pour vos travaux.",
+  "Ouvrir les documents réservés à votre établissement, une fois votre rattachement vérifié."
+];
+
 export function InscriptionPage() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -40,16 +55,53 @@ export function InscriptionPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background px-5 py-10 sm:py-16">
-      <div className="mx-auto w-full max-w-md">
-        <Logo />
-        <section className="mt-10 border border-border bg-white p-6 shadow-editorial sm:p-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--green)]">
-            Créer un compte
-          </p>
-          <h1 className="mt-3 font-display text-3xl font-semibold text-[var(--navy)]">
+    <main className="grid min-h-screen lg:grid-cols-2">
+      {/* Ce que donne un compte, et rien d'autre. La page ne le disait pas : on
+          demandait trois champs à un étudiant sans lui dire ce qu'il y gagne,
+          et la lecture libre, elle, n'en demande aucun. Les trois phrases sont
+          tenues par du code — progression, favoris, droits d'établissement. */}
+      <section className="hidden bg-[var(--navy)] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <Logo onDark />
+        <div>
+          <h2 className="max-w-md font-display text-4xl font-semibold leading-tight">
+            Un compte garde vos lectures.
+          </h2>
+          <ul className="mt-8 max-w-md space-y-5 text-white/80">
+            {AVANTAGES.map((avantage) => (
+              <li key={avantage} className="flex gap-4">
+                <span aria-hidden="true" className="mt-2 h-px w-6 shrink-0 bg-[var(--gold)]" />
+                <span className="leading-relaxed">{avantage}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="text-sm text-white/60">
+          La lecture des documents en accès libre ne demande aucun compte.
+        </p>
+      </section>
+      <section className="flex items-center justify-center bg-background px-5 py-12">
+        <div className="w-full max-w-md">
+          <div className="mb-10 lg:hidden">
+            <Logo />
+          </div>
+          <h1 className="font-display text-4xl font-semibold text-[var(--navy)]">
             Rejoindre BiblioGABON
           </h1>
+          {/* Les mêmes raisons, sous le titre, quand le panneau n'a pas la
+              place de s'afficher. Le masquer sous `lg` rendait l'inscription à
+              trois champs sans motif — sur les écrans où se trouvent la plupart
+              des lecteurs. */}
+          <ul className="mt-5 space-y-2 text-sm text-muted-foreground lg:hidden">
+            {AVANTAGES.map((avantage) => (
+              <li key={avantage} className="flex gap-3">
+                <span
+                  aria-hidden="true"
+                  className="mt-2.5 h-px w-4 shrink-0 bg-[var(--gold)]"
+                />
+                <span>{avantage}</span>
+              </li>
+            ))}
+          </ul>
           <form className="mt-7 space-y-5" onSubmit={onSubmit}>
             {error ? (
               <p
@@ -109,8 +161,8 @@ export function InscriptionPage() {
               Se connecter
             </Link>
           </p>
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }

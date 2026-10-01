@@ -141,33 +141,59 @@ def _bounded_limit(limit: int) -> int:
     return min(limit, 50)
 
 
-def _score_index(index: DocumentSearchIndex, normalized_query: str) -> tuple[int, bool]:
+# Les champs qui ont répondu à la recherche, dans l'ordre où ils comptent.
+#
+# Le score seul ne dit pas *où* le mot a été trouvé : 5 et 1005 se lisent de la
+# même façon sur un écran, et un résultat qui ne doit sa présence qu'à une
+# occurrence au fil du texte avait exactement l'allure d'une correspondance de
+# titre. Décomposer le score côté écran reviendrait à recopier ce barème
+# ailleurs ; on nomme donc les champs ici, là où ils sont évalués.
+MATCH_TITLE = "title"
+MATCH_AUTHORS = "authors"
+MATCH_DOMAIN = "domain"
+MATCH_TYPE = "type"
+MATCH_ABSTRACT = "abstract"
+MATCH_TEXT = "text"
+
+
+def _score_index(
+    index: DocumentSearchIndex, normalized_query: str
+) -> tuple[int, bool, list[str]]:
     if not normalized_query:
-        return 0, False
+        return 0, False, []
 
     score = 0
+    matched: list[str] = []
     if _contains(index.title, normalized_query):
         score += 1000
+        matched.append(MATCH_TITLE)
     if _contains(index.author_names, normalized_query):
         score += 100
+        matched.append(MATCH_AUTHORS)
     if _contains(index.domain_name, normalized_query) or _contains(
         index.domain_slug, normalized_query
     ):
         score += 50
+        matched.append(MATCH_DOMAIN)
     if _contains(index.type_name, normalized_query) or _contains(
         index.type_slug, normalized_query
     ):
         score += 40
+        matched.append(MATCH_TYPE)
     if _contains(index.abstract, normalized_query):
         score += 20
+        matched.append(MATCH_ABSTRACT)
 
     text_match = _contains(index.page_text, normalized_query)
     if text_match:
         score += 5
-    return score, text_match
+        matched.append(MATCH_TEXT)
+    return score, text_match, matched
 
 
-def _result_payload(index: DocumentSearchIndex, *, score: int, text_match: bool) -> dict:
+def _result_payload(
+    index: DocumentSearchIndex, *, score: int, text_match: bool, matched_in: list[str]
+) -> dict:
     academic_domain = None
     if index.domain_name or index.domain_slug:
         academic_domain = {
@@ -196,6 +222,8 @@ def _result_payload(index: DocumentSearchIndex, *, score: int, text_match: bool)
         "indexed_page_count": index.indexed_page_count,
         "score": score,
         "text_match": text_match,
+        # Où le mot a été trouvé, pour que le résultat puisse se justifier.
+        "matched_in": matched_in,
     }
 
 
@@ -241,8 +269,10 @@ def search_documents(
 
     results = []
     for index in indexes:
-        score, text_match = _score_index(index, normalized_query)
-        results.append(_result_payload(index, score=score, text_match=text_match))
+        score, text_match, matched_in = _score_index(index, normalized_query)
+        results.append(
+            _result_payload(index, score=score, text_match=text_match, matched_in=matched_in)
+        )
 
     results.sort(
         key=lambda result: (-result["score"], result["title"].lower(), result["document_id"])

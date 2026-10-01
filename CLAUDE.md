@@ -247,6 +247,14 @@ existing row, so a demo that suspended a member left the dataset broken with no
 way back. Beware `manage.py seed_demo | head`: SIGPIPE kills it mid-transaction
 and nothing is committed.
 
+### Public journey
+
+The catalogue list endpoint takes **no filter at all** — no domain, no language, no year, no ordering — so the catalogue's filter panel submits to `/recherche`, which does support them, and the document page reaches its domain neighbours the same way. Search results carry `matched_in`, the fields that actually answered: the scale notes a title match a thousand times higher than a word met in passing (1075 against 5), and without it both rendered identically, so a search for "droit" looked like it returned the whole catalogue. The fields are named where the scale is applied, never decomposed on the screen — two copies of one scale drift apart.
+
+A document page answers in the order the questions are asked: what it is (the academic nature — course, thesis, dissertation, exam paper — which travelled in the payload for months without ever being displayed), who wrote it and where, what it holds, **what the access allows in plain words** (`institution_only` teaches a student nothing), how to cite it, and what else shares its domain. The two statements that bind the platform — what the access allows, and the reference to copy — are pure functions with their own tests, and the reference **omits** what is missing rather than fabricating it: an "s.d." or an "anonyme" gets copied into a bibliography and becomes true there.
+
+Displayed French carries its accents, and `src/tests/accents.test.ts` enforces it: it reads the text of JSX nodes and the props that reach the screen, never a URL segment or a class name (`/bibliotheque` is an address, not a word). A fix had already claimed to restore them; proof-reading by eye caught part and left about thirty strings, including the pagination bar that shows on every listing. A spelling mistake breaks nothing and no test falls — which is exactly why it survives.
+
 ### Frontend
 
 TanStack Router routes declared centrally in `src/router.tsx` (French URL segments: `/connexion`, `/recherche`, `/lecture/...`, `/bibliotheque`). Layers: `src/api/` (typed fetch wrappers over `apiRequest`, which unwraps the error envelope into `ApiError`), `src/features/<domain>/hooks.ts` (TanStack Query hooks), `src/routes/` (pages), `src/components/` (presentational). Auth state lives in `src/auth/` — `AuthProvider.tsx` holds the provider, `authContext.ts` the context and `useAuth.ts` the hook. They are three files on purpose: a module exporting both a component and a value breaks hot-reload granularity, and `npm run lint` is silent so a new mix shows up immediately. JWT access/refresh live in `localStorage` via `tokenStore`; a 401 dispatches `UNAUTHORIZED_EVENT` so the provider can clear the session, and `guards.tsx` redirects to `/connexion?next=...`. Import alias `@/` → `src/`.

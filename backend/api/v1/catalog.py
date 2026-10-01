@@ -365,6 +365,7 @@ class SearchView(APIView):
                 "indexed_page_count": result["indexed_page_count"],
                 "score": result["score"],
                 "text_match": result["text_match"],
+                "matched_in": result["matched_in"],
             }
             for result in results
         ]

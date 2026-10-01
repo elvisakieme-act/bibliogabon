@@ -4,6 +4,7 @@ import { CatalogFilters } from "@/components/catalog/CatalogFilters";
 import { DocumentCard } from "@/components/catalog/DocumentCard";
 import { PaginationControls } from "@/components/catalog/PaginationControls";
 import { SiteLayout } from "@/components/layout/SiteLayout";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDocuments, useDomains } from "@/features/catalog/hooks";
@@ -14,6 +15,9 @@ export function CatalogPage() {
   const { page, pageSize } = paginationFromSearch(location.searchStr);
   const documents = useDocuments({ page, page_size: pageSize });
   const domains = useDomains();
+  // `lg` de Tailwind : la largeur à partir de laquelle la grille offre une
+  // colonne au panneau.
+  const large = useMediaQuery("(min-width: 1024px)");
 
   return (
     <SiteLayout>
@@ -23,15 +27,36 @@ export function CatalogPage() {
           Catalogue
         </h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
-          Parcourez les publications academiques accessibles sur BiblioGABON.
+          Parcourez les publications académiques accessibles sur BiblioGABON.
         </p>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
+          {/* Replié sur un téléphone, ouvert dès qu'il y a une colonne pour lui.
+              Déployé partout, le panneau occupait tout le premier écran à
+              390 px : on arrivait sur un catalogue sans voir un seul document,
+              c'est-à-dire sur un formulaire.
+
+              L'ouverture suit la largeur de l'écran plutôt qu'une classe : un
+              `<details>` fermé n'est pas seulement masqué, le navigateur en
+              saute le rendu, et aucune règle de feuille de style ne l'en
+              dispense — le panneau restait vide sur grand écran alors que le
+              DOM, lui, le disait bien là. Vu à l'écran ; jsdom n'applique
+              aucune feuille de style, pas même celle du navigateur. */}
           <aside
             aria-label="Filtres du catalogue"
             className="lg:sticky lg:top-24 lg:self-start"
           >
-            <CatalogFilters values={{}} domains={domains.data?.results} variant="sidebar" />
+            <details
+              open={large}
+              className="rounded-lg border border-border bg-white shadow-editorial lg:border-0 lg:bg-transparent lg:shadow-none"
+            >
+              <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-[var(--navy)] lg:hidden">
+                Affiner la recherche
+              </summary>
+              <div className="border-t border-border p-5 lg:border-0 lg:p-0">
+                <CatalogFilters values={{}} domains={domains.data?.results} variant="sidebar" />
+              </div>
+            </details>
           </aside>
 
           <div className="min-w-0">

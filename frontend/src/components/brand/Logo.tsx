@@ -17,6 +17,15 @@ interface LogoProps {
    * jsdom ne met rien en page.
    */
   compact?: boolean;
+  /**
+   * Fond sombre : la marque reçoit son cartouche blanc.
+   *
+   * Le symbole est une image aux couleurs du drapeau, pensée pour le blanc.
+   * Posée telle quelle sur le marine des panneaux d'identification, elle
+   * disparaît — le mot-symbole reste lisible et le symbole devient une tache.
+   * Le pied de page le faisait déjà à la main ; c'est nommé ici une fois.
+   */
+  onDark?: boolean;
   className?: string;
 }
 
@@ -24,6 +33,7 @@ export function Logo({
   withWordmark = true,
   linkToHome = true,
   compact = false,
+  onDark = false,
   className
 }: LogoProps) {
   const content = (
@@ -36,7 +46,15 @@ export function Logo({
       ) : null}
     </>
   );
-  const shared = `inline-flex items-center gap-2 ${className ?? ""}`;
+  const shared = [
+    "inline-flex items-center gap-2",
+    // `self-start` : dans une colonne flex, un `inline-flex` s'étire sur toute
+    // la largeur et le cartouche devenait une bande blanche d'un bord à l'autre.
+    onDark ? "self-start rounded-xl bg-white px-3 py-2 text-[var(--navy)]" : "",
+    className ?? ""
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   if (!linkToHome) {
     return (

@@ -249,6 +249,7 @@ def test_search_documents_returns_safe_payload_and_enforces_limit():
         "indexed_page_count",
         "score",
         "text_match",
+        "matched_in",
     }
     assert payload["authors"] == ["Brice ONDO"]
     assert "page_text" not in payload
@@ -278,3 +279,47 @@ def test_discoverability_is_one_rule_not_two():
             assert document_is_discoverable(document) == document_is_reader_accessible(
                 document
             ), f"divergence sur {status}/{access}"
+
+
+@pytest.mark.django_db
+def test_search_says_where_each_match_was_found():
+    """Le résultat porte les champs qui ont répondu, pas seulement un score.
+
+    Un document dont le mot n'apparaît qu'au fil du texte vaut 5, un document
+    dont le titre le porte en vaut 1005 — et les deux s'affichaient de la même
+    façon. Décomposer le barème côté écran reviendrait à le recopier ailleurs :
+    c'est ici, là où il est appliqué, que les champs sont nommés.
+    """
+    from search_discovery.services import search_documents
+
+    titre = create_document(slug="match-titre", title="Droit public gabonais")
+    rebuild_document_search_index(titre)
+
+    texte = create_document(slug="match-texte", title="Botanique équatoriale")
+    add_processed_text(texte, "Une mention du droit coutumier au détour d'une page.")
+    rebuild_document_search_index(texte)
+
+    resultats = {r["slug"]: r for r in search_documents(query="droit")}
+
+    assert resultats["match-titre"]["matched_in"] == ["title"]
+    # Celui-ci n'est là que par son texte : c'est ce que le lecteur doit voir.
+    assert resultats["match-texte"]["matched_in"] == ["text"]
+    assert resultats["match-titre"]["score"] > resultats["match-texte"]["score"]
+
+
+@pytest.mark.django_db
+def test_search_without_query_claims_no_match():
+    """Filtrer n'est pas trouver.
+
+    Une liste filtrée par domaine n'a répondu à aucun mot : annoncer une
+    correspondance ferait croire à une pertinence qui n'a pas été calculée.
+    """
+    from search_discovery.services import search_documents
+
+    document = create_document(slug="sans-requete", title="Anthropologie")
+    rebuild_document_search_index(document)
+
+    (resultat,) = search_documents(domain_slug="education")
+
+    assert resultat["matched_in"] == []
+    assert resultat["score"] == 0

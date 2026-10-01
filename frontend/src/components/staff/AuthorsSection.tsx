@@ -152,8 +152,8 @@ export function AuthorsSection({
         Rattacher l&apos;auteur
       </button>
       <p className="text-xs text-[var(--muted-foreground)]">
-        Un auteur absent du registre doit y être ajoute par la moderation : le registre des
-        contributeurs est commun a tout le catalogue.
+        Un auteur absent du registre doit y être ajouté par la modération : le registre des
+        contributeurs est commun à tout le catalogue.
       </p>
     </section>
   );

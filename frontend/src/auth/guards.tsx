@@ -63,7 +63,7 @@ export function RequireRole({
     return (
       <EmptyState
         title="Vous n'avez pas accès à cet espace"
-        description="L'espace de gestion est reserve aux enseignants deposants, aux administrateurs d'organisation et a la moderation BiblioGABON."
+        description="L'espace de gestion est réservé aux enseignants déposants, aux administrateurs d'organisation et à la modération BiblioGABON."
       />
     );
   }

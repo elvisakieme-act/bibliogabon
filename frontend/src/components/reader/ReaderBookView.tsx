@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ReaderPageSurface } from "@/components/reader/ReaderPageSurface";
 import { ReaderPageTurn } from "@/components/reader/ReaderPageTurn";
 import { leadingPage, spreadOfPage, toSpreads } from "@/components/reader/spreads";
@@ -23,30 +24,6 @@ import type { IiifManifest } from "@/features/reader/manifest";
  */
 const NARROW = 768;
 
-/**
- * L'écran est-il trop étroit pour deux pages ?
- *
- * Interrogé en continu, pas une fois au premier rendu : lu une seule fois,
- * faire pivoter un téléphone de portrait à paysage ne changeait rien, et la
- * double page restait coupée en deux alors que la place existait.
- */
-function useNarrowScreen(): boolean {
-  const [narrow, setNarrow] = useState(
-    () => typeof window !== "undefined" && window.innerWidth < NARROW
-  );
-
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const query = window.matchMedia(`(max-width: ${NARROW - 1}px)`);
-    const update = () => setNarrow(query.matches);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
-
-  return narrow;
-}
-
 export function ReaderBookView({
   sessionKey,
   manifest,
@@ -61,7 +38,7 @@ export function ReaderBookView({
   onVisiblePage(pageNumber: number): void;
 }) {
   const spreads = toSpreads(manifest.items);
-  const narrow = useNarrowScreen();
+  const narrow = useMediaQuery(`(max-width: ${NARROW - 1}px)`);
   const index = narrow
     ? Math.max(
         0,
