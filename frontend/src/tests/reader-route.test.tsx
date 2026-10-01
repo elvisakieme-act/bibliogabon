@@ -185,7 +185,7 @@ describe("secure reader route", () => {
 
     // La barre annonce la page reprise : le visualiseur rend des tuiles, il
     // n'y a plus de texte de page à chercher dans le document.
-    expect(await screen.findByText("2 / 2")).toBeInTheDocument();
+    expect(await screen.findByText("Page 2 sur 2")).toBeInTheDocument();
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain(
       "http://127.0.0.1:8000/api/v1/reader/sessions/session-resume/pages/2/"
     );
@@ -255,11 +255,19 @@ describe("secure reader route", () => {
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
+    window.localStorage.setItem(
+      "bibliogabon.lecteur",
+      JSON.stringify({ mode: "horizontal", zoom: 1 })
+    );
 
     renderLectureRoute();
-    expect(await screen.findByText("1 / 2")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /Page suivante/i }));
-    expect(await screen.findByText("2 / 2")).toBeInTheDocument();
+    // Les flèches vivent dans le document et n'existent qu'en lecture
+    // horizontale ou en double page : en défilement vertical, on tourne la
+    // page en faisant défiler. Le test se place donc dans le mode où le geste
+    // existe.
+    expect(await screen.findByText("Page 1 sur 2")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Page suivante" }));
+    expect(await screen.findByText("Page 2 sur 2")).toBeInTheDocument();
 
     await waitFor(() => {
       const progressCall = fetchMock.mock.calls.find(
@@ -388,7 +396,7 @@ describe("secure reader route", () => {
     renderLectureRoute();
     await userEvent.click(await screen.findByRole("button", { name: "Reessayer" }));
 
-    await waitFor(() => expect(screen.getByText("1 / 2")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Page 1 sur 2")).toBeInTheDocument());
     const requests = fetchMock.mock.calls.map(
       ([url, init]) => `${(init as RequestInit | undefined)?.method ?? "GET"} ${String(url)}`
     );

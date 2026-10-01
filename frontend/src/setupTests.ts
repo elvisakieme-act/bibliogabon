@@ -98,3 +98,63 @@ if (typeof window.matchMedia !== "function") {
     dispatchEvent: () => false
   })) as unknown as typeof window.matchMedia;
 }
+
+/**
+ * jsdom n'implémente pas `<dialog>.showModal()`.
+ *
+ * Les options d'affichage du lecteur reposent sur l'élément natif, qui
+ * apporte le piège de focus, la fermeture par Échap et l'inertie de la page —
+ * quatre comportements qu'une modale en `<div>` doit réimplémenter. Le
+ * palliatif reproduit l'ouverture et la fermeture, pas l'isolation : ce que
+ * les tests vérifient ici, c'est le contenu et les choix, pas le
+ * comportement du navigateur.
+ */
+if (typeof HTMLDialogElement !== "undefined" && !HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function showModal() {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close = function close() {
+    this.open = false;
+    this.dispatchEvent(new Event("close"));
+  };
+}
+
+/**
+ * jsdom n'implémente pas `PointerEvent`.
+ *
+ * Sans lui, un événement de pointeur est fabriqué comme un `Event` nu :
+ * `clientX` ne voyage pas, et un geste de glissement arrive au gestionnaire
+ * sans coordonnées. Le test échoue alors sur « le geste n'a rien fait »,
+ * ce qui envoie la recherche du défaut vers le composant plutôt que vers
+ * l'environnement.
+ */
+if (typeof window.PointerEvent === "undefined") {
+  class TestPointerEvent extends MouseEvent {
+    readonly pointerId: number;
+    readonly pointerType: string;
+    readonly isPrimary: boolean;
+
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+      this.pointerType = init.pointerType ?? "mouse";
+      this.isPrimary = init.isPrimary ?? true;
+    }
+  }
+  window.PointerEvent = TestPointerEvent as unknown as typeof PointerEvent;
+  globalThis.PointerEvent = window.PointerEvent;
+}
+
+/**
+ * jsdom n'implémente pas la capture de pointeur.
+ *
+ * Les coins de page du mode livre s'en servent pour que le déplacement ne
+ * parte pas au visualiseur en dessous, qui le prendrait pour un panoramique.
+ * Sans palliatif, le geste lève une exception et le test échoue sur la
+ * conséquence plutôt que sur la cause.
+ */
+if (typeof Element !== "undefined" && !Element.prototype.setPointerCapture) {
+  Element.prototype.setPointerCapture = () => {};
+  Element.prototype.releasePointerCapture = () => {};
+  Element.prototype.hasPointerCapture = () => false;
+}

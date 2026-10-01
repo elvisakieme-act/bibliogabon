@@ -249,12 +249,13 @@ describe("reader route", () => {
       </QueryClientProvider>
     );
 
-    // Le lecteur occupe désormais tout l'écran : le titre est porté par sa
-    // barre, et la sortie doit être visible en permanence — sur un écran
+    // Le lecteur occupe tout l'écran : sa barre porte la sortie, la position
+    // et la marque. La sortie doit être visible en permanence — sur un écran
     // tactile il n'y a pas de survol, et une barre qui se cache oblige à
     // tâtonner pour quitter.
-    expect(await screen.findByRole("heading", { name: document.title })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Quitter/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Retour/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("BiblioGABON")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Affichage/i })).toBeInTheDocument();
   });
 });
 

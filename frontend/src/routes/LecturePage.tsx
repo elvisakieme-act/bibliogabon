@@ -5,7 +5,9 @@ import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
 import type OpenSeadragon from "openseadragon";
 
+import { ReaderDisplayOptions } from "@/components/reader/ReaderDisplayOptions";
 import { ReaderPage } from "@/components/reader/ReaderPage";
+import { ReaderPageTurn } from "@/components/reader/ReaderPageTurn";
 import { ReaderTextOverlays } from "@/components/reader/ReaderTextOverlays";
 import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
 import { ReaderViewport } from "@/components/reader/ReaderViewport";
@@ -68,6 +70,7 @@ export function LecturePage() {
   // `info.json` — et journaliserait le document entier comme lu.
   const manifest = useReaderManifest(sessionKey);
   const [viewer, setViewer] = useState<OpenSeadragon.Viewer | null>(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   // Lues une seule fois : `localStorage` peut échouer, et le relire à chaque
   // rendu transformerait un stockage refusé en boucle de rendus.
   const [mode, setMode] = useState<ScrollMode>(DEFAULT_MODE);
@@ -246,18 +249,25 @@ export function LecturePage() {
     // se retrouverait hors de l'écran.
     <div className="fixed inset-0 z-50 flex h-dvh flex-col bg-[var(--navy-soft)]">
       <ReaderToolbar
-        title={document.data?.title ?? "Lecture"}
         pageNumber={pageNumber}
         pageCount={pageCount}
+        onClose={() => void returnToDocument()}
+        onOpenOptions={() => setOptionsOpen(true)}
+      />
+
+      <ReaderDisplayOptions
+        open={optionsOpen}
         mode={mode}
         zoom={zoom}
+        onClose={() => setOptionsOpen(false)}
         onModeChange={applyMode}
         onZoomChange={applyZoom}
-        onPrevious={() => setPageNumber((current) => Math.max(1, current - 1))}
-        onNext={() => setPageNumber((current) => Math.min(pageCount, current + 1))}
-        onClose={() => void returnToDocument()}
       />
-      <div className="min-h-0 flex-1">
+
+      {/* `relative` : les flèches et les coins se placent par rapport au
+          document, pas à la fenêtre — la barre du haut occupe une hauteur
+          qu'ils ne doivent pas ignorer. */}
+      <div className="relative min-h-0 flex-1">
         {manifest.data && manifest.data.items.length > 0 && sessionKey ? (
           <>
             <ReaderViewport
@@ -273,6 +283,13 @@ export function LecturePage() {
               manifest={manifest.data}
               sessionKey={sessionKey}
               pageNumber={pageNumber}
+            />
+            <ReaderPageTurn
+              mode={mode}
+              canGoBack={pageNumber > 1}
+              canGoForward={pageNumber < pageCount}
+              onPrevious={() => setPageNumber((current) => Math.max(1, current - 1))}
+              onNext={() => setPageNumber((current) => Math.min(pageCount, current + 1))}
             />
           </>
         ) : manifest.isPending ? (

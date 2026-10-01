@@ -177,11 +177,18 @@ export function ReaderViewport({
   return <div ref={host} className="h-full w-full bg-[var(--navy-soft)]" />;
 }
 
-// Espace entre deux pages, en fraction de la largeur d'une page. Nul entre
-// les deux pages d'une double : c'est ce contact qui fait lire un livre
-// plutôt que deux images côte à côte.
-const PAGE_GAP = 0.06;
-const SPREAD_GAP = 0.24;
+// Espaces entre les pages, en fraction de la largeur d'une page.
+//
+// Nul entre les deux pages d'une double : c'est ce contact qui fait lire un
+// livre plutôt que deux images côte à côte.
+//
+// Large entre deux doubles, en revanche, et large aussi en défilement
+// horizontal : ces deux modes montrent **une chose à la fois**, et un écart
+// serré laissait la page voisine entrer dans le cadre — on lisait une page et
+// demie, ce qui n'est ni l'un ni l'autre.
+const VERTICAL_GAP = 0.06;
+const HORIZONTAL_GAP = 0.5;
+const SPREAD_GAP = 1.2;
 
 /**
  * Place chaque page dans le monde du visualiseur.
@@ -203,10 +210,10 @@ function layoutPages(viewer: OpenSeadragon.Viewer, manifest: IiifManifest, mode:
     item.setWidth(1, true);
     if (mode === "vertical") {
       item.setPosition(new OpenSeadragon.Point(0, offset), true);
-      offset += height + PAGE_GAP;
+      offset += height + VERTICAL_GAP;
     } else if (mode === "horizontal") {
       item.setPosition(new OpenSeadragon.Point(offset, 0), true);
-      offset += 1 + PAGE_GAP;
+      offset += 1 + HORIZONTAL_GAP;
     } else {
       // La première page se présente seule, comme un livre qu'on ouvre ; les
       // suivantes vont par paires, pages paires à gauche — la convention de

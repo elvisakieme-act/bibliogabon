@@ -1,12 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { AuthProvider } from "@/auth/AuthProvider";
-import { render as baseRender, screen, within } from "@testing-library/react";
+import { fireEvent, render as baseRender, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ReaderPage as ReaderPagePayload } from "@/api/types";
 import { ReaderPage } from "@/components/reader/ReaderPage";
+import { ReaderDisplayOptions } from "@/components/reader/ReaderDisplayOptions";
+import { ReaderPageTurn } from "@/components/reader/ReaderPageTurn";
 import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
 import {
   DEFAULT_MODE,
@@ -75,74 +77,182 @@ function page(overrides: Partial<ReaderPagePayload> = {}): ReaderPagePayload {
 describe("barre du lecteur", () => {
   function renderToolbar(overrides: Partial<Parameters<typeof ReaderToolbar>[0]> = {}) {
     const props = {
-      title: "Thèse",
       pageNumber: 2,
       pageCount: 5,
-      mode: DEFAULT_MODE,
-      zoom: DEFAULT_ZOOM,
-      onModeChange: vi.fn(),
-      onZoomChange: vi.fn(),
-      onPrevious: vi.fn(),
-      onNext: vi.fn(),
       onClose: vi.fn(),
+      onOpenOptions: vi.fn(),
       ...overrides
     };
     render(<ReaderToolbar {...props} />);
     return props;
   }
 
-  it("propose les trois sens de défilement", () => {
+  it("porte la sortie, la position et la marque, et rien d'autre", () => {
+    // Une barre qui expose tous les réglages les met au même rang que la
+    // lecture, et n'en laisse plus la place sur un téléphone.
     renderToolbar();
-    const group = screen.getByRole("group", { name: "Sens de défilement" });
 
-    expect(
-      within(group).getByRole("button", { name: "Défilement vertical" })
-    ).toBeInTheDocument();
-    expect(
-      within(group).getByRole("button", { name: "Défilement horizontal" })
-    ).toBeInTheDocument();
-    expect(within(group).getByRole("button", { name: "Double page" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Retour/i })).toBeInTheDocument();
+    expect(screen.getByText("Page 2 sur 5")).toBeInTheDocument();
+    expect(screen.getByLabelText("BiblioGABON")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Affichage/i })).toBeInTheDocument();
+
+    expect(screen.queryByRole("button", { name: "Page suivante" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Zoom" })).not.toBeInTheDocument();
+  });
+
+  it("annonce la position quand elle change", () => {
+    // En défilement continu, la position change sans qu'aucun bouton n'ait
+    // été actionné : sans `aria-live`, un lecteur d'écran ne l'apprend jamais.
+    renderToolbar();
+
+    expect(screen.getByText("Page 2 sur 5")).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("ne fait pas de la marque une seconde sortie", () => {
+    // Un logo cliquable quitterait la lecture sans que rien l'annonce, en
+    // concurrence du bouton « Retour ».
+    renderToolbar();
+
+    expect(screen.queryByRole("link", { name: "BiblioGABON" })).not.toBeInTheDocument();
+  });
+
+  it("ouvre les options d'affichage", async () => {
+    const props = renderToolbar();
+    await userEvent.click(screen.getByRole("button", { name: /Affichage/i }));
+
+    expect(props.onOpenOptions).toHaveBeenCalled();
+  });
+
+  it("garde la sortie visible en permanence", async () => {
+    const props = renderToolbar();
+    await userEvent.click(screen.getByRole("button", { name: /Retour/i }));
+
+    expect(props.onClose).toHaveBeenCalled();
+  });
+});
+
+describe("options d'affichage", () => {
+  function renderOptions(overrides: Partial<Parameters<typeof ReaderDisplayOptions>[0]> = {}) {
+    const props = {
+      open: true,
+      mode: DEFAULT_MODE,
+      zoom: DEFAULT_ZOOM,
+      onClose: vi.fn(),
+      onModeChange: vi.fn(),
+      onZoomChange: vi.fn(),
+      ...overrides
+    };
+    render(<ReaderDisplayOptions {...props} />);
+    return props;
+  }
+
+  it("propose les trois sens de lecture", () => {
+    renderOptions();
+
+    expect(screen.getByRole("button", { name: /Défilement vertical/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Défilement horizontal/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Double page/ })).toBeInTheDocument();
   });
 
   it("annonce le sens actif aux technologies d'assistance", () => {
     // `aria-pressed` et non une simple couleur : un utilisateur de lecteur
     // d'écran doit savoir dans quel mode il se trouve.
-    renderToolbar({ mode: "livre" });
+    renderOptions({ mode: "livre" });
 
-    expect(screen.getByRole("button", { name: "Double page" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /Double page/ })).toHaveAttribute(
       "aria-pressed",
       "true"
     );
-    expect(screen.getByRole("button", { name: "Défilement vertical" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /Défilement vertical/ })).toHaveAttribute(
       "aria-pressed",
       "false"
     );
   });
 
   it("change de sens quand on le demande", async () => {
-    const props = renderToolbar();
-    await userEvent.click(screen.getByRole("button", { name: "Défilement horizontal" }));
+    const props = renderOptions();
+    await userEvent.click(screen.getByRole("button", { name: /Défilement horizontal/ }));
 
     expect(props.onModeChange).toHaveBeenCalledWith("horizontal");
   });
 
-  it("bloque la navigation aux extrémités", () => {
-    renderToolbar({ pageNumber: 1 });
-    expect(screen.getByRole("button", { name: "Page précédente" })).toBeDisabled();
-  });
-
   it("bloque le zoom aux extrémités de l'échelle", () => {
-    // Sans cela, un lecteur peut continuer à cliquer sans rien obtenir.
-    renderToolbar({ zoom: ZOOM_STEPS[ZOOM_STEPS.length - 1] });
+    renderOptions({ zoom: ZOOM_STEPS[ZOOM_STEPS.length - 1] });
+
     expect(screen.getByRole("button", { name: "Agrandir" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Réduire" })).toBeEnabled();
   });
+});
 
-  it("garde la sortie visible en permanence", async () => {
-    const props = renderToolbar();
-    await userEvent.click(screen.getByRole("button", { name: /Quitter/i }));
+describe("passage d'une page à l'autre", () => {
+  function renderTurn(overrides: Partial<Parameters<typeof ReaderPageTurn>[0]> = {}) {
+    const props = {
+      mode: "horizontal" as const,
+      canGoBack: true,
+      canGoForward: true,
+      onPrevious: vi.fn(),
+      onNext: vi.fn(),
+      ...overrides
+    };
+    render(<ReaderPageTurn {...props} />);
+    return props;
+  }
 
-    expect(props.onClose).toHaveBeenCalled();
+  it("n'affiche aucune flèche en défilement vertical", () => {
+    // Les pages s'y enchaînent : une flèche « suivante » proposerait un geste
+    // que le défilement fait déjà, et deux façons de faire la même chose
+    // désignent un écran qui n'a pas choisi.
+    renderTurn({ mode: "vertical" });
+
+    expect(screen.queryByRole("button", { name: "Page suivante" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Page précédente" })).not.toBeInTheDocument();
+  });
+
+  it("place les flèches dans le document en mode horizontal", () => {
+    renderTurn({ mode: "horizontal" });
+
+    expect(screen.getByRole("button", { name: "Page suivante" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Page précédente" })).toBeInTheDocument();
+  });
+
+  it("ajoute les coins de page en mode livre", () => {
+    // On saisit le haut ou le bas d'une page et on la tire : quatre coins,
+    // deux de chaque côté.
+    renderTurn({ mode: "livre" });
+
+    expect(screen.getAllByRole("button", { name: "Page suivante" })).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: "Page précédente" })).toHaveLength(3);
+  });
+
+  it("ne tourne la page qu'au-delà d'un geste franc", () => {
+    // Un simple clic sur un coin tournerait la page pendant qu'on veut
+    // seulement déplacer la vue, et le lecteur perdrait sa place.
+    const props = renderTurn({ mode: "livre" });
+    const corner = screen.getAllByRole("button", { name: "Page suivante" })[1];
+
+    fireEvent.pointerDown(corner, { pointerId: 1, clientX: 400 });
+    fireEvent.pointerMove(corner, { pointerId: 1, clientX: 390 });
+    expect(props.onNext).not.toHaveBeenCalled();
+
+    fireEvent.pointerMove(corner, { pointerId: 1, clientX: 320 });
+    expect(props.onNext).toHaveBeenCalledTimes(1);
+  });
+
+  it("ne tourne pas dans le mauvais sens", () => {
+    const props = renderTurn({ mode: "livre" });
+    const corner = screen.getAllByRole("button", { name: "Page suivante" })[1];
+
+    fireEvent.pointerDown(corner, { pointerId: 1, clientX: 400 });
+    fireEvent.pointerMove(corner, { pointerId: 1, clientX: 500 });
+
+    expect(props.onNext).not.toHaveBeenCalled();
+  });
+
+  it("retire la flèche quand il n'y a plus de page", () => {
+    renderTurn({ mode: "horizontal", canGoForward: false });
+
+    expect(screen.getByRole("button", { name: "Page suivante" })).toBeDisabled();
   });
 });
 
