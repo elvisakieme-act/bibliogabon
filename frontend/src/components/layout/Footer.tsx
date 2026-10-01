@@ -17,7 +17,7 @@ export function Footer() {
             <Logo className="text-[var(--navy)]" />
           </div>
           <p className="mt-4 max-w-md text-sm">
-            La bibliotheque numerique des universites et grandes ecoles de la Republique
+            La bibliothèque numérique des universités et grandes écoles de la République
             Gabonaise.
           </p>
         </div>
@@ -39,7 +39,7 @@ export function Footer() {
       </div>
       <div className="border-t border-white/15">
         <div className="container-editorial py-4 text-xs text-white/60">
-          Copyright 2026 BiblioGABON. Republique Gabonaise.
+          © 2026 BiblioGABON. République gabonaise.
         </div>
       </div>
     </footer>

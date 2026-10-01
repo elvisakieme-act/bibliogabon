@@ -189,7 +189,7 @@ export function LecturePage() {
       <SiteLayout>
         <main className="container-editorial py-10 sm:py-16">
           <EmptyState
-            title="Acces requis"
+            title="Accès requis"
             description="Un droit de lecture actif est necessaire pour ce document."
           />
         </main>

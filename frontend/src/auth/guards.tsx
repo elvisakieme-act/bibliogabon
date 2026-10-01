@@ -62,7 +62,7 @@ export function RequireRole({
     // deja connecte produirait une boucle, et cacherait la vraie raison.
     return (
       <EmptyState
-        title="Vous n'avez pas acces a cet espace"
+        title="Vous n'avez pas accès à cet espace"
         description="L'espace de gestion est reserve aux enseignants deposants, aux administrateurs d'organisation et a la moderation BiblioGABON."
       />
     );

@@ -37,7 +37,7 @@ function LibraryContent() {
     return (
       <SiteLayout>
         <main className="container-editorial py-10 sm:py-14">
-          <Skeleton label="Chargement de votre bibliotheque" />
+          <Skeleton label="Chargement de votre bibliothèque" />
         </main>
       </SiteLayout>
     );
@@ -124,7 +124,7 @@ export function LibrarySection({
 
   return (
     <div className="mt-8 space-y-12">
-      <section aria-label="Apercu de la bibliotheque" className="grid gap-4 sm:grid-cols-2">
+      <section aria-label="Aperçu de la bibliothèque" className="grid gap-4 sm:grid-cols-2">
         <div className="border border-border bg-white p-5 shadow-editorial">
           <p className="text-sm text-muted-foreground">Documents favoris</p>
           <p className="mt-2 font-display text-3xl font-semibold text-[var(--navy)]">
@@ -230,7 +230,7 @@ export function LibrarySection({
           <div className="mt-5">
             <EmptyState
               title="Aucun favori"
-              description="Ajoutez des documents a vos favoris depuis votre bibliotheque."
+              description="Ajoutez des documents à vos favoris depuis votre bibliothèque."
             />
           </div>
         )}

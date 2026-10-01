@@ -46,7 +46,7 @@ function DomainBento({ domains, isPending }: { domains: DomainSummary[]; isPendi
         >
           <span className="h-1 w-12 gabon-stripe" aria-hidden="true" />
           <div className="mt-8">
-            <p className="text-xs font-semibold uppercase opacity-70">Domaine academique</p>
+            <p className="text-xs font-semibold uppercase opacity-70">Domaine académique</p>
             <h3
               className={`mt-2 font-display font-semibold leading-tight ${index === 0 ? "text-3xl" : "text-xl"}`}
             >
@@ -75,12 +75,12 @@ export function HomePage() {
     {
       icon: LibraryBig,
       value: domains.data?.count ?? "-",
-      label: "domaines academiques"
+      label: "domaines académiques"
     },
     {
       icon: ShieldCheck,
       value: "V1",
-      label: "lecture diffusee par sessions securisees"
+      label: "lecture diffusée par sessions sécurisées"
     }
   ];
 
@@ -92,7 +92,7 @@ export function HomePage() {
           <div className="absolute inset-0 -z-20 overflow-hidden">
             <KenBurnsImage
               src="/images/hero-accueil.png"
-              alt="Etudiants et chercheurs gabonais sur un campus universitaire"
+              alt="Étudiants et chercheurs gabonais sur un campus universitaire"
               className="object-[58%_center] sm:object-center"
             />
           </div>
@@ -100,14 +100,14 @@ export function HomePage() {
           <div className="container-editorial flex min-h-[33.75rem] items-center py-12 sm:min-h-[35.75rem] lg:min-h-[min(41.75rem,calc(100svh-7.25rem))]">
             <div className="max-w-3xl">
               <p className="text-sm font-semibold uppercase text-[var(--gold)]">
-                Bibliotheque academique nationale
+                Bibliothèque académique nationale
               </p>
               <h1 className="mt-4 font-display text-5xl font-semibold leading-tight sm:text-6xl">
                 BiblioGABON
               </h1>
               <p className="mt-5 max-w-2xl text-lg text-white/85">
-                Recherchez et lisez les ressources academiques produites au Gabon, dans un
-                catalogue pense pour les etudiants et chercheurs.
+                Recherchez et lisez les ressources académiques produites au Gabon, dans un
+                catalogue pensé pour les étudiants et les chercheurs.
               </p>
               <form
                 action="/recherche"
@@ -139,7 +139,7 @@ export function HomePage() {
         </section>
 
         <section
-          aria-label="Impact de la bibliotheque"
+          aria-label="Impact de la bibliothèque"
           className="border-b border-border bg-white"
         >
           <Reveal className="container-editorial grid divide-y divide-border py-2 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
@@ -189,9 +189,9 @@ export function HomePage() {
           <Reveal className="container-editorial py-14 sm:py-20">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-sm font-semibold uppercase text-[var(--green)]">Selection</p>
+                <p className="text-sm font-semibold uppercase text-[var(--green)]">Sélection</p>
                 <h2 className="mt-2 font-display text-3xl font-semibold text-[var(--navy)] sm:text-4xl">
-                  Documents a la une
+                  Documents à la une
                 </h2>
               </div>
               <a
@@ -217,7 +217,7 @@ export function HomePage() {
               </div>
             ) : (
               <p className="mt-8 text-muted-foreground">
-                Les documents a la une seront disponibles prochainement.
+                Les documents à la une seront disponibles prochainement.
               </p>
             )}
           </Reveal>

@@ -213,7 +213,7 @@ describe("LibrarySection", () => {
 
     expect(await screen.findByText("Premier favori")).toBeInTheDocument();
     expect(screen.getByText("Premiere lecture")).toBeInTheDocument();
-    const stats = screen.getByLabelText("Apercu de la bibliotheque");
+    const stats = screen.getByLabelText("Aperçu de la bibliothèque");
     expect(within(stats).getAllByText("2")).toHaveLength(2);
     expect(screen.queryByText("Deuxieme favori")).not.toBeInTheDocument();
     expect(screen.queryByText("Deuxieme lecture")).not.toBeInTheDocument();

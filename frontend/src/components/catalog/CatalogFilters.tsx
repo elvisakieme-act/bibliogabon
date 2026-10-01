@@ -61,7 +61,7 @@ export function CatalogFilters({
           defaultValue={values.access ?? ""}
           className="mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2 font-normal"
         >
-          <option value="">Tous les acces</option>
+          <option value="">Tous les accès</option>
           <option value="free">Libre</option>
           <option value="institution_only">Institution</option>
           <option value="subscription">Abonnement</option>

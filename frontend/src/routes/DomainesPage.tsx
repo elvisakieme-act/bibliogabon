@@ -15,7 +15,7 @@ export function DomainesPage() {
           Domaines
         </h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
-          Explorez les ressources par discipline academique.
+          Explorez les ressources par discipline académique.
         </p>
         {domains.isPending ? (
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
