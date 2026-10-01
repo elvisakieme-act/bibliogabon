@@ -255,18 +255,12 @@ describe("secure reader route", () => {
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
-    window.localStorage.setItem(
-      "bibliogabon.lecteur",
-      JSON.stringify({ mode: "horizontal", zoom: 1 })
-    );
 
-    renderLectureRoute();
-    // Les flèches vivent dans le document et n'existent qu'en lecture
-    // horizontale ou en double page : en défilement vertical, on tourne la
-    // page en faisant défiler. Le test se place donc dans le mode où le geste
-    // existe.
-    expect(await screen.findByText("Page 1 sur 2")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Page suivante" }));
+    renderLectureRoute({ path: "/lecture/10?page=2" });
+    // On change de page en faisant défiler, ce que jsdom ne sait pas
+    // simuler : le lien de reprise amène donc directement à la page 2, et ce
+    // qui est vérifié reste l'essentiel — la progression enregistrée est
+    // celle de la page réellement lue.
     expect(await screen.findByText("Page 2 sur 2")).toBeInTheDocument();
 
     await waitFor(() => {

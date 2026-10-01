@@ -1,226 +1,142 @@
-import OpenSeadragon from "openseadragon";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useAuth } from "@/auth/useAuth";
-import type { ScrollMode } from "@/components/reader/readerPreferences";
-import {
-  canvasPageNumber,
-  canvasTileSource,
-  type IiifManifest
-} from "@/features/reader/manifest";
+import { ReaderPageImage } from "@/components/reader/ReaderPageImage";
+import { canvasPageNumber, type IiifManifest } from "@/features/reader/manifest";
 
 /**
- * Le document, affiché par OpenSeadragon.
+ * Le document, en défilement vertical.
  *
- * **Un seul visualiseur pour tout le document**, pas un par page. C'est ainsi
- * que fonctionnent Universal Viewer et Mirador, qui reposent sur le même
- * moteur : un composant par page créerait cent cinquante-sept contextes de
- * rendu pour un cours, et le navigateur ne suivrait pas.
+ * C'est un défilement ordinaire, dans un conteneur qui défile vraiment : la
+ * molette, le pavé tactile, le doigt, les flèches du clavier, la barre de
+ * défilement et la touche Origine fonctionnent sans qu'on écrive une ligne
+ * pour chacun.
  *
- * Les trois sens de lecture sont des dispositions du même monde :
+ * La version précédente reposait sur OpenSeadragon, qui déplace et agrandit
+ * une image plutôt que de faire défiler un document : la molette y zoomait,
+ * et avancer dans le texte demandait de tirer la page. OpenSeadragon équipe
+ * Mirador et Universal Viewer, qui montrent *une page à la fois* — c'est son
+ * cas d'usage, et ce n'était pas le nôtre.
  *
- * - **vertical** — les pages empilées, on fait défiler ;
- * - **horizontal** — les pages en ligne, on glisse de côté ;
- * - **livre** — les pages en ligne aussi, mais la vue se cale sur deux pages
- *   à la fois. La transition est un glissement franc plutôt qu'une animation
- *   de page qui se tourne : le public visé lit en grande partie sur des
- *   téléphones d'entrée de gamme.
- *
- * Le zoom n'est plus un réglage de largeur : le tuilage le rend continu, et
- * c'est le visualiseur qui ne descend que les tuiles regardées.
+ * Le zoom agit sur la largeur de la page, et le conteneur défile d'autant :
+ * agrandir par `transform` aurait grossi la page sans agrandir la zone de
+ * défilement, et les bords seraient devenus inatteignables au-delà de 100 %.
  */
+// Largeur d'une page à 100 %, en pixels : la mesure d'un livre tenu à bout de
+// bras, pas celle de l'écran. Au-delà, l'œil perd la ligne en revenant à
+// gauche.
+const PAGE_WIDTH = 52 * 16;
+
 export function ReaderViewport({
   sessionKey,
   manifest,
-  mode,
+  zoom,
   pageNumber,
-  onVisiblePage,
-  onViewerReady
+  onVisiblePage
 }: {
   sessionKey: string;
   manifest: IiifManifest;
-  mode: ScrollMode;
+  zoom: number;
   pageNumber: number;
   onVisiblePage(pageNumber: number): void;
-  onViewerReady(viewer: OpenSeadragon.Viewer | null): void;
 }) {
-  const host = useRef<HTMLDivElement>(null);
-  const viewerRef = useRef<OpenSeadragon.Viewer | null>(null);
-  const { tokens, isHydrating } = useAuth();
-
-  // Les rappels changent à chaque rendu ; les mettre en dépendance de l'effet
-  // détruirait et recréerait le visualiseur en boucle, et la lecture
-  // repartirait de la première page à chaque fois.
+  const scroller = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  // La largeur est calculée ici plutôt que confiée à `calc(min(…) * zoom)` :
+  // la référence doit être bornée **avant** d'être multipliée. Écrite
+  // `min(100%, 52rem * zoom)`, elle plafonnait à la largeur du conteneur, et
+  // le zoom ne faisait plus rien au-delà d'environ 170 % sur un écran large.
+  const [available, setAvailable] = useState(PAGE_WIDTH);
+  const ratios = useRef(new Map<number, number>());
+  const scheduled = useRef(false);
+  const reported = useRef<number | null>(null);
   const visibleRef = useRef(onVisiblePage);
   visibleRef.current = onVisiblePage;
-  // Dernière page annoncée par le visualiseur lui-même. Sans elle, annoncer
-  // une page déclencherait le recadrage, qui déclencherait une annonce : le
-  // lecteur s'ouvrait au milieu du document et ne s'y tenait pas.
-  const reportedRef = useRef<number | null>(null);
-  const pageRef = useRef(pageNumber);
-  pageRef.current = pageNumber;
-  const readyRef = useRef(onViewerReady);
-  readyRef.current = onViewerReady;
 
-  useEffect(() => {
-    if (!host.current || isHydrating) return;
-
-    const viewer = OpenSeadragon({
-      element: host.current,
-      prefixUrl: "",
-      // Converti explicitement : OpenSeadragon accepte un `info.json` IIIF
-      // brut à l'exécution, mais ses types ne décrivent que ses propres
-      // formats. Le manifeste garantit la forme, et le serveur la produit.
-      tileSources: manifest.items.map(canvasTileSource) as unknown as string[],
-      // Les tuiles passent par XHR pour porter le jeton : une requête d'image
-      // ordinaire n'envoie aucun en-tête, et toutes les pages d'un lecteur
-      // connecté reviendraient en 403.
-      loadTilesWithAjax: true,
-      ajaxHeaders: tokens?.access ? { Authorization: `Bearer ${tokens.access}` } : {},
-      crossOriginPolicy: false,
-      // Pas `collectionMode` : il dispose les pages dans des cellules
-      // carrées, où une page portrait flotte entre deux vides. En mode livre,
-      // cela laissait un fossé au milieu de la double page — l'inverse de
-      // l'effet recherché. La disposition est donc calculée ici, à partir des
-      // dimensions que le manifeste donne.
-      showNavigationControl: false,
-      showSequenceControl: false,
-      gestureSettingsMouse: { clickToZoom: false },
-      visibilityRatio: 0.6,
-      minZoomImageRatio: 0.4,
-      maxZoomPixelRatio: 3,
-      animationTime: 0.4,
-      springStiffness: 8,
-      preserveViewport: true
-    });
-
-    viewerRef.current = viewer;
-    readyRef.current(viewer);
-
-    // La page lue est celle dont le centre est le plus proche du centre de la
-    // vue. Prendre la première qui touche le bord annoncerait la page
-    // suivante dès qu'un millimètre en dépasse.
-    const reportVisible = () => {
-      const centre = viewer.viewport.getCenter();
+  /**
+   * La page lue est la plus visible, pas la dernière annoncée.
+   *
+   * Tous les observateurs parlent au premier rendu : retenir le dernier
+   * donnait la dernière page du document à l'ouverture — et c'est aussi la
+   * page enregistrée comme progression de lecture.
+   */
+  const report = useCallback((page: number, ratio: number) => {
+    ratios.current.set(page, ratio);
+    if (scheduled.current) return;
+    scheduled.current = true;
+    requestAnimationFrame(() => {
+      scheduled.current = false;
       let best: number | null = null;
-      let bestDistance = Infinity;
-      for (let index = 0; index < viewer.world.getItemCount(); index += 1) {
-        const bounds = viewer.world.getItemAt(index).getBounds();
-        const distance =
-          Math.abs(bounds.x + bounds.width / 2 - centre.x) +
-          Math.abs(bounds.y + bounds.height / 2 - centre.y);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          best = index;
+      let bestRatio = 0;
+      for (const [candidate, candidateRatio] of ratios.current) {
+        // `>` et non `>=` : à égalité, la page la plus haute l'emporte,
+        // puisque c'est elle qu'on lit en premier.
+        if (candidateRatio > bestRatio) {
+          bestRatio = candidateRatio;
+          best = candidate;
         }
       }
-      if (best !== null && manifest.items[best]) {
-        const page = canvasPageNumber(manifest.items[best]);
-        reportedRef.current = page;
-        visibleRef.current(page);
+      if (best !== null && best !== reported.current) {
+        reported.current = best;
+        visibleRef.current(best);
       }
-    };
-
-    // À l'ouverture, on dispose les pages puis on se place sur celle qui est
-    // demandée — la reprise de lecture
-    // ou la première page — au lieu de cadrer le document entier, ce qui
-    // affichait le milieu.
-    viewer.addHandler("open", () => {
-      layoutPages(viewer, manifest, mode);
-      const index = manifest.items.findIndex(
-        (canvas) => canvasPageNumber(canvas) === pageRef.current
-      );
-      const item = index >= 0 ? viewer.world.getItemAt(index) : null;
-      if (item) {
-        reportedRef.current = pageRef.current;
-        viewer.viewport.fitBounds(item.getBounds(), true);
-      }
-      reportVisible();
     });
-    viewer.addHandler("animation-finish", reportVisible);
+  }, []);
 
-    return () => {
-      readyRef.current(null);
-      viewerRef.current = null;
-      viewer.destroy();
-    };
-    // `pageNumber` est volontairement absent : la navigation déplace la vue,
-    // elle ne reconstruit pas le visualiseur.
-  }, [manifest, mode, tokens?.access, isHydrating, sessionKey]);
-
-  // Navigation demandée par la barre : on amène la page dans la vue.
-  //
-  // Rien à faire si le visualiseur vient lui-même d'annoncer cette page :
-  // recadrer sur ce qu'on regarde déjà provoquerait un aller-retour sans fin
-  // entre l'annonce et le recadrage.
   useEffect(() => {
-    const viewer = viewerRef.current;
-    if (!viewer || reportedRef.current === pageNumber) return;
-    const index = manifest.items.findIndex((canvas) => canvasPageNumber(canvas) === pageNumber);
-    if (index < 0 || index >= viewer.world.getItemCount()) return;
+    // Mesuré sur la zone de contenu et non sur le conteneur : `clientWidth`
+    // inclut le rembourrage, et la page dépassait alors de 32 px sur un
+    // téléphone — juste assez pour qu'elle ne tienne plus.
+    const element = content.current;
+    if (!element) return;
+    // Une largeur nulle n'est pas une mesure : avant la mise en page, et
+    // dans un environnement qui n'en fait aucune, `clientWidth` vaut zéro et
+    // la page s'afficherait sans largeur. On garde alors la mesure de
+    // référence.
+    const measure = () => setAvailable(element.clientWidth || PAGE_WIDTH);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
-    const bounds = viewer.world.getItemAt(index).getBounds();
-    if (mode === "livre" && index > 0) {
-      // Deux pages à la fois : on cadre la double, pas la page seule. La
-      // couverture (index 0) se présente seule, puis les paires sont (1,2),
-      // (3,4)… — donc un index impair s'apparie avec le suivant, un index
-      // pair avec le précédent.
-      const partner = viewer.world.getItemAt(index % 2 === 1 ? index + 1 : index - 1);
-      if (partner) {
-        viewer.viewport.fitBounds(bounds.union(partner.getBounds()));
-        return;
-      }
-    }
-    viewer.viewport.fitBounds(bounds);
-  }, [pageNumber, mode, manifest]);
+  // Navigation demandée depuis la barre : on amène la page sous les yeux.
+  // Rien à faire si c'est le défilement qui vient de l'annoncer, sinon la vue
+  // se recalerait sans cesse sur ce qu'on est déjà en train de lire.
+  useEffect(() => {
+    if (reported.current === pageNumber) return;
+    const target = scroller.current?.querySelector(`[data-page="${pageNumber}"]`);
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [pageNumber]);
 
-  return <div ref={host} className="h-full w-full bg-[var(--navy-soft)]" />;
-}
-
-// Espaces entre les pages, en fraction de la largeur d'une page.
-//
-// Nul entre les deux pages d'une double : c'est ce contact qui fait lire un
-// livre plutôt que deux images côte à côte.
-//
-// Large entre deux doubles, en revanche, et large aussi en défilement
-// horizontal : ces deux modes montrent **une chose à la fois**, et un écart
-// serré laissait la page voisine entrer dans le cadre — on lisait une page et
-// demie, ce qui n'est ni l'un ni l'autre.
-const VERTICAL_GAP = 0.06;
-const HORIZONTAL_GAP = 0.5;
-const SPREAD_GAP = 1.2;
-
-/**
- * Place chaque page dans le monde du visualiseur.
- *
- * Toutes les pages sont ramenées à la même largeur — un document mêle souvent
- * des formats, et des pages de largeurs différentes donneraient une colonne
- * en escalier. La hauteur suit le rapport réel de chaque page, lu dans le
- * manifeste : la déduire d'un format supposé déformerait un plan ou un
- * tableau.
- */
-function layoutPages(viewer: OpenSeadragon.Viewer, manifest: IiifManifest, mode: ScrollMode) {
-  let offset = 0;
-  for (let index = 0; index < viewer.world.getItemCount(); index += 1) {
-    const item = viewer.world.getItemAt(index);
-    const canvas = manifest.items[index];
-    if (!item || !canvas) continue;
-    const height = canvas.height / canvas.width;
-
-    item.setWidth(1, true);
-    if (mode === "vertical") {
-      item.setPosition(new OpenSeadragon.Point(0, offset), true);
-      offset += height + VERTICAL_GAP;
-    } else if (mode === "horizontal") {
-      item.setPosition(new OpenSeadragon.Point(offset, 0), true);
-      offset += 1 + HORIZONTAL_GAP;
-    } else {
-      // La première page se présente seule, comme un livre qu'on ouvre ; les
-      // suivantes vont par paires, pages paires à gauche — la convention de
-      // l'imprimé.
-      const isRightHand = index === 0 || index % 2 === 0;
-      item.setPosition(new OpenSeadragon.Point(offset, 0), true);
-      offset += isRightHand ? 1 + SPREAD_GAP : 1;
-    }
-  }
+  return (
+    <div
+      ref={scroller}
+      // `tabIndex` : sans lui, les flèches et la barre d'espace ne défilent
+      // pas tant qu'on n'a pas cliqué dans la page.
+      tabIndex={0}
+      aria-label="Document"
+      className="h-full overflow-y-auto overflow-x-auto bg-[var(--navy-soft)] px-4 py-6 focus-visible:outline-none sm:px-6"
+    >
+      {/* La largeur de référence est la plus petite entre la page confortable
+          et le conteneur — c'est elle qui tient sur un téléphone — et le zoom
+          la multiplie. Écrit `min(100%, 52rem * zoom)`, le zoom ne faisait
+          plus rien au-delà d'environ 170 % sur un écran large : le plafond
+          était atteint avant l'échelle. */}
+      <div ref={content} className="w-full">
+        <div
+          className="mx-auto flex flex-col gap-6"
+          style={{ width: Math.round(Math.min(available, PAGE_WIDTH) * zoom) }}
+        >
+          {manifest.items.map((canvas) => (
+            <ReaderPageImage
+              key={canvasPageNumber(canvas)}
+              canvas={canvas}
+              sessionKey={sessionKey}
+              onVisible={report}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }

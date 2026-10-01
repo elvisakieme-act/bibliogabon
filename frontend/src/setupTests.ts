@@ -47,7 +47,16 @@ if (!("IntersectionObserver" in globalThis)) {
 
     observe(target: Element) {
       this.callback(
-        [{ target, isIntersecting: true } as unknown as IntersectionObserverEntry],
+        [
+          {
+            target,
+            isIntersecting: true,
+            // La part visible, et pas seulement « il intersecte » : le
+            // lecteur choisit la page **la plus** visible, donc un
+            // palliatif qui l'omet lui fait croire qu'aucune page ne l'est.
+            intersectionRatio: 1
+          } as unknown as IntersectionObserverEntry
+        ],
         this as unknown as IntersectionObserver
       );
     }
@@ -157,4 +166,15 @@ if (typeof Element !== "undefined" && !Element.prototype.setPointerCapture) {
   Element.prototype.setPointerCapture = () => {};
   Element.prototype.releasePointerCapture = () => {};
   Element.prototype.hasPointerCapture = () => false;
+}
+
+/**
+ * jsdom n'implémente pas `scrollIntoView`.
+ *
+ * Le lecteur s'en sert pour amener une page sous les yeux quand la barre la
+ * demande. Sans palliatif, le composant lève une exception au montage et les
+ * tests échouent sur la conséquence plutôt que sur la cause.
+ */
+if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
 }

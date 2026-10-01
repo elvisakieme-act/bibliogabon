@@ -1,40 +1,31 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-import { AuthProvider } from "@/auth/AuthProvider";
-import { fireEvent, render as baseRender, screen } from "@testing-library/react";
+import { render as baseRender, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ReaderPage as ReaderPagePayload } from "@/api/types";
-import { ReaderPage } from "@/components/reader/ReaderPage";
+import { AuthProvider } from "@/auth/AuthProvider";
 import { ReaderDisplayOptions } from "@/components/reader/ReaderDisplayOptions";
-import { ReaderPageTurn } from "@/components/reader/ReaderPageTurn";
+import { ReaderPage } from "@/components/reader/ReaderPage";
 import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
 import {
-  DEFAULT_MODE,
   DEFAULT_ZOOM,
   nextZoom,
-  readPreferences,
-  writePreferences,
+  readZoom,
+  writeZoom,
   ZOOM_STEPS
 } from "@/components/reader/readerPreferences";
 
 /**
- * Options d'affichage du lecteur.
+ * Barre, options et politique de copie du lecteur.
  *
- * Un lecteur qui n'offre qu'un seul sens de défilement impose l'usage : le
- * vertical convient à un écran d'ordinateur, l'horizontal au geste du
- * téléphone, la double page à qui consulte un ouvrage plutôt qu'il ne le lit
- * en continu.
+ * Le lecteur n'a plus qu'un sens de lecture. Trois avaient été proposés, mais
+ * les trois reposaient sur le même mécanisme — déplacer et agrandir une image
+ * — et aucun des trois ne le servait : la molette zoomait au lieu de faire
+ * défiler, et « horizontal » ne différait de « vertical » que par l'endroit
+ * où les pages étaient posées dans le monde. Trois noms, un comportement.
  */
 
-/**
- * Rendu d'un composant du lecteur.
- *
- * Le lecteur récupère l'image de la page avec son jeton — une balise `<img>`
- * ne peut pas porter d'en-tête d'authentification. Il lui faut donc un
- * fournisseur de requêtes, et un `fetch` qui réponde une image.
- */
 function render(ui: React.ReactElement) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } }
@@ -88,8 +79,6 @@ describe("barre du lecteur", () => {
   }
 
   it("porte la sortie, la position et la marque, et rien d'autre", () => {
-    // Une barre qui expose tous les réglages les met au même rang que la
-    // lecture, et n'en laisse plus la place sur un téléphone.
     renderToolbar();
 
     expect(screen.getByRole("button", { name: /Retour/i })).toBeInTheDocument();
@@ -102,16 +91,14 @@ describe("barre du lecteur", () => {
   });
 
   it("annonce la position quand elle change", () => {
-    // En défilement continu, la position change sans qu'aucun bouton n'ait
-    // été actionné : sans `aria-live`, un lecteur d'écran ne l'apprend jamais.
+    // En défilement, la position change sans qu'aucun bouton n'ait été
+    // actionné : sans `aria-live`, un lecteur d'écran ne l'apprend jamais.
     renderToolbar();
 
     expect(screen.getByText("Page 2 sur 5")).toHaveAttribute("aria-live", "polite");
   });
 
   it("ne fait pas de la marque une seconde sortie", () => {
-    // Un logo cliquable quitterait la lecture sans que rien l'annonce, en
-    // concurrence du bouton « Retour ».
     renderToolbar();
 
     expect(screen.queryByRole("link", { name: "BiblioGABON" })).not.toBeInTheDocument();
@@ -136,10 +123,8 @@ describe("options d'affichage", () => {
   function renderOptions(overrides: Partial<Parameters<typeof ReaderDisplayOptions>[0]> = {}) {
     const props = {
       open: true,
-      mode: DEFAULT_MODE,
       zoom: DEFAULT_ZOOM,
       onClose: vi.fn(),
-      onModeChange: vi.fn(),
       onZoomChange: vi.fn(),
       ...overrides
     };
@@ -147,112 +132,28 @@ describe("options d'affichage", () => {
     return props;
   }
 
-  it("propose les trois sens de lecture", () => {
+  it("ne propose plus de sens de lecture", () => {
     renderOptions();
 
-    expect(screen.getByRole("button", { name: /Défilement vertical/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Défilement horizontal/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Double page/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Double page/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Défilement horizontal/ })
+    ).not.toBeInTheDocument();
   });
 
-  it("annonce le sens actif aux technologies d'assistance", () => {
-    // `aria-pressed` et non une simple couleur : un utilisateur de lecteur
-    // d'écran doit savoir dans quel mode il se trouve.
-    renderOptions({ mode: "livre" });
-
-    expect(screen.getByRole("button", { name: /Double page/ })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    expect(screen.getByRole("button", { name: /Défilement vertical/ })).toHaveAttribute(
-      "aria-pressed",
-      "false"
-    );
-  });
-
-  it("change de sens quand on le demande", async () => {
+  it("règle la taille de la page", async () => {
     const props = renderOptions();
-    await userEvent.click(screen.getByRole("button", { name: /Défilement horizontal/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Agrandir" }));
 
-    expect(props.onModeChange).toHaveBeenCalledWith("horizontal");
+    expect(props.onZoomChange).toHaveBeenCalledWith(1);
   });
 
   it("bloque le zoom aux extrémités de l'échelle", () => {
+    // Sans cela, un lecteur peut continuer à cliquer sans rien obtenir.
     renderOptions({ zoom: ZOOM_STEPS[ZOOM_STEPS.length - 1] });
 
     expect(screen.getByRole("button", { name: "Agrandir" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Réduire" })).toBeEnabled();
-  });
-});
-
-describe("passage d'une page à l'autre", () => {
-  function renderTurn(overrides: Partial<Parameters<typeof ReaderPageTurn>[0]> = {}) {
-    const props = {
-      mode: "horizontal" as const,
-      canGoBack: true,
-      canGoForward: true,
-      onPrevious: vi.fn(),
-      onNext: vi.fn(),
-      ...overrides
-    };
-    render(<ReaderPageTurn {...props} />);
-    return props;
-  }
-
-  it("n'affiche aucune flèche en défilement vertical", () => {
-    // Les pages s'y enchaînent : une flèche « suivante » proposerait un geste
-    // que le défilement fait déjà, et deux façons de faire la même chose
-    // désignent un écran qui n'a pas choisi.
-    renderTurn({ mode: "vertical" });
-
-    expect(screen.queryByRole("button", { name: "Page suivante" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Page précédente" })).not.toBeInTheDocument();
-  });
-
-  it("place les flèches dans le document en mode horizontal", () => {
-    renderTurn({ mode: "horizontal" });
-
-    expect(screen.getByRole("button", { name: "Page suivante" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Page précédente" })).toBeInTheDocument();
-  });
-
-  it("ajoute les coins de page en mode livre", () => {
-    // On saisit le haut ou le bas d'une page et on la tire : quatre coins,
-    // deux de chaque côté.
-    renderTurn({ mode: "livre" });
-
-    expect(screen.getAllByRole("button", { name: "Page suivante" })).toHaveLength(3);
-    expect(screen.getAllByRole("button", { name: "Page précédente" })).toHaveLength(3);
-  });
-
-  it("ne tourne la page qu'au-delà d'un geste franc", () => {
-    // Un simple clic sur un coin tournerait la page pendant qu'on veut
-    // seulement déplacer la vue, et le lecteur perdrait sa place.
-    const props = renderTurn({ mode: "livre" });
-    const corner = screen.getAllByRole("button", { name: "Page suivante" })[1];
-
-    fireEvent.pointerDown(corner, { pointerId: 1, clientX: 400 });
-    fireEvent.pointerMove(corner, { pointerId: 1, clientX: 390 });
-    expect(props.onNext).not.toHaveBeenCalled();
-
-    fireEvent.pointerMove(corner, { pointerId: 1, clientX: 320 });
-    expect(props.onNext).toHaveBeenCalledTimes(1);
-  });
-
-  it("ne tourne pas dans le mauvais sens", () => {
-    const props = renderTurn({ mode: "livre" });
-    const corner = screen.getAllByRole("button", { name: "Page suivante" })[1];
-
-    fireEvent.pointerDown(corner, { pointerId: 1, clientX: 400 });
-    fireEvent.pointerMove(corner, { pointerId: 1, clientX: 500 });
-
-    expect(props.onNext).not.toHaveBeenCalled();
-  });
-
-  it("retire la flèche quand il n'y a plus de page", () => {
-    renderTurn({ mode: "horizontal", canGoForward: false });
-
-    expect(screen.getByRole("button", { name: "Page suivante" })).toBeDisabled();
   });
 });
 
@@ -270,41 +171,29 @@ describe("échelle de zoom", () => {
   });
 });
 
-describe("mémoire des préférences", () => {
+describe("mémoire du zoom", () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
 
-  it("retrouve le réglage du lecteur d'une lecture à l'autre", () => {
-    writePreferences({ mode: "livre", zoom: 1.5 });
+  it("retrouve le réglage d'une lecture à l'autre", () => {
+    writeZoom(1.5);
 
-    expect(readPreferences()).toEqual({ mode: "livre", zoom: 1.5 });
+    expect(readZoom()).toBe(1.5);
   });
 
   it("ignore un réglage corrompu plutôt que d'ouvrir un lecteur cassé", () => {
     window.localStorage.setItem("bibliogabon.lecteur", "{ pas du json");
 
-    expect(readPreferences()).toEqual({ mode: DEFAULT_MODE, zoom: DEFAULT_ZOOM });
+    expect(readZoom()).toBe(DEFAULT_ZOOM);
   });
 
   it("refuse un zoom hors de l'échelle", () => {
     // Une valeur arbitraire rendrait la page illisible ou invisible, et le
     // lecteur n'aurait aucun moyen de revenir en arrière.
-    window.localStorage.setItem(
-      "bibliogabon.lecteur",
-      JSON.stringify({ mode: "vertical", zoom: 42 })
-    );
+    window.localStorage.setItem("bibliogabon.lecteur", JSON.stringify({ zoom: 42 }));
 
-    expect(readPreferences().zoom).toBe(DEFAULT_ZOOM);
-  });
-
-  it("refuse un sens de défilement inconnu", () => {
-    window.localStorage.setItem(
-      "bibliogabon.lecteur",
-      JSON.stringify({ mode: "diagonal", zoom: 1 })
-    );
-
-    expect(readPreferences().mode).toBe(DEFAULT_MODE);
+    expect(readZoom()).toBe(DEFAULT_ZOOM);
   });
 });
 
@@ -336,5 +225,28 @@ describe("politique de copie", () => {
     );
 
     expect(screen.queryByText("Introduction")).not.toBeInTheDocument();
+  });
+});
+
+describe("amplitude du zoom", () => {
+  it("descend assez bas pour voir une page entière", () => {
+    // S'arrêter à 75 % interdisait la vue d'ensemble : repérer un tableau,
+    // situer une figure, juger la mise en page avant de lire.
+    expect(ZOOM_STEPS[0]).toBeLessThanOrEqual(0.5);
+  });
+
+  it("monte assez haut pour lire une note de bas de page", () => {
+    expect(ZOOM_STEPS[ZOOM_STEPS.length - 1]).toBeGreaterThanOrEqual(3);
+  });
+
+  it("se resserre autour de la taille d'origine", () => {
+    // C'est à 100 % qu'on ajuste ; aux extrémités, on cherche un ordre de
+    // grandeur. Des paliers réguliers obligeraient à cliquer six fois pour
+    // passer de 90 % à 125 %.
+    const index = ZOOM_STEPS.indexOf(1 as never);
+    const autour = ZOOM_STEPS[index + 1] - ZOOM_STEPS[index - 1];
+    const auBout = ZOOM_STEPS[ZOOM_STEPS.length - 1] - ZOOM_STEPS[ZOOM_STEPS.length - 3];
+
+    expect(autour).toBeLessThan(auBout);
   });
 });

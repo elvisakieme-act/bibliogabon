@@ -3,21 +3,15 @@ import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-route
 
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
-import type OpenSeadragon from "openseadragon";
-
 import { ReaderDisplayOptions } from "@/components/reader/ReaderDisplayOptions";
 import { ReaderPage } from "@/components/reader/ReaderPage";
-import { ReaderPageTurn } from "@/components/reader/ReaderPageTurn";
-import { ReaderTextOverlays } from "@/components/reader/ReaderTextOverlays";
 import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
 import { ReaderViewport } from "@/components/reader/ReaderViewport";
 import {
-  DEFAULT_MODE,
   DEFAULT_ZOOM,
   nextZoom,
-  readPreferences,
-  writePreferences,
-  type ScrollMode
+  readZoom,
+  writeZoom
 } from "@/components/reader/readerPreferences";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -69,40 +63,22 @@ export function LecturePage() {
   // service d'images. Sans elle, ouvrir un cours de 157 pages demanderait 157
   // `info.json` — et journaliserait le document entier comme lu.
   const manifest = useReaderManifest(sessionKey);
-  const [viewer, setViewer] = useState<OpenSeadragon.Viewer | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
-  // Lues une seule fois : `localStorage` peut échouer, et le relire à chaque
+  // Lu une seule fois : `localStorage` peut échouer, et le relire à chaque
   // rendu transformerait un stockage refusé en boucle de rendus.
-  const [mode, setMode] = useState<ScrollMode>(DEFAULT_MODE);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
 
   useEffect(() => {
-    const stored = readPreferences();
-    setMode(stored.mode);
-    setZoom(stored.zoom);
+    setZoom(readZoom());
   }, []);
 
-  const applyMode = useCallback((value: ScrollMode) => {
-    setMode(value);
+  const applyZoom = useCallback((direction: 1 | -1) => {
     setZoom((current) => {
-      writePreferences({ mode: value, zoom: current });
-      return current;
+      const value = nextZoom(current, direction);
+      writeZoom(value);
+      return value;
     });
   }, []);
-
-  // Le zoom agit sur le visualiseur, non sur une largeur de page : le tuilage
-  // le rend continu, et OpenSeadragon ne descend que les tuiles regardées.
-  const applyZoom = useCallback(
-    (direction: 1 | -1) => {
-      setZoom((current) => {
-        const value = nextZoom(current, direction);
-        writePreferences({ mode, zoom: value });
-        viewer?.viewport.zoomTo(viewer.viewport.getHomeZoom() * value, undefined, false);
-        return value;
-      });
-    },
-    [mode, viewer]
-  );
 
   const endSession = useCallback(() => {
     sessionGenerationRef.current += 1;
@@ -257,41 +233,20 @@ export function LecturePage() {
 
       <ReaderDisplayOptions
         open={optionsOpen}
-        mode={mode}
         zoom={zoom}
         onClose={() => setOptionsOpen(false)}
-        onModeChange={applyMode}
         onZoomChange={applyZoom}
       />
 
-      {/* `relative` : les flèches et les coins se placent par rapport au
-          document, pas à la fenêtre — la barre du haut occupe une hauteur
-          qu'ils ne doivent pas ignorer. */}
-      <div className="relative min-h-0 flex-1">
+      <div className="min-h-0 flex-1">
         {manifest.data && manifest.data.items.length > 0 && sessionKey ? (
-          <>
-            <ReaderViewport
-              sessionKey={sessionKey}
-              manifest={manifest.data}
-              mode={mode}
-              pageNumber={pageNumber}
-              onVisiblePage={setPageNumber}
-              onViewerReady={setViewer}
-            />
-            <ReaderTextOverlays
-              viewer={viewer}
-              manifest={manifest.data}
-              sessionKey={sessionKey}
-              pageNumber={pageNumber}
-            />
-            <ReaderPageTurn
-              mode={mode}
-              canGoBack={pageNumber > 1}
-              canGoForward={pageNumber < pageCount}
-              onPrevious={() => setPageNumber((current) => Math.max(1, current - 1))}
-              onNext={() => setPageNumber((current) => Math.min(pageCount, current + 1))}
-            />
-          </>
+          <ReaderViewport
+            sessionKey={sessionKey}
+            manifest={manifest.data}
+            zoom={zoom}
+            pageNumber={pageNumber}
+            onVisiblePage={setPageNumber}
+          />
         ) : manifest.isPending ? (
           <div className="flex h-full items-center justify-center">
             <p className="text-sm text-[var(--muted-foreground)]">Ouverture du document…</p>

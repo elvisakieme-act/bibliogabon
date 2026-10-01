@@ -44,11 +44,15 @@ describe("decoupage du bundle", () => {
     expect(entryModules.filter((id) => id.includes("react-hook-form"))).toEqual([]);
   }, 120_000);
 
-  it("le fragment d'entrée ne contient pas le moteur de tuiles", async () => {
-    // OpenSeadragon pèse plus lourd que tout le reste du catalogue. Un
-    // visiteur qui parcourt les documents sans en ouvrir un n'a aucune raison
-    // de le télécharger — et sans ce test, le premier import statique vers le
-    // lecteur annulerait la coupure sans rien casser de visible.
+  it("le fragment d'entrée ne contient pas le lecteur", async () => {
+    // Un visiteur qui parcourt le catalogue sans ouvrir un document n'a
+    // aucune raison de télécharger le lecteur. Sans ce test, le premier
+    // import statique vers lui annulerait la coupure sans rien casser de
+    // visible.
+    //
+    // La vérification portait aussi sur OpenSeadragon, qui pesait 350 ko à
+    // lui seul. Il a été retiré : il déplace et agrandit une image, là où un
+    // document demande un défilement.
     const { build } = await import("vite");
     const result = await build({
       logLevel: "silent",
@@ -68,7 +72,7 @@ describe("decoupage du bundle", () => {
     expect(entries.length).toBeGreaterThan(0);
     const entryModules = entries.flatMap((entry) => Object.keys(entry.modules ?? {}));
 
-    expect(entryModules.filter((id) => id.includes("openseadragon"))).toEqual([]);
     expect(entryModules.filter((id) => id.includes("routes/LecturePage"))).toEqual([]);
+    expect(entryModules.filter((id) => id.includes("components/reader"))).toEqual([]);
   }, 120_000);
 });
