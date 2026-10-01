@@ -97,6 +97,14 @@ h3,
     var(--navy) 66.66% 100%
   );
 }
+.gabon-stripe-v {
+  background: linear-gradient(
+    180deg,
+    var(--green) 0 33.33%,
+    var(--gold) 33.33% 66.66%,
+    var(--navy) 66.66% 100%
+  );
+}
 .gabon-rule {
   height: 3px;
   background: linear-gradient(90deg, var(--green), var(--gold), var(--navy));

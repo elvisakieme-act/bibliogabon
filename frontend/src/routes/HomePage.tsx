@@ -1,205 +1,136 @@
-import { ArrowRight, BookOpen, LibraryBig, Search, ShieldCheck } from "lucide-react";
+import { Search } from "lucide-react";
 
-import type { DomainSummary } from "@/api/types";
 import { DocumentCard } from "@/components/catalog/DocumentCard";
+import { CoverShelf } from "@/components/home/CoverShelf";
 import { SiteLayout } from "@/components/layout/SiteLayout";
-import { KenBurnsImage } from "@/components/ui/KenBurnsImage";
-import { Reveal } from "@/components/ui/Reveal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDocuments, useDomains } from "@/features/catalog/hooks";
 
-const DOMAIN_TONES = [
-  "bg-[var(--navy)] text-white sm:col-span-2 sm:row-span-2",
-  "bg-[var(--green-soft)] text-[var(--navy)]",
-  "bg-[var(--gold-soft)] text-[var(--navy)]",
-  "bg-white text-[var(--navy)]",
-  "bg-[var(--navy-deep)] text-white sm:col-span-2 lg:col-span-1"
+/**
+ * Ce que la plateforme garantit, à la place des logos qu'elle n'a pas.
+ *
+ * Une page d'accueil institutionnelle emprunte d'ordinaire sa crédibilité à
+ * des partenaires. Les nôtres sont en discussion : afficher leur logo serait
+ * fabriquer une caution, et cela se retourne violemment quand quelqu'un
+ * vérifie. Ces trois phrases disent ce qui est vrai aujourd'hui du produit
+ * lui-même, et chacune est tenue par du code et des tests.
+ */
+const GARANTIES = [
+  {
+    titre: "Le fichier d'origine ne sort jamais",
+    texte:
+      "Un document se lit page après page. Le PDF déposé reste sur la plateforme : aucune réponse n'expose son emplacement, et chaque page demandée vérifie que vous avez le droit de la lire."
+  },
+  {
+    titre: "Les droits de l'auteur suivent le document",
+    texte:
+      "Chaque dépôt passe par une autorisation écrite, examinée par la modération. Ce que le lecteur peut faire du texte — le copier ou non — découle de l'accord signé, pas d'un réglage global."
+  },
+  {
+    titre: "Pensé pour une connexion mobile",
+    texte:
+      "Les pages arrivent par fragments : votre téléphone ne télécharge que ce que vous regardez, et le zoom reste net jusqu'au détail d'un tableau."
+  }
 ];
-
-function DomainBento({ domains, isPending }: { domains: DomainSummary[]; isPending: boolean }) {
-  if (isPending) {
-    return (
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Skeleton />
-        <Skeleton />
-        <Skeleton />
-        <Skeleton />
-      </div>
-    );
-  }
-
-  if (!domains.length) {
-    return (
-      <p className="mt-8 text-muted-foreground">
-        Les domaines seront disponibles prochainement.
-      </p>
-    );
-  }
-
-  return (
-    <div className="mt-8 grid auto-rows-[minmax(10rem,auto)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {domains.slice(0, 5).map((domain, index) => (
-        <a
-          key={domain.id}
-          href={`/domaines/${domain.slug}`}
-          className={`group relative flex min-h-40 flex-col justify-between overflow-hidden rounded-lg border border-border p-5 shadow-editorial transition hover:-translate-y-0.5 hover:shadow-editorial-lg ${DOMAIN_TONES[index]}`}
-        >
-          <span className="h-1 w-12 gabon-stripe" aria-hidden="true" />
-          <div className="mt-8">
-            <p className="text-xs font-semibold uppercase opacity-70">Domaine académique</p>
-            <h3
-              className={`mt-2 font-display font-semibold leading-tight ${index === 0 ? "text-3xl" : "text-xl"}`}
-            >
-              {domain.name}
-            </h3>
-            <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
-              Explorer
-              <ArrowRight className="size-4 transition group-hover:translate-x-1" />
-            </span>
-          </div>
-        </a>
-      ))}
-    </div>
-  );
-}
 
 export function HomePage() {
   const featured = useDocuments({ page_size: 4 });
   const domains = useDomains();
-  const impactCues = [
-    {
-      icon: BookOpen,
-      value: featured.data?.count ?? "-",
-      label: "documents dans le catalogue"
-    },
-    {
-      icon: LibraryBig,
-      value: domains.data?.count ?? "-",
-      label: "domaines académiques"
-    },
-    {
-      icon: ShieldCheck,
-      value: "V1",
-      label: "lecture diffusée par sessions sécurisées"
-    }
-  ];
+  const disciplines = domains.data?.results ?? [];
 
   return (
     <SiteLayout>
       <main>
-        <section className="relative isolate min-h-[34rem] overflow-hidden border-b border-border bg-[var(--navy)] text-white sm:min-h-[36rem] lg:min-h-[min(42rem,calc(100svh-7rem))]">
-          <div className="h-1 gabon-stripe" aria-hidden="true" />
-          <div className="absolute inset-0 -z-20 overflow-hidden">
-            <KenBurnsImage
-              src="/images/hero-accueil.png"
-              alt="Étudiants et chercheurs gabonais sur un campus universitaire"
-              className="object-[58%_center] sm:object-center"
-            />
-          </div>
-          <div className="absolute inset-0 -z-10 bg-[var(--navy-deep)]/72" aria-hidden="true" />
-          <div className="container-editorial flex min-h-[33.75rem] items-center py-12 sm:min-h-[35.75rem] lg:min-h-[min(41.75rem,calc(100svh-7.25rem))]">
-            <div className="max-w-3xl">
-              <p className="text-sm font-semibold uppercase text-[var(--gold)]">
-                Bibliothèque académique nationale
-              </p>
-              <h1 className="mt-4 font-display text-5xl font-semibold leading-tight sm:text-6xl">
-                BiblioGABON
-              </h1>
-              <p className="mt-5 max-w-2xl text-lg text-white/85">
-                Recherchez et lisez les ressources académiques produites au Gabon, dans un
-                catalogue pensé pour les étudiants et les chercheurs.
-              </p>
+        {/* L'accroche ne vend pas la bibliothèque : elle l'ouvre. Un étudiant
+            arrive en cherchant quelque chose, pas pour être convaincu — la
+            recherche est donc l'action principale, et les documents eux-mêmes
+            tiennent lieu d'argument. */}
+        <section className="relative overflow-hidden border-b border-border bg-[var(--navy-deep)] text-white">
+          <div className="container-editorial grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] lg:gap-12 lg:py-16">
+            <div>
+              {/* Le filet du drapeau, vertical : il tient lieu de dos de
+                  reliure le long du texte, là où une bande horizontale en
+                  haut de page n'aurait été qu'un ornement de plus. */}
+              <div className="flex gap-6">
+                <span className="w-1 shrink-0 rounded-full gabon-stripe-v" aria-hidden="true" />
+                <div>
+                  <h1 className="font-display text-[clamp(2rem,3.6vw,3rem)] font-semibold leading-[1.12]">
+                    Lire les thèses, les mémoires et les cours des universités gabonaises.
+                  </h1>
+                  <p className="mt-5 max-w-lg text-lg leading-relaxed text-white/80">
+                    Chaque document se lit page après page, depuis un téléphone comme depuis un
+                    ordinateur, dans le respect des droits de son auteur.
+                  </p>
+                </div>
+              </div>
+
               <form
                 action="/recherche"
-                className="mt-8 flex max-w-2xl flex-col gap-2 rounded-lg bg-white p-2 shadow-editorial sm:flex-row"
+                role="search"
+                className="mt-9 flex flex-col gap-2 rounded-[var(--radius)] bg-white p-2 shadow-editorial-lg sm:flex-row"
               >
-                <label className="sr-only" htmlFor="home-search">
+                <label className="sr-only" htmlFor="recherche-accueil">
                   Rechercher dans le catalogue
                 </label>
                 <input
-                  id="home-search"
+                  id="recherche-accueil"
                   name="q"
-                  placeholder="Titre, auteur ou domaine"
-                  className="min-w-0 flex-1 rounded-lg px-3 py-2.5 text-[var(--navy)] outline-none"
+                  placeholder="Un titre, un auteur, un sujet"
+                  className="min-w-0 flex-1 rounded-[var(--radius)] px-4 py-3 text-[var(--navy)] outline-none placeholder:text-[var(--muted-foreground)]"
                 />
-                <button className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--green)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--navy)]">
-                  <Search className="size-4" />
+                <button className="inline-flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--green)] px-6 py-3 font-semibold text-white transition hover:bg-[var(--navy)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:ring-offset-2">
+                  <Search className="size-4" aria-hidden="true" />
                   Rechercher
                 </button>
               </form>
-              <a
-                href="/catalogue"
-                className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-white hover:text-[var(--gold)]"
-              >
-                Parcourir tout le catalogue
-                <ArrowRight className="size-4" />
-              </a>
+
+              {/* Les disciplines réelles, cliquables : une information utile
+                  au premier regard, là où une rangée de pastilles décoratives
+                  n'aurait rien appris. */}
+              {disciplines.length > 0 ? (
+                <nav aria-label="Disciplines" className="mt-5 flex flex-wrap gap-x-5 gap-y-2">
+                  {disciplines.slice(0, 6).map((domain) => (
+                    <a
+                      key={domain.id}
+                      href={`/domaines/${domain.slug}`}
+                      className="text-sm text-white/70 underline-offset-4 transition hover:text-[var(--gold)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
+                    >
+                      {domain.name}
+                    </a>
+                  ))}
+                  <a
+                    href="/catalogue"
+                    className="text-sm font-semibold text-white underline-offset-4 transition hover:text-[var(--gold)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
+                  >
+                    Tout le catalogue
+                  </a>
+                </nav>
+              ) : null}
+            </div>
+
+            <div className="lg:pb-4">
+              <CoverShelf documents={featured.data?.results ?? []} />
             </div>
           </div>
         </section>
 
-        <section
-          aria-label="Impact de la bibliothèque"
-          className="border-b border-border bg-white"
-        >
-          <Reveal className="container-editorial grid divide-y divide-border py-2 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-            {impactCues.map(({ icon: Icon, value, label }) => (
-              <div key={label} className="flex items-center gap-4 px-2 py-5 sm:px-5">
-                <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--green-soft)] text-[var(--green)]">
-                  <Icon className="size-5" />
-                </span>
-                <div>
-                  <p className="font-display text-2xl font-semibold text-[var(--navy)]">
-                    {value}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{label}</p>
-                </div>
-              </div>
-            ))}
-          </Reveal>
-        </section>
-
-        <section className="border-b border-border bg-[var(--surface-alt)]">
-          <Reveal className="container-editorial py-14 sm:py-20">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="max-w-2xl">
-                <p className="text-sm font-semibold uppercase text-[var(--green)]">
-                  Disciplines
-                </p>
-                <h2 className="mt-2 font-display text-3xl font-semibold text-[var(--navy)] sm:text-4xl">
-                  Le savoir gabonais par domaine
-                </h2>
-                <p className="mt-3 text-muted-foreground">
-                  Explorez le catalogue selon votre champ d'etude ou de recherche.
-                </p>
-              </div>
-              <a
-                href="/domaines"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--navy)] hover:text-[var(--green)]"
-              >
-                Tous les domaines
-                <ArrowRight className="size-4" />
-              </a>
-            </div>
-            <DomainBento domains={domains.data?.results ?? []} isPending={domains.isPending} />
-          </Reveal>
-        </section>
-
-        <section className="bg-white">
-          <Reveal className="container-editorial py-14 sm:py-20">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase text-[var(--green)]">Sélection</p>
-                <h2 className="mt-2 font-display text-3xl font-semibold text-[var(--navy)] sm:text-4xl">
-                  Documents à la une
-                </h2>
-              </div>
+        <section className="border-b border-border bg-white">
+          <div className="container-editorial py-14 sm:py-20">
+            {/* « Quelques documents » et non « les plus récents » : le
+                catalogue est trié par titre, pas par date de publication.
+                Annoncer une fraîcheur que l'ordre ne garantit pas serait une
+                petite contrevérité, et une page d'accueil n'en supporte
+                aucune. Trier par date demanderait un paramètre d'ordre à
+                l'API. */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
+              <h2 className="font-display text-3xl font-semibold text-[var(--navy)] sm:text-4xl">
+                Quelques documents du catalogue
+              </h2>
               <a
                 href="/catalogue"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--navy)] hover:text-[var(--green)]"
+                className="font-semibold text-[var(--navy)] underline-offset-4 hover:text-[var(--green)] hover:underline"
               >
-                Voir le catalogue
-                <ArrowRight className="size-4" />
+                Voir tout le catalogue
               </a>
             </div>
             {featured.isPending ? (
@@ -217,10 +148,53 @@ export function HomePage() {
               </div>
             ) : (
               <p className="mt-8 text-muted-foreground">
-                Les documents à la une seront disponibles prochainement.
+                Le catalogue se remplit. Les premiers documents paraîtront ici.
               </p>
             )}
-          </Reveal>
+          </div>
+        </section>
+
+        {/* Trois phrases, séparées par un filet, et non trois cartes : des
+            cartes identiques mettraient ces garanties au rang d'arguments de
+            vente interchangeables. */}
+        <section className="border-b border-border bg-[var(--surface-alt)]">
+          <div className="container-editorial py-14 sm:py-20">
+            <h2 className="max-w-2xl font-display text-3xl font-semibold text-[var(--navy)] sm:text-4xl">
+              Déposer ici, c'est garder la main sur son travail
+            </h2>
+            <dl className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-3">
+              {GARANTIES.map(({ titre, texte }) => (
+                <div key={titre} className="border-t border-[var(--navy)] pt-5">
+                  <dt className="font-display text-xl font-semibold text-[var(--navy)]">
+                    {titre}
+                  </dt>
+                  <dd className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+                    {texte}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
+
+        <section className="bg-white">
+          <div className="container-editorial flex flex-col gap-5 py-14 sm:flex-row sm:items-center sm:justify-between sm:py-16">
+            <div className="max-w-xl">
+              <h2 className="font-display text-2xl font-semibold text-[var(--navy)] sm:text-3xl">
+                Vous enseignez ou vous publiez&nbsp;?
+              </h2>
+              <p className="mt-2 text-muted-foreground">
+                Déposez un cours, un mémoire ou une thèse. La modération vérifie les droits
+                avant toute publication.
+              </p>
+            </div>
+            <a
+              href="/inscription"
+              className="inline-flex shrink-0 items-center justify-center rounded-[var(--radius)] bg-[var(--navy)] px-6 py-3 font-semibold text-white shadow-editorial transition hover:bg-[var(--navy-deep)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:ring-offset-2"
+            >
+              Créer un compte déposant
+            </a>
+          </div>
         </section>
       </main>
     </SiteLayout>
