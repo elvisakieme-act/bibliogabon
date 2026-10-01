@@ -23,7 +23,13 @@ function libraryDocument(id: number, title: string): DocumentMetadata {
     abstract: "Resume",
     language_code: "fr",
     publication_year: 2026,
-    document_type: "open_resource",
+    document_type: {
+      id: 3,
+      name: "Thèse",
+      slug: "these",
+      icon: "graduation-cap",
+      color: "#2563EB"
+    },
     category: "open_resource",
     access_model: "free",
     domain: { id: 1, name: "Droit", slug: "droit" },
@@ -60,7 +66,13 @@ describe("LibrarySection", () => {
               abstract: "Resume",
               language_code: "fr",
               publication_year: 2026,
-              document_type: "open_resource",
+              document_type: {
+                id: 3,
+                name: "Thèse",
+                slug: "these",
+                icon: "graduation-cap",
+                color: "#2563EB"
+              },
               category: "open_resource",
               access_model: "free",
               domain: { id: 1, name: "Droit", slug: "droit" },
@@ -91,7 +103,13 @@ describe("LibrarySection", () => {
       abstract: "Resume",
       language_code: "fr",
       publication_year: 2026,
-      document_type: "open_resource",
+      document_type: {
+        id: 3,
+        name: "Thèse",
+        slug: "these",
+        icon: "graduation-cap",
+        color: "#2563EB"
+      },
       category: "open_resource",
       access_model: "free",
       domain: { id: 1, name: "Droit", slug: "droit" },

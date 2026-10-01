@@ -34,7 +34,7 @@ export function ConnexionPage() {
       if (caught instanceof ApiError) {
         setFieldErrors(caught.fieldErrors ?? {});
       }
-      setError("Connexion impossible. Verifiez vos identifiants et recommencez.");
+      setError("Connexion impossible. Vérifiez vos identifiants et recommencez.");
     } finally {
       setIsSubmitting(false);
     }
@@ -52,7 +52,7 @@ export function ConnexionPage() {
             Retrouvez vos lectures.
           </h1>
           <p className="mt-5 max-w-md text-white/75">
-            Accedez a votre bibliotheque et poursuivez vos recherches.
+            Accédez à votre bibliothèque et poursuivez vos recherches.
           </p>
         </div>
         <p className="text-sm text-white/60">BiblioGABON</p>

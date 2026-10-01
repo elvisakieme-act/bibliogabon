@@ -69,7 +69,7 @@ function ProfileContent() {
       auth.setSession({ user, tokens: auth.tokens });
       setMessage("Profil mis a jour.");
     } catch (error: unknown) {
-      handleError(error, "La mise a jour a echoue. Reessayez.");
+      handleError(error, "La mise à jour a échoué. Réessayez.");
     } finally {
       setIsSubmitting(false);
     }
@@ -90,7 +90,7 @@ function ProfileContent() {
             onSubmit={onSubmit}
           >
             <label className="block text-sm font-semibold text-[var(--navy)]">
-              Nom affiche
+              Nom affiché
               <input
                 required
                 value={displayName}

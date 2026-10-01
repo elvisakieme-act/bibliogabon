@@ -235,7 +235,7 @@ describe("creation d'un brouillon", () => {
       "voluntary_teacher_deposit"
     );
     await userEvent.selectOptions(screen.getByLabelText(/^Modèle d'accès/), "free");
-    await userEvent.click(screen.getByRole("button", { name: /creer le brouillon/i }));
+    await userEvent.click(screen.getByRole("button", { name: /créer le brouillon/i }));
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/gestion/documents/77");
@@ -256,7 +256,7 @@ describe("creation d'un brouillon", () => {
     await userEvent.type(screen.getByLabelText(/^Identifiant/), "algebre-lineaire");
     await userEvent.selectOptions(screen.getByLabelText(/^Catégorie/), "open_resource");
     await userEvent.selectOptions(screen.getByLabelText(/^Modèle d'accès/), "free");
-    await userEvent.click(screen.getByRole("button", { name: /creer le brouillon/i }));
+    await userEvent.click(screen.getByRole("button", { name: /créer le brouillon/i }));
 
     const input = await screen.findByLabelText(/^Identifiant/);
     expect(input).toHaveAttribute("aria-invalid", "true");

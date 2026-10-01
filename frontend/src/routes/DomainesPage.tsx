@@ -27,7 +27,7 @@ export function DomainesPage() {
           <div className="mt-8">
             <EmptyState
               title="Domaines indisponibles"
-              description="Reessayez dans quelques instants."
+              description="Réessayez dans quelques instants."
             />
           </div>
         ) : domains.data?.results.length ? (

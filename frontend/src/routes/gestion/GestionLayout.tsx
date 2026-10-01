@@ -18,7 +18,7 @@ export function GestionLayout() {
     <RequireRole>
       <div className="min-h-screen bg-[var(--muted)] text-[var(--ink)]">
         {/* Bande gabonaise : la continuite visuelle avec l'espace lecture,
-            sans en reprendre la grille editoriale, qui sert la decouverte
+            sans en reprendre la grille éditoriale, qui sert la découverte
             et non la saisie. */}
         <div aria-hidden className="flex h-1">
           <span className="flex-1 bg-[#009E49]" />

@@ -23,7 +23,13 @@ const document: DocumentMetadata = {
   abstract: "Resume public.",
   language_code: "fr",
   publication_year: 2026,
-  document_type: "open_resource",
+  document_type: {
+    id: 3,
+    name: "Thèse",
+    slug: "these",
+    icon: "graduation-cap",
+    color: "#2563EB"
+  },
   category: "open_resource",
   access_model: "free",
   domain: { id: 1, name: "Droit", slug: "droit" },
@@ -46,7 +52,7 @@ describe("DocumentCard", () => {
 
   it.each([
     ["authentication_required", "Connexion requise"],
-    ["entitlement_required", "Acces requis"]
+    ["entitlement_required", "Accès requis"]
   ])("renders %s as a non-link", (reason, label) => {
     render(
       <DocumentCard
@@ -71,7 +77,7 @@ describe("document detail access", () => {
     ],
     [
       { can_read: false, access_model: "institutional", reason: "entitlement_required" },
-      "Acces requis"
+      "Accès requis"
     ]
   ])("uses the required CTA label", (access, label) => {
     expect(documentDetailReadLabel({ ...document, access })).toBe(label);
@@ -138,8 +144,69 @@ describe("document detail access", () => {
       </QueryClientProvider>
     );
 
-    expect(await screen.findByText("Acces requis")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Acces requis" })).not.toBeInTheDocument();
+    expect(await screen.findByText("Accès requis")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Accès requis" })).not.toBeInTheDocument();
+  });
+
+  it("montre la nature du document et ce que l'accès autorise", async () => {
+    // La nature — cours, thèse, mémoire, sujet d'examen — était dans la charge
+    // utile du serveur sans jamais être affichée, alors que c'est la première
+    // chose qu'un lecteur universitaire regarde. Et « institution_only »
+    // n'apprend rien à un étudiant : il doit lire en toutes lettres s'il peut
+    // ouvrir ce document.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(document))));
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const router = createAppRouter({
+      history: createMemoryHistory({ initialEntries: ["/documents/10"] })
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
+
+    // Deux fois : en tête du document, et dans la notice.
+    expect(await screen.findAllByText("Thèse")).toHaveLength(2);
+    expect(screen.getByText(/s'ouvre sans compte/)).toBeInTheDocument();
+    // La référence à recopier : sans elle, chaque lecteur reconstitue la
+    // citation de mémoire, et le document finit cité sans son établissement.
+    expect(screen.getByRole("button", { name: "Copier la référence" })).toBeInTheDocument();
+  });
+
+  it("n'affiche pas les lignes de notice que le serveur ne renseigne pas", async () => {
+    // Écrire « Non renseigné » cinq fois remplit la notice de vide et rend
+    // illisible ce qui est réellement là.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ...document,
+            owner: null,
+            publication_year: null,
+            page_count: null
+          })
+        )
+      )
+    );
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const router = createAppRouter({
+      history: createMemoryHistory({ initialEntries: ["/documents/10"] })
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
+
+    expect(await screen.findByText("Notice")).toBeInTheDocument();
+    expect(screen.queryByText("Établissement")).not.toBeInTheDocument();
+    expect(screen.queryByText("Année")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pages")).not.toBeInTheDocument();
+    // Ce qui est connu reste affiché.
+    expect(screen.getByText("Nature")).toBeInTheDocument();
   });
 });
 
@@ -362,7 +429,7 @@ describe("search route query parameters", () => {
         </QueryClientProvider>
       );
 
-      expect(await screen.findByRole("combobox", { name: "Acces" })).toHaveValue(accessModel);
+      expect(await screen.findByRole("combobox", { name: "Accès" })).toHaveValue(accessModel);
       await waitFor(() => {
         expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain(
           `http://127.0.0.1:8000/api/v1/search/?access=${accessModel}&page=1&page_size=12`

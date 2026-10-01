@@ -50,12 +50,12 @@ export function CatalogFilters({
           className="mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2 font-normal"
         >
           <option value="">Toutes les langues</option>
-          <option value="fr">Francais</option>
+          <option value="fr">Français</option>
           <option value="en">Anglais</option>
         </select>
       </label>
       <label className="text-sm font-semibold text-[var(--navy)]">
-        Acces
+        Accès
         <select
           name="access"
           defaultValue={values.access ?? ""}
@@ -65,12 +65,12 @@ export function CatalogFilters({
           <option value="free">Libre</option>
           <option value="institution_only">Institution</option>
           <option value="subscription">Abonnement</option>
-          <option value="sponsored">Sponsorise</option>
+          <option value="sponsored">Sponsorisé</option>
           <option value="restricted">Restreint</option>
         </select>
       </label>
       <label className="text-sm font-semibold text-[var(--navy)]">
-        Annee
+        Année
         <input
           name="year"
           inputMode="numeric"

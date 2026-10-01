@@ -21,7 +21,7 @@ export function DocumentsPage() {
     useMemo(() => ({ ...filters, page: page > 1 ? page : undefined }), [filters, page])
   );
 
-  // Changer un filtre depuis la page 3 d'un resultat qui n'en compte plus
+  // Changer un filtre depuis la page 3 d'un résultat qui n'en compte plus
   // qu'une afficherait une liste vide, indistinguable de « aucun document ».
   function setFilter(key: keyof StaffDocumentFilters, value: string) {
     setPage(1);

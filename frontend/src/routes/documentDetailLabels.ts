@@ -11,6 +11,6 @@ import type { DocumentMetadata } from "@/api/types";
 export function documentDetailReadLabel(document: DocumentMetadata) {
   if (document.access.can_read) return "Lire maintenant";
   if (document.access.reason === "authentication_required") return "Se connecter pour lire";
-  if (document.access.reason === "entitlement_required") return "Acces requis";
+  if (document.access.reason === "entitlement_required") return "Accès requis";
   return "Indisponible";
 }

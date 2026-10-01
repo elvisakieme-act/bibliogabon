@@ -47,12 +47,12 @@ describe("accessibilité des erreurs de formulaire", () => {
     renderAt("/inscription");
     // La route se resout de facon asynchrone : sans cette attente, on
     // interroge un arbre encore vide.
-    await screen.findByRole("button", { name: /Creer mon compte/i });
+    await screen.findByRole("button", { name: /Créer mon compte/i });
 
-    await userEvent.type(screen.getByLabelText(/Nom affiche/i), "Prof X");
+    await userEvent.type(screen.getByLabelText(/Nom affiché/i), "Prof X");
     await userEvent.type(screen.getByLabelText(/Email/i), "deja@example.ga");
     await userEvent.type(screen.getByLabelText(/Mot de passe/i), "passphrase");
-    await userEvent.click(screen.getByRole("button", { name: /Creer mon compte/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Créer mon compte/i }));
 
     const input = await screen.findByLabelText(/Email/i);
     await waitFor(() => expect(input).toHaveAttribute("aria-invalid", "true"));

@@ -96,7 +96,7 @@ const lectureRoute = createRoute({
 });
 
 // L'espace de gestion est la premiere partie chargee a la demande : un
-// lecteur ne doit pas telecharger les ecrans de depot. `staff-bundle.test`
+// lecteur ne doit pas télécharger les écrans de dépôt. `staff-bundle.test`
 // verifie que le fragment d'entree n'en contient rien, sinon un import
 // statique ajoute plus tard annulerait la coupure sans que rien ne le dise.
 const gestionRoute = createRoute({

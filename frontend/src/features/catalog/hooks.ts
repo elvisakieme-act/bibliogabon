@@ -33,10 +33,17 @@ export function useDocumentTypes() {
   return useQuery({ queryKey: ["document-types"], queryFn: () => listTypes() });
 }
 
-export function useSearch(params: Record<string, string | number | undefined>) {
+export function useSearch(
+  params: Record<string, string | number | undefined>,
+  options: { enabled?: boolean } = {}
+) {
   const { tokens } = useAuth();
   return useQuery({
     queryKey: ["search", params, tokens?.access ?? null],
-    queryFn: () => searchDocuments(params, tokens?.access)
+    queryFn: () => searchDocuments(params, tokens?.access),
+    // Une recherche sans critère renvoie tout le catalogue : quand le critère
+    // n'est pas encore connu — le domaine d'un document qui charge — mieux vaut
+    // ne pas partir que ramener n'importe quoi.
+    enabled: options.enabled ?? true
   });
 }

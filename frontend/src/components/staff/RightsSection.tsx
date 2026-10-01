@@ -204,7 +204,7 @@ export function RightsSection({
             />
             <FieldErrors form="droits" field="consent_reference" fieldErrors={fieldErrors} />
             <p className="text-xs text-[var(--muted-foreground)]">
-              Un travail d&apos;etudiant exige un consentement explicite.
+              Un travail d&apos;étudiant exige un consentement explicite.
             </p>
           </div>
         ) : null}

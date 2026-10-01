@@ -141,7 +141,7 @@ describe("liste des documents du back-office", () => {
             previous: null,
             results: [
               staffDocument({ id: 1, title: "Soumis", publication_status: "submitted" }),
-              staffDocument({ id: 2, title: "Publie", publication_status: "published" }),
+              staffDocument({ id: 2, title: "Publié", publication_status: "published" }),
               staffDocument({ id: 3, title: "Retire", publication_status: "withdrawn" })
             ]
           })
@@ -151,7 +151,7 @@ describe("liste des documents du back-office", () => {
     renderDocuments();
 
     expect(await screen.findByText("Soumis")).toBeInTheDocument();
-    expect(screen.getByText("Publie")).toBeInTheDocument();
+    expect(screen.getByText("Publié")).toBeInTheDocument();
     expect(screen.getByText("Retire")).toBeInTheDocument();
   });
 
@@ -202,7 +202,7 @@ describe("liste des documents du back-office", () => {
   });
 
   it("revient a la premiere page quand un filtre change", async () => {
-    // Sans cela, filtrer depuis la page 3 d'un resultat qui n'en compte
+    // Sans cela, filtrer depuis la page 3 d'un résultat qui n'en compte
     // plus qu'une affiche une liste vide qui ressemble a « aucun document ».
     const { calls } = stubApi({
       documents: () =>

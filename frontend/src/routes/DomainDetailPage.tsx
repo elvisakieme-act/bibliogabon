@@ -38,7 +38,7 @@ export function DomainDetailPage() {
           <div className="mt-8">
             <EmptyState
               title="Domaine indisponible"
-              description="Reessayez dans quelques instants."
+              description="Réessayez dans quelques instants."
             />
           </div>
         ) : search.data?.results.length ? (
@@ -60,7 +60,7 @@ export function DomainDetailPage() {
           <div className="mt-8">
             <EmptyState
               title="Aucun document"
-              description="Aucun document ne correspond encore a ce domaine."
+              description="Aucun document ne correspond encore à ce domaine."
             />
           </div>
         )}

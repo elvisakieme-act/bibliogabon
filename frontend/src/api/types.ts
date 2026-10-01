@@ -63,7 +63,13 @@ export interface DocumentMetadata {
   abstract: string;
   language_code: string;
   publication_year: number | null;
-  document_type: string;
+  /**
+   * Le serveur envoie un objet — nom, abrégé, icône, couleur — et non une
+   * chaîne. Le type déclarait `string` : personne n'affichait la nature du
+   * document, donc personne ne l'avait vu, et un rendu direct aurait fait
+   * tomber React sur « Objects are not valid as a React child ».
+   */
+  document_type: DocumentTypeSummary | null;
   category: string;
   access_model: string;
   domain: DomainSummary | null;
@@ -318,8 +324,8 @@ export interface StaffInstitutionReport {
   organization: { id: number; name: string; slug: string };
   period: { start: string; end: string };
   status: string;
-  // Agregats uniquement. Aucun champ ne nomme un lecteur : un test backend
-  // parcourt cette charge utile et echoue si une metriqueureure en ajoute un.
+  // Agrégats uniquement. Aucun champ ne nomme un lecteur : un test backend
+  // parcourt cette charge utile et échoue si une mesure en ajoute un.
   metrics: Record<string, unknown>;
   generated_at: string;
 }

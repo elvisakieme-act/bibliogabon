@@ -33,8 +33,8 @@ export function PaginationControls({
     >
       <p className="text-sm text-muted-foreground">
         {hasResults
-          ? `${response.count} resultat${response.count > 1 ? "s" : ""}`
-          : "Aucun resultat"}
+          ? `${response.count} résultat${response.count > 1 ? "s" : ""}`
+          : "Aucun résultat"}
       </p>
       <div className="flex items-center gap-2">
         {response.previous ? (
@@ -42,11 +42,11 @@ export function PaginationControls({
             href={pageHref(path, params, page - 1, pageSize)}
             className="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-[var(--navy)]"
           >
-            Precedent
+            Précédent
           </a>
         ) : (
           <span className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
-            Precedent
+            Précédent
           </span>
         )}
         <span className="text-sm text-muted-foreground">
@@ -65,7 +65,7 @@ export function PaginationControls({
           </span>
         )}
         <select
-          aria-label="Resultats par page"
+          aria-label="Résultats par page"
           defaultValue={pageSize}
           onChange={(event) => {
             window.location.href = pageHref(path, params, 1, Number(event.target.value));

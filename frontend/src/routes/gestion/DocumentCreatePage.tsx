@@ -102,7 +102,7 @@ export function DocumentCreatePage() {
           <select
             id="creation-categorie"
             className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("category", { required: "Une categorie est obligatoire." })}
+            {...register("category", { required: "Une catégorie est obligatoire." })}
             {...fieldErrorProps("creation", "category", fieldErrors)}
           >
             <option value="">Choisir</option>
@@ -122,7 +122,7 @@ export function DocumentCreatePage() {
           <select
             id="creation-acces"
             className="rounded border border-slate-300 px-2 py-1.5"
-            {...register("access_model", { required: "Un modele d'accès est obligatoire." })}
+            {...register("access_model", { required: "Un modèle d'accès est obligatoire." })}
             {...fieldErrorProps("creation", "access_model", fieldErrors)}
           >
             <option value="">Choisir</option>
@@ -140,7 +140,7 @@ export function DocumentCreatePage() {
           disabled={isSubmitting}
           className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          Creer le brouillon
+          Créer le brouillon
         </button>
       </form>
     </section>

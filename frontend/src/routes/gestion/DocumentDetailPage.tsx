@@ -284,7 +284,7 @@ function MetadataSection({
               {...register("academic_domain")}
               {...fieldErrorProps("meta", "academic_domain", fieldErrors)}
             >
-              <option value="">Non renseigne</option>
+              <option value="">Non renseigné</option>
               {(domains.data?.results ?? []).map((domain) => (
                 <option key={domain.id} value={String(domain.id)}>
                   {domain.name}
@@ -306,7 +306,7 @@ function MetadataSection({
               {...register("document_type")}
               {...fieldErrorProps("meta", "document_type", fieldErrors)}
             >
-              <option value="">Non renseigne</option>
+              <option value="">Non renseigné</option>
               {(types.data?.results ?? []).map((type) => (
                 <option key={type.id} value={String(type.id)}>
                   {type.name}

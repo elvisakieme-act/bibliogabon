@@ -44,7 +44,7 @@ export function CatalogPage() {
             ) : documents.isError ? (
               <EmptyState
                 title="Catalogue indisponible"
-                description="Reessayez dans quelques instants."
+                description="Réessayez dans quelques instants."
               />
             ) : documents.data?.results.length ? (
               <>

@@ -31,7 +31,7 @@ export function RecherchePage() {
     <SiteLayout>
       <main className="container-editorial py-10 sm:py-14">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--green)]">
-          Decouverte
+          Découverte
         </p>
         <h1 className="mt-3 font-display text-4xl font-semibold text-[var(--navy)]">
           Recherche
@@ -49,7 +49,7 @@ export function RecherchePage() {
           <div className="mt-8">
             <EmptyState
               title="Recherche indisponible"
-              description="Reessayez dans quelques instants."
+              description="Réessayez dans quelques instants."
             />
           </div>
         ) : search.data?.results.length ? (
@@ -70,7 +70,7 @@ export function RecherchePage() {
         ) : (
           <div className="mt-8">
             <EmptyState
-              title="Aucun resultat"
+              title="Aucun résultat"
               description="Essayez avec une autre recherche ou un filtre plus large."
             />
           </div>

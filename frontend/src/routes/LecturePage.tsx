@@ -159,7 +159,7 @@ export function LecturePage() {
         <main className="container-editorial py-10 sm:py-16">
           <EmptyState
             title="Connexion requise"
-            description="Connectez-vous pour acceder a ce document."
+            description="Connectez-vous pour accéder à ce document."
           />
           <Link
             to="/connexion"
@@ -179,7 +179,7 @@ export function LecturePage() {
         <main className="container-editorial py-10 sm:py-16">
           <EmptyState
             title="Accès requis"
-            description="Un droit de lecture actif est necessaire pour ce document."
+            description="Un droit de lecture actif est nécessaire pour ce document."
           />
         </main>
       </SiteLayout>
@@ -205,14 +205,14 @@ export function LecturePage() {
         <main className="container-editorial py-10 sm:py-16">
           <EmptyState
             title="Lecture indisponible"
-            description="La page ne peut pas etre chargee pour le moment."
+            description="La page ne peut pas être chargée pour le moment."
           />
           <button
             type="button"
             onClick={() => void startSession()}
             className="mt-6 rounded-lg bg-[var(--navy)] px-5 py-3 text-sm font-semibold text-white"
           >
-            Reessayer
+            Réessayer
           </button>
         </main>
       </SiteLayout>

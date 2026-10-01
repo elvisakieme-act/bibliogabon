@@ -33,7 +33,7 @@ export function InscriptionPage() {
       if (caught instanceof ApiError) {
         setFieldErrors(caught.fieldErrors ?? {});
       }
-      setError("Inscription impossible. Verifiez les informations saisies.");
+      setError("Inscription impossible. Vérifiez les informations saisies.");
     } finally {
       setIsSubmitting(false);
     }
@@ -45,7 +45,7 @@ export function InscriptionPage() {
         <Logo />
         <section className="mt-10 border border-border bg-white p-6 shadow-editorial sm:p-8">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--green)]">
-            Creer un compte
+            Créer un compte
           </p>
           <h1 className="mt-3 font-display text-3xl font-semibold text-[var(--navy)]">
             Rejoindre BiblioGABON
@@ -60,7 +60,7 @@ export function InscriptionPage() {
               </p>
             ) : null}
             <label className="block text-sm font-semibold text-[var(--navy)]">
-              Nom affiche
+              Nom affiché
               <input
                 required
                 value={displayName}
@@ -100,11 +100,11 @@ export function InscriptionPage() {
               disabled={isSubmitting}
               className="w-full rounded-lg bg-[var(--navy)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--navy-deep)] disabled:opacity-60"
             >
-              {isSubmitting ? "Creation..." : "Creer mon compte"}
+              {isSubmitting ? "Création…" : "Créer mon compte"}
             </button>
           </form>
           <p className="mt-6 text-sm text-muted-foreground">
-            Deja inscrit ?{" "}
+            Déjà inscrit ?{" "}
             <Link to="/connexion" className="font-semibold text-[var(--green)] hover:underline">
               Se connecter
             </Link>

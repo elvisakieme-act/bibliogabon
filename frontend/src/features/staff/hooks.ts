@@ -94,7 +94,7 @@ export function useStaffDocument(documentId: number) {
 
 /**
  * Le suivi d'ingestion est interroge tant que le travail court, et cesse des
- * qu'il aboutit ou echoue. C'est le seul endroit du produit ou un
+ * qu'il aboutit ou échoue. C'est le seul endroit du produit où un
  * utilisateur attend un worker : l'attente doit etre lisible, pas un
  * tourniquet sans fin.
  */

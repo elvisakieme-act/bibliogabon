@@ -3,7 +3,7 @@ import type { FieldErrors, FieldValues, Path, UseFormSetError } from "react-hook
 import { ApiError } from "@/api/client";
 
 const UNEXPECTED_MESSAGE =
-  "Une erreur inattendue s'est produite. Reessayez, et signalez-le si cela persiste.";
+  "Une erreur inattendue s'est produite. Réessayez, et signalez-le si cela persiste.";
 
 /**
  * Pont entre l'enveloppe d'erreur de l'API et react-hook-form.

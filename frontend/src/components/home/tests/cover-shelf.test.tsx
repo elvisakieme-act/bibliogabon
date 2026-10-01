@@ -20,7 +20,13 @@ function document(overrides: Partial<DocumentMetadata> = {}): DocumentMetadata {
     abstract: "Résumé.",
     language_code: "fr",
     publication_year: 2022,
-    document_type: "these",
+    document_type: {
+      id: 3,
+      name: "Thèse",
+      slug: "these",
+      icon: "graduation-cap",
+      color: "#2563EB"
+    },
     category: "student_work",
     access_model: "free",
     domain: { id: 1, name: "Lettres", slug: "lettres" },

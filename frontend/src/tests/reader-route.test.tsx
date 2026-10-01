@@ -16,7 +16,13 @@ const documentPayload = {
   abstract: "Resume public.",
   language_code: "fr",
   publication_year: 2026,
-  document_type: "open_resource",
+  document_type: {
+    id: 3,
+    name: "Thèse",
+    slug: "these",
+    icon: "graduation-cap",
+    color: "#2563EB"
+  },
   category: "open_resource",
   access_model: "free",
   domain: null,
@@ -388,7 +394,7 @@ describe("secure reader route", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     renderLectureRoute();
-    await userEvent.click(await screen.findByRole("button", { name: "Reessayer" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Réessayer" }));
 
     await waitFor(() => expect(screen.getByText("Page 1 sur 2")).toBeInTheDocument());
     const requests = fetchMock.mock.calls.map(

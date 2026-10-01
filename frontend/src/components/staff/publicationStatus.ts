@@ -14,7 +14,7 @@
 export const PUBLICATION_STATUS_LABELS: Record<string, string> = {
   draft: "Brouillon",
   submitted: "Soumis",
-  published: "Publie",
+  published: "Publié",
   withdrawn: "Retire",
   archived: "Archive",
   rejected: "Rejete"
