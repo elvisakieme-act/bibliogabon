@@ -7,19 +7,27 @@ import { useRef } from "react";
  * va les chercher, et non dans la barre du haut, qui est loin du regard
  * pendant la lecture.
  *
- * Les coins s'y ajoutent : on saisit le haut ou le bas d'une page et on la
- * tire, comme on tourne une feuille. Le geste doit être **tiré**, pas cliqué —
+ * Les coins s'y ajoutent en double page : on saisit le haut ou le bas d'une
+ * page et on la tire, comme on tourne une feuille. Le geste doit être **tiré**,
+ * pas cliqué —
  * un clic sur un coin tournerait la page pendant qu'on veut seulement
  * déplacer la vue, et le lecteur perdrait sa place sans comprendre pourquoi.
  */
 const CORNER_TRAVEL = 44;
 
 export function ReaderPageTurn({
+  corners,
   canGoBack,
   canGoForward,
   onPrevious,
   onNext
 }: {
+  /**
+   * Les coins qu'on saisit. Le feuilletage est propre à la double page : on
+   * tire un coin pour tourner une feuille, et une bande qui défile ne se
+   * feuillette pas.
+   */
+  corners: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
   onPrevious(): void;
@@ -39,30 +47,34 @@ export function ReaderPageTurn({
         ›
       </EdgeArrow>
 
-      <PageCorner
-        corner="top-start"
-        label="Page précédente"
-        disabled={!canGoBack}
-        onTurn={onPrevious}
-      />
-      <PageCorner
-        corner="bottom-start"
-        label="Page précédente"
-        disabled={!canGoBack}
-        onTurn={onPrevious}
-      />
-      <PageCorner
-        corner="top-end"
-        label="Page suivante"
-        disabled={!canGoForward}
-        onTurn={onNext}
-      />
-      <PageCorner
-        corner="bottom-end"
-        label="Page suivante"
-        disabled={!canGoForward}
-        onTurn={onNext}
-      />
+      {corners ? (
+        <>
+          <PageCorner
+            corner="top-start"
+            label="Page précédente"
+            disabled={!canGoBack}
+            onTurn={onPrevious}
+          />
+          <PageCorner
+            corner="bottom-start"
+            label="Page précédente"
+            disabled={!canGoBack}
+            onTurn={onPrevious}
+          />
+          <PageCorner
+            corner="top-end"
+            label="Page suivante"
+            disabled={!canGoForward}
+            onTurn={onNext}
+          />
+          <PageCorner
+            corner="bottom-end"
+            label="Page suivante"
+            disabled={!canGoForward}
+            onTurn={onNext}
+          />
+        </>
+      ) : null}
     </>
   );
 }

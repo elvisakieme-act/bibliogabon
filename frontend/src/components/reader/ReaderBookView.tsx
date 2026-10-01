@@ -120,60 +120,71 @@ export function ReaderBookView({
   const ratio = shown.reduce((total, canvas) => total + canvas.width / canvas.height, 0);
 
   return (
-    <div
-      // `tabIndex` : sans lui, les flèches du clavier ne tournent pas tant
-      // qu'on n'a pas cliqué dans la page.
-      tabIndex={0}
-      aria-label="Document"
-      onKeyDown={(event) => {
-        if (event.key === "ArrowRight" || event.key === "PageDown") {
-          event.preventDefault();
-          tourner(1);
-        } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
-          event.preventDefault();
-          tourner(-1);
-        }
-      }}
-      onPointerDown={(event) => {
-        swipe.current = event.pointerType === "mouse" ? null : event.clientX;
-      }}
-      onPointerUp={(event) => {
-        if (swipe.current === null) return;
-        const travelled = event.clientX - swipe.current;
-        swipe.current = null;
-        if (Math.abs(travelled) > 60) tourner(travelled < 0 ? 1 : -1);
-      }}
-      className="relative flex h-full items-center justify-center overflow-auto bg-[var(--navy-soft)] p-4 focus-visible:outline-none sm:p-6"
-    >
+    // Les flèches et les coins vivent dans ce cadre, qui ne défile pas. Placés
+    // dans le conteneur de défilement, ils s'en allaient avec la page dès que
+    // le zoom la faisait dépasser : on perdait de quoi tourner au moment où on
+    // regardait de plus près.
+    <div className="relative h-full">
       <div
-        aria-live="polite"
-        className="flex shrink-0 gap-px shadow-editorial-lg"
-        style={{ height: `${Math.round(100 * zoom)}%`, aspectRatio: ratio }}
+        // `tabIndex` : sans lui, les flèches du clavier ne tournent pas tant
+        // qu'on n'a pas cliqué dans la page.
+        tabIndex={0}
+        aria-label="Document"
+        onKeyDown={(event) => {
+          if (event.key === "ArrowRight" || event.key === "PageDown") {
+            event.preventDefault();
+            tourner(1);
+          } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
+            event.preventDefault();
+            tourner(-1);
+          }
+        }}
+        onPointerDown={(event) => {
+          swipe.current = event.pointerType === "mouse" ? null : event.clientX;
+        }}
+        onPointerUp={(event) => {
+          if (swipe.current === null) return;
+          const travelled = event.clientX - swipe.current;
+          swipe.current = null;
+          if (Math.abs(travelled) > 60) tourner(travelled < 0 ? 1 : -1);
+        }}
+        className="flex h-full overflow-auto bg-[var(--navy-soft)] p-4 focus-visible:outline-none sm:p-6"
       >
-        {shown.map((canvas, position) => (
-          <div
-            key={canvas.id}
-            className="h-full min-w-0 flex-1"
-            style={
-              shown.length === 2
-                ? {
-                    // Le creux de la reliure : c'est ce pli au centre qui fait
-                    // lire deux pages comme un livre plutôt que comme deux
-                    // images posées côte à côte.
-                    boxShadow:
-                      position === 0
-                        ? "inset -14px 0 22px -18px rgba(0,0,0,0.55)"
-                        : "inset 14px 0 22px -18px rgba(0,0,0,0.55)"
-                  }
-                : undefined
-            }
-          >
-            <ReaderPageSurface canvas={canvas} sessionKey={sessionKey} enabled />
-          </div>
-        ))}
+        {/* `m-auto` et non `items-center justify-center` : centré tant qu'il y a
+          de la place, et sans marge dès qu'il n'y en a plus. Centré par
+          `justify-center`, le haut et la gauche de la double page devenaient
+          inatteignables dès que le zoom la faisait dépasser. */}
+        <div
+          aria-live="polite"
+          className="m-auto flex shrink-0 gap-px shadow-editorial-lg"
+          style={{ height: `${Math.round(100 * zoom)}%`, aspectRatio: ratio }}
+        >
+          {shown.map((canvas, position) => (
+            <div
+              key={canvas.id}
+              className="h-full min-w-0 flex-1"
+              style={
+                shown.length === 2
+                  ? {
+                      // Le creux de la reliure : c'est ce pli au centre qui fait
+                      // lire deux pages comme un livre plutôt que comme deux
+                      // images posées côte à côte.
+                      boxShadow:
+                        position === 0
+                          ? "inset -14px 0 22px -18px rgba(0,0,0,0.55)"
+                          : "inset 14px 0 22px -18px rgba(0,0,0,0.55)"
+                    }
+                  : undefined
+              }
+            >
+              <ReaderPageSurface canvas={canvas} sessionKey={sessionKey} enabled />
+            </div>
+          ))}
+        </div>
       </div>
 
       <ReaderPageTurn
+        corners
         canGoBack={index > 0}
         canGoForward={index < total - 1}
         onPrevious={() => tourner(-1)}

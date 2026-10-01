@@ -253,7 +253,15 @@ describe("reader route", () => {
     // et la marque. La sortie doit être visible en permanence — sur un écran
     // tactile il n'y a pas de survol, et une barre qui se cache oblige à
     // tâtonner pour quitter.
-    expect(await screen.findByRole("button", { name: /Retour/i })).toBeInTheDocument();
+    // Le délai d'attente est allongé : la route du lecteur est chargée à la
+    // demande, et son import dépasse parfois la seconde par défaut sur une
+    // machine occupée. Ce test porte sur l'enregistrement de la route, pas sur
+    // sa vitesse — laissé tel quel, il échouait une fois sur six sans qu'aucune
+    // régression l'explique, et un test qui échoue au hasard finit par ne plus
+    // être lu.
+    expect(
+      await screen.findByRole("button", { name: /Retour/i }, { timeout: 5000 })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("BiblioGABON")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Affichage/i })).toBeInTheDocument();
   });

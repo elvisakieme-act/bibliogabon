@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ReaderPageImage } from "@/components/reader/ReaderPageImage";
+import { useMostVisiblePage } from "@/components/reader/useMostVisiblePage";
 import { canvasPageNumber, type IiifManifest } from "@/features/reader/manifest";
 
 /**
@@ -9,7 +10,7 @@ import { canvasPageNumber, type IiifManifest } from "@/features/reader/manifest"
  * C'est un défilement ordinaire, dans un conteneur qui défile vraiment : la
  * molette, le pavé tactile, le doigt, les flèches du clavier, la barre de
  * défilement et la touche Origine fonctionnent sans qu'on écrive une ligne
- * pour chacun.
+ * pour chacun. Pas de flèches de page ici : on avance en faisant défiler.
  *
  * La version précédente reposait sur OpenSeadragon, qui déplace et agrandit
  * une image plutôt que de faire défiler un document : la molette y zoomait,
@@ -39,78 +40,46 @@ export function ReaderViewport({
   pageNumber: number;
   onVisiblePage(pageNumber: number): void;
 }) {
-  const scroller = useRef<HTMLDivElement>(null);
-  const content = useRef<HTMLDivElement>(null);
+  // Le conteneur est tenu en état et non en référence : les pages ont besoin
+  // de le désigner comme racine d'observation, et une référence encore vide au
+  // premier rendu ne provoquerait aucun second rendu pour la corriger.
+  const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
+  const [content, setContent] = useState<HTMLDivElement | null>(null);
   // La largeur est calculée ici plutôt que confiée à `calc(min(…) * zoom)` :
   // la référence doit être bornée **avant** d'être multipliée. Écrite
   // `min(100%, 52rem * zoom)`, elle plafonnait à la largeur du conteneur, et
   // le zoom ne faisait plus rien au-delà d'environ 170 % sur un écran large.
   const [available, setAvailable] = useState(PAGE_WIDTH);
-  const ratios = useRef(new Map<number, number>());
-  const scheduled = useRef(false);
-  const reported = useRef<number | null>(null);
-  const visibleRef = useRef(onVisiblePage);
-  visibleRef.current = onVisiblePage;
-
-  /**
-   * La page lue est la plus visible, pas la dernière annoncée.
-   *
-   * Tous les observateurs parlent au premier rendu : retenir le dernier
-   * donnait la dernière page du document à l'ouverture — et c'est aussi la
-   * page enregistrée comme progression de lecture.
-   */
-  const report = useCallback((page: number, ratio: number) => {
-    ratios.current.set(page, ratio);
-    if (scheduled.current) return;
-    scheduled.current = true;
-    requestAnimationFrame(() => {
-      scheduled.current = false;
-      let best: number | null = null;
-      let bestRatio = 0;
-      for (const [candidate, candidateRatio] of ratios.current) {
-        // `>` et non `>=` : à égalité, la page la plus haute l'emporte,
-        // puisque c'est elle qu'on lit en premier.
-        if (candidateRatio > bestRatio) {
-          bestRatio = candidateRatio;
-          best = candidate;
-        }
-      }
-      if (best !== null && best !== reported.current) {
-        reported.current = best;
-        visibleRef.current(best);
-      }
-    });
-  }, []);
+  const { report, reported } = useMostVisiblePage(onVisiblePage);
 
   useEffect(() => {
     // Mesuré sur la zone de contenu et non sur le conteneur : `clientWidth`
     // inclut le rembourrage, et la page dépassait alors de 32 px sur un
     // téléphone — juste assez pour qu'elle ne tienne plus.
-    const element = content.current;
-    if (!element) return;
+    if (!content) return;
     // Une largeur nulle n'est pas une mesure : avant la mise en page, et
     // dans un environnement qui n'en fait aucune, `clientWidth` vaut zéro et
     // la page s'afficherait sans largeur. On garde alors la mesure de
     // référence.
-    const measure = () => setAvailable(element.clientWidth || PAGE_WIDTH);
+    const measure = () => setAvailable(content.clientWidth || PAGE_WIDTH);
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(element);
+    observer.observe(content);
     return () => observer.disconnect();
-  }, []);
+  }, [content]);
 
   // Navigation demandée depuis la barre : on amène la page sous les yeux.
   // Rien à faire si c'est le défilement qui vient de l'annoncer, sinon la vue
   // se recalerait sans cesse sur ce qu'on est déjà en train de lire.
   useEffect(() => {
     if (reported.current === pageNumber) return;
-    const target = scroller.current?.querySelector(`[data-page="${pageNumber}"]`);
+    const target = scroller?.querySelector(`[data-page="${pageNumber}"]`);
     target?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [pageNumber]);
+  }, [pageNumber, reported, scroller]);
 
   return (
     <div
-      ref={scroller}
+      ref={setScroller}
       // `tabIndex` : sans lui, les flèches et la barre d'espace ne défilent
       // pas tant qu'on n'a pas cliqué dans la page.
       tabIndex={0}
@@ -122,7 +91,7 @@ export function ReaderViewport({
           la multiplie. Écrit `min(100%, 52rem * zoom)`, le zoom ne faisait
           plus rien au-delà d'environ 170 % sur un écran large : le plafond
           était atteint avant l'échelle. */}
-      <div ref={content} className="w-full">
+      <div ref={setContent} className="w-full">
         <div
           className="mx-auto flex flex-col gap-6"
           style={{ width: Math.round(Math.min(available, PAGE_WIDTH) * zoom) }}
@@ -132,6 +101,7 @@ export function ReaderViewport({
               key={canvasPageNumber(canvas)}
               canvas={canvas}
               sessionKey={sessionKey}
+              scroller={scroller}
               onVisible={report}
             />
           ))}

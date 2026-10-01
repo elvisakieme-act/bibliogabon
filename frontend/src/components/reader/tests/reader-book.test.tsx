@@ -151,6 +151,18 @@ describe("double page", () => {
     expect(container.querySelector("[aria-label=Document]")).toHaveAttribute("tabindex", "0");
   });
 
+  it("garde les flèches et les coins hors du conteneur qui défile", () => {
+    // Le zoom fait dépasser la double page, et le conteneur défile alors.
+    // Placées dedans, les commandes s'en allaient avec la page : on perdait de
+    // quoi tourner au moment même où on regardait de plus près.
+    const { container } = render(2);
+    const scroller = container.querySelector("[aria-label=Document]")!;
+
+    for (const commande of screen.getAllByRole("button", { name: "Page suivante" })) {
+      expect(scroller.contains(commande)).toBe(false);
+    }
+  });
+
   it("ne tourne pas au-delà du document", () => {
     const { onVisiblePage } = render(4);
     onVisiblePage.mockClear();

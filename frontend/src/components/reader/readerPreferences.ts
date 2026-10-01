@@ -7,25 +7,32 @@
  * navigation privée, ou qui refuse le stockage, doit ouvrir le lecteur
  * normalement.
  *
- * Deux sens de lecture, et chacun a **sa** mécanique. Trois avaient été
- * livrés en partageant la même — déplacer et agrandir une image — et aucun
- * des trois n'était servi : la molette zoomait au lieu de faire défiler, et
+ * Trois sens de lecture, et chacun a **sa** mécanique. Trois avaient déjà été
+ * livrés en partageant la même — déplacer et agrandir une image — et aucun des
+ * trois n'était servi : la molette zoomait au lieu de faire défiler, et
  * « horizontal » ne différait de « vertical » que par l'endroit où les pages
- * étaient posées. Trois noms, un comportement. Le défilement a donc son
- * conteneur qui défile, et le livre son état de double page qu'on tourne ;
- * rien n'est partagé que la surface d'une page.
+ * étaient posées. Trois noms, un comportement.
+ *
+ * Ils ont donc été repris un par un, et ce qui les sépare est maintenant leur
+ * mécanisme : le vertical ajuste à une largeur de lecture et laisse défiler le
+ * document ; l'horizontal ajuste à la hauteur et s'arrête sur une page ; le
+ * livre n'a pas de défilement du tout, mais un état de double page qu'on
+ * tourne. Rien n'est partagé que la surface d'une page, et pour les deux
+ * défilements la question « quelle page lit-on ».
  */
 
-export const READING_MODES = ["defilement", "livre"] as const;
+export const READING_MODES = ["defilement", "horizontal", "livre"] as const;
 export type ReadingMode = (typeof READING_MODES)[number];
 
 export const MODE_LABELS: Record<ReadingMode, string> = {
-  defilement: "Défilement",
+  defilement: "Défilement vertical",
+  horizontal: "Défilement horizontal",
   livre: "Double page"
 };
 
 export const MODE_HINTS: Record<ReadingMode, string> = {
-  defilement: "Les pages s'enchaînent : faites défiler pour avancer.",
+  defilement: "Les pages s'enchaînent de haut en bas : faites défiler pour avancer.",
+  horizontal: "Les pages se suivent de gauche à droite, une page entière à l'écran.",
   livre: "Deux pages côte à côte, que l'on tourne. Une seule sur un écran étroit."
 };
 

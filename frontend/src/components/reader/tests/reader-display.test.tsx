@@ -137,14 +137,23 @@ describe("options d'affichage", () => {
     return props;
   }
 
-  it("propose deux sens de lecture, et deux seulement", () => {
-    // Trois avaient été livrés en partageant une seule mécanique, et aucun
-    // des trois n'était servi. Chacun des deux qui restent a la sienne.
+  it("propose les trois sens de lecture", () => {
+    // Trois avaient été livrés d'un coup en partageant une seule mécanique, et
+    // aucun des trois n'était servi. Ils sont revenus un par un, chacun avec
+    // la sienne : le vertical ajuste à une largeur de lecture, l'horizontal à
+    // la hauteur en s'arrêtant sur une page, le livre ne défile pas du tout.
     renderOptions();
 
-    expect(screen.getByRole("button", { name: /Défilement/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Défilement vertical/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Défilement horizontal/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Double page/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /horizontal/i })).not.toBeInTheDocument();
+  });
+
+  it("change pour le défilement horizontal quand on le demande", async () => {
+    const props = renderOptions();
+    await userEvent.click(screen.getByRole("button", { name: /Défilement horizontal/ }));
+
+    expect(props.onModeChange).toHaveBeenCalledWith("horizontal");
   });
 
   it("annonce le sens actif aux technologies d'assistance", () => {

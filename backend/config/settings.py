@@ -106,10 +106,21 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 if DJANGO_ENV == "production" and not DATABASE_URL:
     raise ImproperlyConfigured("DATABASE_URL is required in production")
 
+# Connexions persistantes **hors** du serveur de développement seulement.
+#
+# `runserver` crée un fil par requête et ne le réutilise pas : une connexion
+# gardée 60 secondes reste donc ouverte pour un fil déjà mort. En ouvrant un
+# document de 157 pages, dont le lecteur demande les images par rafales, les
+# 100 connexions de PostgreSQL ont été épuisées en une minute — et le symptôme
+# était une erreur 500 sur le *catalogue*, à l'autre bout de l'application.
+# En production, un serveur à processus fixes les réutilise vraiment, et c'est
+# là qu'elles valent leur prix.
+CONN_MAX_AGE = 0 if DJANGO_ENV == "development" else 60
+
 DATABASES = {
     "default": dj_database_url.config(
         default=DATABASE_URL or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=60,
+        conn_max_age=CONN_MAX_AGE,
     )
 }
 

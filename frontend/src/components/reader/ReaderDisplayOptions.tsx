@@ -10,11 +10,12 @@ import { Modal } from "@/components/ui/Modal";
 /**
  * Options d'affichage du lecteur.
  *
- * Deux sens de lecture, chacun avec sa mécanique. Trois avaient été livrés en
- * partageant la même, et aucun des trois n'était servi : la molette zoomait
- * au lieu de faire défiler, et « horizontal » ne différait de « vertical »
- * que par l'endroit où les pages étaient posées. Mieux vaut deux modes qui
- * fonctionnent que trois qui se ressemblent.
+ * Trois sens de lecture, chacun avec sa mécanique — reprises une par une.
+ * Livrés d'un coup la première fois, ils partageaient le même mécanisme et
+ * aucun des trois n'était servi : la molette zoomait au lieu de faire défiler,
+ * et « horizontal » ne différait de « vertical » que par l'endroit où les pages
+ * étaient posées. Mieux valait un mode qui fonctionne que trois qui se
+ * ressemblent ; ils y sont revenus chacun avec le sien.
  */
 export function ReaderDisplayOptions({
   open,

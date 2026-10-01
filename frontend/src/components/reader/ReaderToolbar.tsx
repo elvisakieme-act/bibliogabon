@@ -36,7 +36,10 @@ export function ReaderToolbar({
         {/* `aria-live` pour que la position soit annoncée quand elle change :
             en défilement continu, elle change sans qu'aucun bouton n'ait été
             actionné. */}
-        <p aria-live="polite" className="truncate text-sm tabular-nums text-white/75">
+        {/* Pas de troncature : sur un téléphone, « Page 1 sur 157 » devenait
+            « Page 1 sur… » — on coupait précisément ce qui situe le lecteur
+            dans son document, et d'autant plus que le document est long. */}
+        <p aria-live="polite" className="whitespace-nowrap text-sm tabular-nums text-white/75">
           {`Page ${pageNumber} sur ${pageCount}`}
         </p>
       </div>
@@ -55,7 +58,10 @@ export function ReaderToolbar({
         </div>
       </div>
 
-      <div className="flex flex-1 justify-end">
+      {/* `shrink-0` et non `flex-1` : la marque est centrée hors du flux, donc
+          rien n'oblige les deux côtés à se partager la barre — et ce partage
+          prenait au compteur la place dont il avait besoin. */}
+      <div className="flex shrink-0 justify-end">
         <button
           type="button"
           onClick={onOpenOptions}

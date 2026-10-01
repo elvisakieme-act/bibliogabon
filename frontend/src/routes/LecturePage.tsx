@@ -6,6 +6,7 @@ import { useAuth } from "@/auth/useAuth";
 import { ReaderBookView } from "@/components/reader/ReaderBookView";
 import { ReaderDisplayOptions } from "@/components/reader/ReaderDisplayOptions";
 import { ReaderPage } from "@/components/reader/ReaderPage";
+import { ReaderStripView } from "@/components/reader/ReaderStripView";
 import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
 import { ReaderViewport } from "@/components/reader/ReaderViewport";
 import {
@@ -230,6 +231,18 @@ export function LecturePage() {
 
   const pageCount = page.data.page_count;
 
+  // Trois composants, trois mécaniques, une seule signature. Les faire
+  // partager le *mécanisme* les avait cassés tous les trois : le défilement
+  // vertical veut un conteneur qui défile en hauteur, l'horizontal une bande
+  // qui s'arrête sur une page, la double page aucun défilement mais un état
+  // qu'on tourne.
+  const ReaderView =
+    mode === "livre"
+      ? ReaderBookView
+      : mode === "horizontal"
+        ? ReaderStripView
+        : ReaderViewport;
+
   return (
     // Plein écran : un document se lit dans le document, pas dans une colonne
     // au milieu d'un site. `h-dvh` et non `h-screen` — sur mobile, la barre du
@@ -254,26 +267,13 @@ export function LecturePage() {
 
       <div className="min-h-0 flex-1">
         {manifest.data && manifest.data.items.length > 0 && sessionKey ? (
-          // Deux composants, deux mécaniques. Les faire partager la même en
-          // avait cassé trois d'un coup : le défilement veut un conteneur qui
-          // défile, la double page un état qu'on tourne.
-          mode === "livre" ? (
-            <ReaderBookView
-              sessionKey={sessionKey}
-              manifest={manifest.data}
-              zoom={zoom}
-              pageNumber={pageNumber}
-              onVisiblePage={setPageNumber}
-            />
-          ) : (
-            <ReaderViewport
-              sessionKey={sessionKey}
-              manifest={manifest.data}
-              zoom={zoom}
-              pageNumber={pageNumber}
-              onVisiblePage={setPageNumber}
-            />
-          )
+          <ReaderView
+            sessionKey={sessionKey}
+            manifest={manifest.data}
+            zoom={zoom}
+            pageNumber={pageNumber}
+            onVisiblePage={setPageNumber}
+          />
         ) : manifest.isPending ? (
           <div className="flex h-full items-center justify-center">
             <p className="text-sm text-[var(--muted-foreground)]">Ouverture du document…</p>
