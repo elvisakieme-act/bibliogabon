@@ -9,9 +9,12 @@ import { ReaderDisplayOptions } from "@/components/reader/ReaderDisplayOptions";
 import { ReaderPage } from "@/components/reader/ReaderPage";
 import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
 import {
+  DEFAULT_MODE,
   DEFAULT_ZOOM,
   nextZoom,
+  readMode,
   readZoom,
+  writeMode,
   writeZoom,
   ZOOM_STEPS
 } from "@/components/reader/readerPreferences";
@@ -123,8 +126,10 @@ describe("options d'affichage", () => {
   function renderOptions(overrides: Partial<Parameters<typeof ReaderDisplayOptions>[0]> = {}) {
     const props = {
       open: true,
+      mode: DEFAULT_MODE,
       zoom: DEFAULT_ZOOM,
       onClose: vi.fn(),
+      onModeChange: vi.fn(),
       onZoomChange: vi.fn(),
       ...overrides
     };
@@ -132,13 +137,32 @@ describe("options d'affichage", () => {
     return props;
   }
 
-  it("ne propose plus de sens de lecture", () => {
+  it("propose deux sens de lecture, et deux seulement", () => {
+    // Trois avaient été livrés en partageant une seule mécanique, et aucun
+    // des trois n'était servi. Chacun des deux qui restent a la sienne.
     renderOptions();
 
-    expect(screen.queryByRole("button", { name: /Double page/ })).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Défilement horizontal/ })
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Défilement/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Double page/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /horizontal/i })).not.toBeInTheDocument();
+  });
+
+  it("annonce le sens actif aux technologies d'assistance", () => {
+    // `aria-pressed` et non une simple couleur : un utilisateur de lecteur
+    // d'écran doit savoir dans quel mode il se trouve.
+    renderOptions({ mode: "livre" });
+
+    expect(screen.getByRole("button", { name: /Double page/ })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+  });
+
+  it("change de sens quand on le demande", async () => {
+    const props = renderOptions();
+    await userEvent.click(screen.getByRole("button", { name: /Double page/ }));
+
+    expect(props.onModeChange).toHaveBeenCalledWith("livre");
   });
 
   it("règle la taille de la page", async () => {
@@ -186,6 +210,22 @@ describe("mémoire du zoom", () => {
     window.localStorage.setItem("bibliogabon.lecteur", "{ pas du json");
 
     expect(readZoom()).toBe(DEFAULT_ZOOM);
+  });
+
+  it("garde le sens de lecture quand le zoom change", () => {
+    // Écrire `{ zoom }` seul effacerait le sens, et inversement : le lecteur
+    // retrouverait un réglage sur deux.
+    writeMode("livre");
+    writeZoom(1.5);
+
+    expect(readMode()).toBe("livre");
+    expect(readZoom()).toBe(1.5);
+  });
+
+  it("refuse un sens de lecture inconnu", () => {
+    window.localStorage.setItem("bibliogabon.lecteur", JSON.stringify({ mode: "diagonal" }));
+
+    expect(readMode()).toBe(DEFAULT_MODE);
   });
 
   it("refuse un zoom hors de l'échelle", () => {

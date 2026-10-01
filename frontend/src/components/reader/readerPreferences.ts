@@ -7,12 +7,29 @@
  * navigation privée, ou qui refuse le stockage, doit ouvrir le lecteur
  * normalement.
  *
- * Il n'y a plus qu'un réglage. Trois sens de lecture avaient été proposés,
- * mais les trois reposaient sur le même mécanisme — déplacer et agrandir une
- * image — et aucun des trois ne le servait : la molette zoomait au lieu de
- * faire défiler, et « horizontal » ne différait de « vertical » que par
- * l'endroit où les pages étaient posées. Trois noms, un comportement.
+ * Deux sens de lecture, et chacun a **sa** mécanique. Trois avaient été
+ * livrés en partageant la même — déplacer et agrandir une image — et aucun
+ * des trois n'était servi : la molette zoomait au lieu de faire défiler, et
+ * « horizontal » ne différait de « vertical » que par l'endroit où les pages
+ * étaient posées. Trois noms, un comportement. Le défilement a donc son
+ * conteneur qui défile, et le livre son état de double page qu'on tourne ;
+ * rien n'est partagé que la surface d'une page.
  */
+
+export const READING_MODES = ["defilement", "livre"] as const;
+export type ReadingMode = (typeof READING_MODES)[number];
+
+export const MODE_LABELS: Record<ReadingMode, string> = {
+  defilement: "Défilement",
+  livre: "Double page"
+};
+
+export const MODE_HINTS: Record<ReadingMode, string> = {
+  defilement: "Les pages s'enchaînent : faites défiler pour avancer.",
+  livre: "Deux pages côte à côte, que l'on tourne. Une seule sur un écran étroit."
+};
+
+export const DEFAULT_MODE: ReadingMode = "defilement";
 
 /**
  * L'échelle du zoom.
@@ -44,12 +61,39 @@ export function readZoom(): number {
   }
 }
 
-export function writeZoom(zoom: number): void {
+export function readMode(): ReadingMode {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ zoom }));
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_MODE;
+    const mode = (JSON.parse(raw) as { mode?: unknown })?.mode;
+    return READING_MODES.includes(mode as ReadingMode) ? (mode as ReadingMode) : DEFAULT_MODE;
+  } catch {
+    return DEFAULT_MODE;
+  }
+}
+
+/**
+ * Enregistre les préférences sans écraser celle qu'on ne change pas.
+ *
+ * Écrire `{ zoom }` seul effacerait le sens de lecture, et inversement : le
+ * lecteur retrouverait un réglage sur deux.
+ */
+function write(patch: { zoom?: number; mode?: ReadingMode }): void {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const existing = raw ? (JSON.parse(raw) as object) : {};
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, ...patch }));
   } catch {
     // Stockage refusé : le lecteur fonctionne, il n'a simplement pas de mémoire.
   }
+}
+
+export function writeZoom(zoom: number): void {
+  write({ zoom });
+}
+
+export function writeMode(mode: ReadingMode): void {
+  write({ mode });
 }
 
 export function nextZoom(current: number, direction: 1 | -1): number {

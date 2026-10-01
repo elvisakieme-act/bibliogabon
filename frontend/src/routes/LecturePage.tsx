@@ -3,15 +3,20 @@ import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-route
 
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
+import { ReaderBookView } from "@/components/reader/ReaderBookView";
 import { ReaderDisplayOptions } from "@/components/reader/ReaderDisplayOptions";
 import { ReaderPage } from "@/components/reader/ReaderPage";
 import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
 import { ReaderViewport } from "@/components/reader/ReaderViewport";
 import {
+  DEFAULT_MODE,
   DEFAULT_ZOOM,
   nextZoom,
+  readMode,
   readZoom,
-  writeZoom
+  writeMode,
+  writeZoom,
+  type ReadingMode
 } from "@/components/reader/readerPreferences";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -67,9 +72,16 @@ export function LecturePage() {
   // Lu une seule fois : `localStorage` peut échouer, et le relire à chaque
   // rendu transformerait un stockage refusé en boucle de rendus.
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+  const [mode, setMode] = useState<ReadingMode>(DEFAULT_MODE);
 
   useEffect(() => {
     setZoom(readZoom());
+    setMode(readMode());
+  }, []);
+
+  const applyMode = useCallback((value: ReadingMode) => {
+    setMode(value);
+    writeMode(value);
   }, []);
 
   const applyZoom = useCallback((direction: 1 | -1) => {
@@ -233,20 +245,35 @@ export function LecturePage() {
 
       <ReaderDisplayOptions
         open={optionsOpen}
+        mode={mode}
         zoom={zoom}
         onClose={() => setOptionsOpen(false)}
+        onModeChange={applyMode}
         onZoomChange={applyZoom}
       />
 
       <div className="min-h-0 flex-1">
         {manifest.data && manifest.data.items.length > 0 && sessionKey ? (
-          <ReaderViewport
-            sessionKey={sessionKey}
-            manifest={manifest.data}
-            zoom={zoom}
-            pageNumber={pageNumber}
-            onVisiblePage={setPageNumber}
-          />
+          // Deux composants, deux mécaniques. Les faire partager la même en
+          // avait cassé trois d'un coup : le défilement veut un conteneur qui
+          // défile, la double page un état qu'on tourne.
+          mode === "livre" ? (
+            <ReaderBookView
+              sessionKey={sessionKey}
+              manifest={manifest.data}
+              zoom={zoom}
+              pageNumber={pageNumber}
+              onVisiblePage={setPageNumber}
+            />
+          ) : (
+            <ReaderViewport
+              sessionKey={sessionKey}
+              manifest={manifest.data}
+              zoom={zoom}
+              pageNumber={pageNumber}
+              onVisiblePage={setPageNumber}
+            />
+          )
         ) : manifest.isPending ? (
           <div className="flex h-full items-center justify-center">
             <p className="text-sm text-[var(--muted-foreground)]">Ouverture du document…</p>

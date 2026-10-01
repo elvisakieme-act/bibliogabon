@@ -1,29 +1,69 @@
-import { ZOOM_STEPS } from "@/components/reader/readerPreferences";
+import {
+  MODE_HINTS,
+  MODE_LABELS,
+  READING_MODES,
+  type ReadingMode,
+  ZOOM_STEPS
+} from "@/components/reader/readerPreferences";
 import { Modal } from "@/components/ui/Modal";
 
 /**
  * Options d'affichage du lecteur.
  *
- * Il n'en reste qu'une. Trois sens de lecture avaient été proposés, mais les
- * trois reposaient sur le même mécanisme et aucun ne le servait : la molette
- * zoomait au lieu de faire défiler, et « horizontal » ne différait de
- * « vertical » que par l'endroit où les pages étaient posées. Mieux vaut un
- * mode qui fonctionne que trois qui se ressemblent.
+ * Deux sens de lecture, chacun avec sa mécanique. Trois avaient été livrés en
+ * partageant la même, et aucun des trois n'était servi : la molette zoomait
+ * au lieu de faire défiler, et « horizontal » ne différait de « vertical »
+ * que par l'endroit où les pages étaient posées. Mieux vaut deux modes qui
+ * fonctionnent que trois qui se ressemblent.
  */
 export function ReaderDisplayOptions({
   open,
+  mode,
   zoom,
   onClose,
+  onModeChange,
   onZoomChange
 }: {
   open: boolean;
+  mode: ReadingMode;
   zoom: number;
   onClose(): void;
+  onModeChange(mode: ReadingMode): void;
   onZoomChange(direction: 1 | -1): void;
 }) {
   return (
     <Modal open={open} title="Affichage" onClose={onClose}>
-      <p className="text-sm font-semibold text-[var(--navy)]">Taille de la page</p>
+      <fieldset className="border-0 p-0">
+        <legend className="mb-2 text-sm font-semibold text-[var(--navy)]">
+          Sens de lecture
+        </legend>
+        <div className="flex flex-col gap-2">
+          {READING_MODES.map((candidate) => (
+            <button
+              key={candidate}
+              type="button"
+              onClick={() => onModeChange(candidate)}
+              aria-pressed={mode === candidate}
+              className={`flex flex-col gap-1 rounded-[var(--radius)] border px-3.5 py-3 text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] ${
+                mode === candidate
+                  ? "border-[var(--gold)] bg-[var(--gold-soft)]"
+                  : "border-[var(--border)] hover:border-[var(--navy-soft)] hover:bg-[var(--navy-soft)]"
+              }`}
+            >
+              <span className="text-sm font-semibold text-[var(--navy)]">
+                {MODE_LABELS[candidate]}
+              </span>
+              <span className="text-sm text-[var(--muted-foreground)]">
+                {MODE_HINTS[candidate]}
+              </span>
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <p className="mt-5 border-t border-[var(--border)] pt-4 text-sm font-semibold text-[var(--navy)]">
+        Taille de la page
+      </p>
       <div className="mt-3 flex items-center gap-2" role="group" aria-label="Zoom">
         <ZoomButton
           label="Réduire"
@@ -43,9 +83,6 @@ export function ReaderDisplayOptions({
           +
         </ZoomButton>
       </div>
-      <p className="mt-4 text-sm text-[var(--muted-foreground)]">
-        Les pages s'enchaînent : faites défiler pour avancer dans le document.
-      </p>
     </Modal>
   );
 }
