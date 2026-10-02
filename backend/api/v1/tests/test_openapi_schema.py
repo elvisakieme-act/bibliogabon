@@ -9,7 +9,10 @@ EXPECTED_RESPONSE_CODES = {
     ("/api/v1/auth/logout/", "post"): {"204", "400", "401", "403", "415"},
     ("/api/v1/me/", "get"): {"200", "401"},
     ("/api/v1/me/", "patch"): {"200", "400", "401", "415"},
-    ("/api/v1/catalog/documents/", "get"): {"200", "401", "404"},
+    # 400 : la liste accepte désormais un tri et des filtres, donc elle peut
+    # refuser une valeur — un paramètre ignoré en silence est ce qui faisait
+    # croire que ce point d'entrée filtrait.
+    ("/api/v1/catalog/documents/", "get"): {"200", "400", "401", "404"},
     ("/api/v1/catalog/documents/{document_id}/", "get"): {"200", "401", "404"},
     ("/api/v1/catalog/domains/", "get"): {"200", "401", "404"},
     ("/api/v1/catalog/authors/", "get"): {"200", "401", "404"},

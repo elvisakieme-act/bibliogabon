@@ -253,3 +253,61 @@ def test_openapi_schema_documents_catalog_and_search_endpoints():
         assert response_schema["properties"]["results"]["items"]["$ref"].endswith(
             f"/{result_schema_name}"
         )
+
+
+@pytest.mark.django_db
+def test_catalog_list_filters_and_orders_on_request():
+    """Le catalogue se filtre et s'ordonne là où on le parcourt.
+
+    Il ne prenait aucun paramètre : le panneau de filtres de l'écran renvoyait
+    donc vers la recherche — on croyait filtrer une liste et l'on changeait de
+    page — et l'accueil ne pouvait pas annoncer « entrés récemment ».
+    """
+    maintenant = timezone.now()
+    ancien = create_document("ancien", "Zoologie")
+    ancien.published_at = maintenant - timezone.timedelta(days=10)
+    ancien.save(update_fields=["published_at"])
+    recent = create_document("recent", "Anthropologie")
+    recent.published_at = maintenant
+    recent.save(update_fields=["published_at"])
+
+    client = APIClient()
+
+    par_titre = client.get("/api/v1/catalog/documents/")
+    assert [d["slug"] for d in par_titre.data["results"]] == ["recent", "ancien"]
+
+    par_date = client.get("/api/v1/catalog/documents/?ordering=-published_at")
+    assert [d["slug"] for d in par_date.data["results"]] == ["recent", "ancien"]
+
+    autre_domaine = client.get("/api/v1/catalog/documents/?domain=medecine")
+    assert autre_domaine.data["count"] == 0
+
+
+@pytest.mark.django_db
+def test_catalog_list_refuses_an_ordering_it_does_not_offer():
+    """Refusé, jamais ignoré.
+
+    Un paramètre silencieusement écarté est exactement ce qui faisait croire que
+    ce point d'entrée filtrait alors qu'il renvoyait tout le fonds.
+    """
+    create_document("publie", "Publié")
+    client = APIClient()
+
+    response = client.get("/api/v1/catalog/documents/?ordering=-page_count")
+
+    assert response.status_code == 400
+    assert response.data["error"]["code"] == "invalid_request"
+    # Le message nomme les ordres offerts : un client qui se trompe doit
+    # pouvoir se corriger sans lire le code.
+    assert "-published_at" in response.data["error"]["message"]
+
+
+@pytest.mark.django_db
+def test_catalog_list_refuses_a_year_that_is_not_a_number():
+    create_document("publie", "Publié")
+    client = APIClient()
+
+    response = client.get("/api/v1/catalog/documents/?year=bientot")
+
+    assert response.status_code == 400
+    assert response.data["error"]["code"] == "invalid_request"

@@ -20,6 +20,7 @@ import {
   type ReadingMode
 } from "@/components/reader/readerPreferences";
 import { SiteLayout } from "@/components/layout/SiteLayout";
+import { useSettledValue } from "@/hooks/useSettledValue";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDocument } from "@/features/catalog/hooks";
@@ -34,6 +35,16 @@ import {
 function readerErrorStatus(error: unknown) {
   return error instanceof ApiError ? error.status : null;
 }
+
+/**
+ * Le temps qu'une page doit rester sous les yeux pour compter comme lue.
+ *
+ * Assez court pour qu'une pause de lecture l'enregistre, assez long pour qu'un
+ * parcours rapide ne laisse aucune trace. Une seconde et demie : on tourne
+ * trois pages par seconde en cherchant un passage, et l'on s'arrête plus
+ * longtemps dès qu'on lit une ligne.
+ */
+const PROGRESS_SETTLE_MS = 1500;
 
 function resumePageNumber(searchStr: string) {
   const value = Number(new URLSearchParams(searchStr).get("page") ?? 1);
@@ -58,6 +69,7 @@ export function LecturePage() {
   const sessionKeyRef = useRef<string | null>(null);
   const sessionGenerationRef = useRef(0);
   const persistedPageRef = useRef<string | null>(null);
+
   // **La page d'amorçage, pas la page courante.** Elle donne le nombre de
   // pages et fait remonter les refus d'accès ; elle ne suit pas la navigation.
   // La faire suivre `pageNumber` démontait le lecteur entier à chaque
@@ -69,6 +81,9 @@ export function LecturePage() {
   // service d'images. Sans elle, ouvrir un cours de 157 pages demanderait 157
   // `info.json` — et journaliserait le document entier comme lu.
   const manifest = useReaderManifest(sessionKey);
+  // La page retenue est celle sur laquelle la lecture **s'arrête**, jamais
+  // celle qu'on traverse en cherchant un passage.
+  const settledPage = useSettledValue(pageNumber, PROGRESS_SETTLE_MS);
   const [optionsOpen, setOptionsOpen] = useState(false);
   // Lu une seule fois : `localStorage` peut échouer, et le relire à chaque
   // rendu transformerait un stockage refusé en boucle de rendus.
@@ -130,19 +145,46 @@ export function LecturePage() {
     return endSession;
   }, [endSession, startSession]);
 
+  /**
+   * La progression est l'endroit où l'on **s'est arrêté**, pas chacun de ceux
+   * qu'on a survolés.
+   *
+   * Elle s'écrivait à chaque page traversée : mesuré, douze pages parcourues
+   * au clavier déclenchaient seize écritures. Le défilement horizontal l'a
+   * rendu voyant — on y traverse un cours de 157 pages en quelques secondes —
+   * mais le vertical faisait de même.
+   *
+   * Ce n'est donc pas qu'une économie de requêtes : reprendre une lecture à la
+   * dernière page *aperçue* en cherchant un passage ramène le lecteur là où il
+   * n'a jamais lu. On attend que la page se pose.
+   */
+  const enregistrerProgression = useCallback(
+    (lastPageNumber: number) => {
+      const persistedPageKey = `${documentId}:${lastPageNumber}`;
+      if (persistedPageRef.current === persistedPageKey) return;
+      persistedPageRef.current = persistedPageKey;
+      updateProgressMutate({ documentId, lastPageNumber });
+    },
+    [documentId, updateProgressMutate]
+  );
+
   useEffect(() => {
-    // La progression suit la page **lue**, que le lecteur y soit arrivé par
-    // les flèches ou en faisant défiler.
-    const loadedPageNumber = page.data ? pageNumber : null;
-    if (!tokens?.access || !loadedPageNumber) return;
-    const persistedPageKey = `${documentId}:${loadedPageNumber}`;
-    if (persistedPageRef.current === persistedPageKey) return;
-    persistedPageRef.current = persistedPageKey;
-    updateProgressMutate({
-      documentId,
-      lastPageNumber: loadedPageNumber
-    });
-  }, [documentId, page.data, pageNumber, tokens?.access, updateProgressMutate]);
+    if (!tokens?.access || !page.data || settledPage === null) return;
+    enregistrerProgression(settledPage);
+  }, [enregistrerProgression, page.data, settledPage, tokens?.access]);
+
+  // À la sortie, la page en cours part même si elle n'a pas eu le temps de se
+  // poser : quitter le lecteur dans l'intervalle ne doit pas perdre la page,
+  // sans quoi le remède coûterait plus que le mal. Les conditions passent par
+  // des références, afin que ce nettoyage ne soit **que** celui du démontage —
+  // dépendre des valeurs le ferait tirer à chaque changement de page, et l'on
+  // serait revenu au point de départ.
+  const sortieRef = useRef<() => void>(() => {});
+  sortieRef.current = () => {
+    if (!tokens?.access || !page.data) return;
+    enregistrerProgression(pageNumber);
+  };
+  useEffect(() => () => sortieRef.current(), []);
 
   async function returnToDocument() {
     endSession();

@@ -19,19 +19,28 @@ from api.v1.serializers import (
     document_metadata_prefetches,
     serialize_document_metadata,
 )
+from catalog.browse import (
+    DEFAULT_ORDERING,
+    ORDERINGS,
+    UnknownOrdering,
+    browse_documents,
+    published_documents,
+)
 from catalog.models import AcademicDomain, Author, Document, DocumentType
 from document_reader.services import readable_document_ids_for_user
 from search_discovery.services import search_documents
 
 
 def _published_documents():
+    """Le fonds public, préchargé pour la sérialisation.
+
+    Le filtrage et l'ordre vivent dans `catalog.browse`, avec le reste du
+    domaine ; les préchargements restent ici, car ils ne servent qu'à construire
+    une charge utile.
+    """
     return (
-        Document.objects.select_related(
-            "academic_domain", "owner_organization", "document_type"
-        )
+        published_documents()
         .prefetch_related(*document_metadata_prefetches())
-        .filter(publication_status=Document.PublicationStatus.PUBLISHED)
-        .exclude(access_model=Document.AccessModel.PRIVATE)
         .order_by("title", "id")
     )
 
@@ -42,8 +51,31 @@ class DocumentListView(APIView):
         summary="List public catalog documents",
         description="Responses expose public metadata only and never include raw files, storage keys, signed URLs, or OCR full text.",
         operation_id="v1_catalog_documents_list",
+        parameters=[
+            OpenApiParameter(
+                "type",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="Slug du type de document (cours, these, examen…).",
+            ),
+            OpenApiParameter("domain", OpenApiTypes.STR, OpenApiParameter.QUERY),
+            OpenApiParameter("language", OpenApiTypes.STR, OpenApiParameter.QUERY),
+            OpenApiParameter("access", OpenApiTypes.STR, OpenApiParameter.QUERY),
+            OpenApiParameter("year", OpenApiTypes.INT, OpenApiParameter.QUERY),
+            OpenApiParameter(
+                "ordering",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                enum=sorted(ORDERINGS),
+                description=(
+                    "Ordre de la liste. Par défaut le titre. `-published_at` donne "
+                    "les entrées les plus récentes."
+                ),
+            ),
+        ],
         responses={
             200: DocumentMetadataPageSerializer,
+            400: ErrorResponseSerializer,
             401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
         },
@@ -57,8 +89,38 @@ class DocumentListView(APIView):
         ],
     )
     def get(self, request):
+        try:
+            year = request.query_params.get("year")
+            publication_year = int(year) if year else None
+        except ValueError:
+            return error_response(
+                code="invalid_request",
+                message="year must be an integer.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            documents = browse_documents(
+                domain=request.query_params.get("domain", ""),
+                language=request.query_params.get("language", ""),
+                access=request.query_params.get("access", ""),
+                document_type=request.query_params.get("type", ""),
+                year=publication_year,
+                ordering=request.query_params.get("ordering", DEFAULT_ORDERING),
+            )
+        except UnknownOrdering:
+            # Refusé, jamais ignoré : un paramètre silencieusement écarté est
+            # exactement ce qui faisait croire que ce point d'entrée filtrait.
+            return error_response(
+                code="invalid_request",
+                message=f"ordering must be one of: {', '.join(sorted(ORDERINGS))}.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
         paginator = StandardResultsSetPagination()
-        page = paginator.paginate_queryset(_published_documents(), request, view=self)
+        page = paginator.paginate_queryset(
+            documents.prefetch_related(*document_metadata_prefetches()), request, view=self
+        )
         readable_document_ids = readable_document_ids_for_user(request.user, page)
         document_ids_with_cover = documents_with_cover(page)
         results = [

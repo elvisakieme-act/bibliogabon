@@ -8,12 +8,15 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDocuments, useDomains } from "@/features/catalog/hooks";
-import { paginationFromSearch } from "@/routes/paginationParams";
+import { catalogFiltersFromSearch, paginationFromSearch } from "@/routes/paginationParams";
 
 export function CatalogPage() {
   const location = useLocation();
   const { page, pageSize } = paginationFromSearch(location.searchStr);
-  const documents = useDocuments({ page, page_size: pageSize });
+  // Les critères viennent de l'adresse : une liste filtrée se partage et
+  // survit à un rechargement, ce qu'un état React ne permet pas.
+  const filtres = catalogFiltersFromSearch(location.searchStr);
+  const documents = useDocuments({ page, page_size: pageSize, ...filtres });
   const domains = useDomains();
   // `lg` de Tailwind : la largeur à partir de laquelle la grille offre une
   // colonne au panneau.
@@ -54,7 +57,25 @@ export function CatalogPage() {
                 Affiner la recherche
               </summary>
               <div className="border-t border-border p-5 lg:border-0 lg:p-0">
-                <CatalogFilters values={{}} domains={domains.data?.results} variant="sidebar" />
+                {/* Vers le catalogue, et sans champ de mots : ce point
+                    d'entrée filtre et ordonne son fonds, il ne cherche pas
+                    dans le texte. Un champ qu'il ne sait pas lire serait
+                    ignoré en silence. */}
+                <CatalogFilters
+                  values={filtres}
+                  domains={domains.data?.results}
+                  variant="sidebar"
+                  action="/catalogue"
+                  withQuery={false}
+                  withOrdering
+                />
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Pour chercher un mot dans le texte des documents,{" "}
+                  <a href="/recherche" className="font-semibold text-[var(--green)] underline">
+                    passez par la recherche
+                  </a>
+                  .
+                </p>
               </div>
             </details>
           </aside>
@@ -81,17 +102,27 @@ export function CatalogPage() {
                     <DocumentCard key={document.id} document={document} />
                   ))}
                 </section>
+                {/* Les critères voyagent avec la page : sans eux, passer à la
+                    page suivante rendait le fonds entier. */}
                 <PaginationControls
                   response={documents.data}
                   page={page}
                   pageSize={pageSize}
                   path="/catalogue"
+                  params={filtres}
                 />
               </>
             ) : (
+              // Deux vides, deux phrases : un catalogue encore sans document
+              // et un filtre trop étroit ne se corrigent pas de la même façon,
+              // et dire au second que le fonds est vide serait faux.
               <EmptyState
                 title="Aucun document"
-                description="Le catalogue ne contient pas encore de document public."
+                description={
+                  Object.keys(filtres).length > 0
+                    ? "Aucun document ne correspond à ces critères. Élargissez-les pour voir le reste du fonds."
+                    : "Le catalogue ne contient pas encore de document public."
+                }
               />
             )}
           </div>

@@ -34,7 +34,11 @@ const GARANTIES = [
 ];
 
 export function HomePage() {
-  const featured = useDocuments({ page_size: 4 });
+  // Les dernières entrées, maintenant que le catalogue sait les ordonner.
+  // L'accueil disait « quelques documents » parce que l'unique ordre était le
+  // titre : annoncer une fraîcheur que l'ordre ne garantit pas aurait été une
+  // contrevérité, et une page d'accueil n'en supporte aucune.
+  const featured = useDocuments({ page_size: 4, ordering: "-published_at" });
   const domains = useDomains();
   const disciplines = domains.data?.results ?? [];
 
@@ -116,15 +120,9 @@ export function HomePage() {
 
         <section className="border-b border-border bg-white">
           <div className="container-editorial py-14 sm:py-20">
-            {/* « Quelques documents » et non « les plus récents » : le
-                catalogue est trié par titre, pas par date de publication.
-                Annoncer une fraîcheur que l'ordre ne garantit pas serait une
-                petite contrevérité, et une page d'accueil n'en supporte
-                aucune. Trier par date demanderait un paramètre d'ordre à
-                l'API. */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
               <h2 className="font-display text-3xl font-semibold text-[var(--navy)] sm:text-4xl">
-                Quelques documents du catalogue
+                Entrés récemment au catalogue
               </h2>
               <a
                 href="/catalogue"

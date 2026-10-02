@@ -269,18 +269,22 @@ describe("secure reader route", () => {
     // celle de la page réellement lue.
     expect(await screen.findByText("Page 2 sur 2")).toBeInTheDocument();
 
-    await waitFor(() => {
-      const progressCall = fetchMock.mock.calls.find(
+    const ecritures = () =>
+      fetchMock.mock.calls.filter(
         ([url, init]) =>
           String(url).endsWith("/api/v1/me/reading-progress/10/") &&
           (init as RequestInit | undefined)?.method === "PATCH" &&
-          (init as RequestInit | undefined)?.body ===
-            JSON.stringify({
-              last_page_number: 2
-            })
+          (init as RequestInit | undefined)?.body === JSON.stringify({ last_page_number: 2 })
       );
-      expect(progressCall).toBeDefined();
-    });
+
+    // Rien tant que la page n'est pas posée : la progression est l'endroit où
+    // l'on s'est arrêté, pas chacun de ceux qu'on a survolés. Elle s'écrivait
+    // à chaque page traversée — douze pages au clavier, seize écritures.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(ecritures()).toHaveLength(0);
+
+    // Puis une fois, et une seule.
+    await waitFor(() => expect(ecritures()).toHaveLength(1), { timeout: 4000 });
   });
 
   it("closes a superseded StrictMode session when its creation resolves late", async () => {
