@@ -73,7 +73,9 @@ describe("barre du lecteur", () => {
     const props = {
       pageNumber: 2,
       pageCount: 5,
+      pagesOpen: false,
       onClose: vi.fn(),
+      onTogglePages: vi.fn(),
       onOpenOptions: vi.fn(),
       ...overrides
     };

@@ -19,8 +19,17 @@ import { useEffect, useRef, useState } from "react";
  * retient la plus visible, la bande horizontale celle qui est au centre. Même
  * mot, deux questions.
  */
-export function usePagePreload({ root, margin }: { root: Element | null; margin: string }) {
-  const holder = useRef<HTMLDivElement>(null);
+export function usePagePreload<T extends Element = HTMLDivElement>({
+  root,
+  margin
+}: {
+  root: Element | null;
+  margin: string;
+}) {
+  // Générique sur l'élément observé : le volet des pages observe un bouton, le
+  // défilement un cadre. Un transtypage au point d'appel aurait caché la seule
+  // chose que le compilateur sait vérifier ici.
+  const holder = useRef<T>(null);
   const [approaching, setApproaching] = useState(false);
 
   useEffect(() => {

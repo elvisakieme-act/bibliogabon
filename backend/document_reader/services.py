@@ -579,6 +579,40 @@ def get_reader_page_image_info(
     return info
 
 
+def get_reader_page_thumbnail(*, session: ReaderSession, page_number: int, at=None):
+    """La vignette d'une page : pour se repérer, pas pour lire.
+
+    Même autorisation que l'image — `_authorized_page`, donc session vivante et
+    droit de lecture valide au moment de la demande. Mais **aucune écriture au
+    journal d'accès**, et c'est délibéré.
+
+    Ouvrir un volet de miniatures sur un cours de 157 pages y inscrirait sinon
+    157 pages lues : les rapports d'usage institutionnels compteraient des pages
+    que personne n'a lues, et l'historique du lecteur dirait qu'il a parcouru un
+    document qu'il a seulement ouvert. Une vignette de 120 px de large est de la
+    navigation ; la lecture, c'est la page.
+
+    L'arbitrage appartient au produit, pas au code : il a été posé le
+    02/10/2026, parce qu'il touche à ce que la plateforme promet aux
+    établissements et aux déposants. La porte reste gardée — ce qui n'est pas
+    enregistré est la *trace*, jamais le droit.
+    """
+    at = at or timezone.now()
+    page = _authorized_page(session, page_number, at)
+
+    asset = (
+        DocumentAsset.objects.filter(page=page, asset_type=DocumentAsset.AssetType.COVER)
+        .order_by("id")
+        .first()
+    )
+    if asset is None:
+        # Une page sans vignette : le volet affiche son numéro, et le lecteur
+        # garde toutes ses autres façons d'y aller.
+        raise ReaderPageUnavailable("Page has no thumbnail")
+
+    return asset
+
+
 def get_reader_page_image(*, session: ReaderSession, page_number: int, at=None):
     """Image fidèle d'une page, sous les mêmes conditions que son texte.
 

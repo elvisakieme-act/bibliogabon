@@ -30,6 +30,7 @@ from document_reader.services import (
     get_reader_page,
     get_reader_page_image,
     get_reader_page_image_info,
+    get_reader_page_thumbnail,
     get_reader_page_tile_key,
     start_reader_session,
 )
@@ -309,6 +310,78 @@ class ReaderPageImageView(APIView):
         # Privé : une page lue n'est pas une couverture publique, et un cache
         # partagé la servirait à qui n'a pas de session.
         response.headers["Cache-Control"] = "private, no-store"
+        return response
+
+
+class ReaderPageThumbnailView(APIView):
+    """Vignette d'une page, pour se repérer dans un long document.
+
+    Même porte que l'image de page : session vivante, droit de lecture valide,
+    adresse opaque. Une seule chose la distingue, et elle est volontaire — la
+    demande **n'est pas inscrite au journal d'accès**. Ouvrir un volet de
+    miniatures sur un cours de 157 pages y inscrirait 157 pages lues, et les
+    rapports d'usage institutionnels compteraient des pages que personne n'a
+    lues. Ce qui n'est pas enregistré est la trace, jamais le droit.
+    """
+
+    @extend_schema(
+        tags=["Reader"],
+        summary="Serve the thumbnail of a reader page",
+        description=(
+            "A small rendering of the page, for navigation. Same authorisation as "
+            "the page image — a live reader session and a valid read entitlement — "
+            "but deliberately **not** written to the page access log: opening a "
+            "thumbnail panel on a 157-page course would otherwise record 157 pages "
+            "as read. A page with no thumbnail returns 404."
+        ),
+        operation_id="v1_reader_page_thumbnail",
+        responses={
+            200: OpenApiResponse(description="WebP thumbnail of the page"),
+            403: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+    )
+    def get(self, request, session_key, page_number: int):
+        try:
+            session = ReaderSession.objects.select_related("user", "document", "version").get(
+                session_key=session_key
+            )
+        except ReaderSession.DoesNotExist:
+            return error_response(
+                "not_found", "Reader session not found.", status.HTTP_404_NOT_FOUND
+            )
+        if session.user_id and session.user_id != getattr(request.user, "pk", None):
+            return error_response(
+                "access_denied",
+                "This session belongs to another user.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            asset = get_reader_page_thumbnail(session=session, page_number=page_number)
+        except ReaderSessionInactive:
+            return error_response(
+                "session_inactive", "Reader session is inactive.", status.HTTP_403_FORBIDDEN
+            )
+        except ReaderAccessDenied:
+            return error_response(
+                "entitlement_required",
+                "An active read entitlement is required.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        except ReaderPageUnavailable:
+            return error_response("not_found", "Page not found.", status.HTTP_404_NOT_FOUND)
+
+        response = FileResponse(
+            open_stream(asset.storage_key),
+            content_type=asset.mime_type or "image/webp",
+        )
+        response.headers["Content-Disposition"] = (
+            f'inline; filename="vignette-{page_number}.webp"'
+        )
+        # Privée comme la page, mais gardée un moment par le navigateur : un
+        # volet qui se rouvre redemanderait sinon cent cinquante images déjà
+        # reçues. Un cache **partagé** reste exclu — la vignette est du contenu.
+        response.headers["Cache-Control"] = "private, max-age=600"
         return response
 
 

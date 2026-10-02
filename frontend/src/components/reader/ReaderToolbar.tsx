@@ -15,12 +15,16 @@ import { Logo } from "@/components/brand/Logo";
 export function ReaderToolbar({
   pageNumber,
   pageCount,
+  pagesOpen,
   onClose,
+  onTogglePages,
   onOpenOptions
 }: {
   pageNumber: number;
   pageCount: number;
+  pagesOpen: boolean;
   onClose(): void;
+  onTogglePages(): void;
   onOpenOptions(): void;
 }) {
   return (
@@ -33,15 +37,28 @@ export function ReaderToolbar({
         >
           ← Retour
         </button>
-        {/* `aria-live` pour que la position soit annoncée quand elle change :
-            en défilement continu, elle change sans qu'aucun bouton n'ait été
-            actionné. */}
-        {/* Pas de troncature : sur un téléphone, « Page 1 sur 157 » devenait
+        {/* Le volet des pages s'ouvre depuis la position : c'est là qu'on
+            regarde quand on cherche où l'on en est.
+
+            Pas de troncature : sur un téléphone, « Page 1 sur 157 » devenait
             « Page 1 sur… » — on coupait précisément ce qui situe le lecteur
             dans son document, et d'autant plus que le document est long. */}
-        <p aria-live="polite" className="whitespace-nowrap text-sm tabular-nums text-white/75">
+        <button
+          type="button"
+          onClick={onTogglePages}
+          aria-pressed={pagesOpen}
+          // `aria-live` sur le bouton lui-même : la position change sans
+          // qu'aucun bouton n'ait été actionné quand on fait défiler, et elle
+          // doit s'annoncer. La répéter dans un second élément la ferait
+          // entendre deux fois.
+          aria-live="polite"
+          className="whitespace-nowrap rounded-lg px-2 py-1 text-sm tabular-nums text-white/75 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
+        >
+          <span aria-hidden className="me-2">
+            ☰
+          </span>
           {`Page ${pageNumber} sur ${pageCount}`}
-        </p>
+        </button>
       </div>
 
       {/* Centré sur la barre et non sur l'espace restant : positionné dans le

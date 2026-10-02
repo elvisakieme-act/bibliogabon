@@ -364,3 +364,103 @@ def test_the_page_payload_never_names_a_stored_object(client, free_session):
     ).content.decode()
 
     assert not re.search(r"\.webp|storage|bucket|versions/", body, re.I)
+
+
+# --- La vignette : même porte, pas la même trace ----------------------------
+
+
+def thumbnail_path(session: ReaderSession, page_number: int = 1) -> str:
+    return reverse(
+        "api-v1:reader-page-thumbnail",
+        kwargs={"session_key": str(session.session_key), "page_number": page_number},
+    )
+
+
+@pytest.mark.django_db
+def test_a_live_session_gets_the_thumbnail(client, free_session):
+    response = client.get(thumbnail_path(free_session, 2))
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "image/webp"
+    assert len(b"".join(response.streaming_content)) > 0
+
+
+@pytest.mark.django_db
+def test_serving_a_thumbnail_does_not_record_a_page_as_read(client, free_session):
+    """Se repérer n'est pas lire.
+
+    C'est la seule différence voulue avec l'image de page, et elle est un
+    arbitrage de produit : un volet de miniatures ouvert sur un cours de 157
+    pages inscrirait sinon 157 pages lues. Les rapports d'usage institutionnels
+    compteraient des pages que personne n'a lues, et l'historique du lecteur
+    dirait qu'il a parcouru un document qu'il a seulement ouvert.
+    """
+    assert PageAccessLog.objects.count() == 0
+
+    for page_number in (1, 2, 3):
+        assert client.get(thumbnail_path(free_session, page_number)).status_code == 200
+
+    assert PageAccessLog.objects.count() == 0
+
+    # Et la page elle-même, elle, reste tracée : c'est la trace qu'on retire à
+    # la vignette, jamais la porte.
+    client.get(image_path(free_session, 2))
+    assert PageAccessLog.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_the_thumbnail_is_never_cached_by_a_shared_intermediary(client, free_session):
+    """Gardée par le navigateur du lecteur, jamais par un cache partagé.
+
+    Un volet qui se rouvre redemanderait sinon cent cinquante images déjà
+    reçues ; mais la vignette reste du contenu, et un intermédiaire partagé la
+    servirait à qui n'a pas de session.
+    """
+    response = client.get(thumbnail_path(free_session))
+
+    assert "private" in response["Cache-Control"]
+    assert "public" not in response["Cache-Control"]
+
+
+@pytest.mark.django_db
+def test_an_expired_session_gets_no_thumbnail(client, free_session):
+    # Le modèle refuse une expiration antérieure au début : on recule les deux,
+    # ce qui décrit une vraie session ancienne plutôt qu'une ligne impossible.
+    ReaderSession.objects.filter(pk=free_session.pk).update(
+        started_at=timezone.now() - timezone.timedelta(hours=2),
+        expires_at=timezone.now() - timezone.timedelta(hours=1),
+    )
+
+    response = client.get(thumbnail_path(free_session))
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "session_inactive"
+
+
+@pytest.mark.django_db
+def test_a_restricted_document_requires_an_entitlement_for_its_thumbnails(local_storage):
+    """La porte est la même : retirer la trace ne retire pas le contrôle."""
+    reader = User.objects.create_user(
+        email="vignette-sans-droit@bibliogabon.ga",
+        password="passphrase",
+        account_type=User.AccountType.INDIVIDUAL,
+    )
+    document = make_document(
+        slug="vignette-restreinte", access_model=Document.AccessModel.SUBSCRIPTION
+    )
+    version = ingest_with_images(document)
+    session = ReaderSession.objects.create(
+        document=document,
+        version=version,
+        user=reader,
+        expires_at=timezone.now() + timezone.timedelta(minutes=30),
+    )
+    from rest_framework.test import APIClient
+
+    api = APIClient()
+    api.force_authenticate(user=reader)
+
+    refused = api.get(thumbnail_path(session))
+
+    assert refused.status_code == 403
+    assert refused.json()["error"]["code"] == "entitlement_required"

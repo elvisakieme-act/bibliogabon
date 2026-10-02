@@ -20,6 +20,7 @@ from api.v1.reader import (
     ReaderManifestView,
     ReaderPageImageInfoView,
     ReaderPageImageView,
+    ReaderPageThumbnailView,
     ReaderPageTileView,
     ReaderPageView,
     ReaderSessionCreateView,
@@ -90,6 +91,11 @@ urlpatterns = [
         "reader/sessions/<uuid:session_key>/pages/<int:page_number>/image/",
         ReaderPageImageView.as_view(),
         name="reader-page-image",
+    ),
+    path(
+        "reader/sessions/<uuid:session_key>/pages/<int:page_number>/thumbnail/",
+        ReaderPageThumbnailView.as_view(),
+        name="reader-page-thumbnail",
     ),
     path(
         "reader/sessions/<uuid:session_key>/manifest",

@@ -7,6 +7,7 @@ import { ReaderBookView } from "@/components/reader/ReaderBookView";
 import { ReaderDisplayOptions } from "@/components/reader/ReaderDisplayOptions";
 import { ReaderPage } from "@/components/reader/ReaderPage";
 import { ReaderStripView } from "@/components/reader/ReaderStripView";
+import { ReaderThumbnailPanel } from "@/components/reader/ReaderThumbnailPanel";
 import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
 import { ReaderViewport } from "@/components/reader/ReaderViewport";
 import {
@@ -20,6 +21,7 @@ import {
   type ReadingMode
 } from "@/components/reader/readerPreferences";
 import { SiteLayout } from "@/components/layout/SiteLayout";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useSettledValue } from "@/hooks/useSettledValue";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -84,7 +86,9 @@ export function LecturePage() {
   // La page retenue est celle sur laquelle la lecture **s'arrête**, jamais
   // celle qu'on traverse en cherchant un passage.
   const settledPage = useSettledValue(pageNumber, PROGRESS_SETTLE_MS);
+  const wideScreen = useMediaQuery("(min-width: 768px)");
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [pagesOpen, setPagesOpen] = useState(false);
   // Lu une seule fois : `localStorage` peut échouer, et le relire à chaque
   // rendu transformerait un stockage refusé en boucle de rendus.
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
@@ -294,7 +298,9 @@ export function LecturePage() {
       <ReaderToolbar
         pageNumber={pageNumber}
         pageCount={pageCount}
+        pagesOpen={pagesOpen}
         onClose={() => void returnToDocument()}
+        onTogglePages={() => setPagesOpen((ouvert) => !ouvert)}
         onOpenOptions={() => setOptionsOpen(true)}
       />
 
@@ -307,7 +313,22 @@ export function LecturePage() {
         onZoomChange={applyZoom}
       />
 
-      <div className="min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1">
+        {manifest.data && manifest.data.items.length > 0 && sessionKey ? (
+          <ReaderThumbnailPanel
+            open={pagesOpen}
+            sessionKey={sessionKey}
+            manifest={manifest.data}
+            pageNumber={pageNumber}
+            onSelect={(page) => {
+              setPageNumber(page);
+              // Le volet se referme sur un écran étroit, où il couvre la page
+              // que l'on vient de demander.
+              if (!wideScreen) setPagesOpen(false);
+            }}
+            onClose={() => setPagesOpen(false)}
+          />
+        ) : null}
         {manifest.data && manifest.data.items.length > 0 && sessionKey ? (
           <ReaderView
             sessionKey={sessionKey}
